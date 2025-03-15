@@ -1,8 +1,9 @@
 #include "device/device_base.h"
-#include "common/logger.h"
 #include "common/utils.h"
-#include <chrono>
-#include <thread>
+
+#include <spdlog/spdlog.h>
+
+namespace http = boost::beast::http;
 
 namespace astrocomm {
 
@@ -11,8 +12,7 @@ DeviceBase::DeviceBase(const std::string &id, const std::string &type,
     : deviceId(id), deviceType(type), manufacturer(mfr), model(mdl),
       firmwareVersion("1.0.0"), connected(false), running(false) {
 
-  logInfo("Device created: " + deviceId + " (" + deviceType + ")",
-          "DeviceBase");
+  SPDLOG_INFO("Device created: {} ({})", deviceId, deviceType);
 }
 
 DeviceBase::~DeviceBase() { disconnect(); }
@@ -39,11 +39,10 @@ bool DeviceBase::connect(const std::string &host, uint16_t port) {
     ws->handshake(host_port, "/ws");
     connected = true;
 
-    logInfo("Connected to server at " + host + ":" + std::to_string(port),
-            deviceId);
+    SPDLOG_INFO("Connected to server at {}:{}", host, port);
     return true;
   } catch (const std::exception &e) {
-    logError("Connection error: " + std::string(e.what()), deviceId);
+    SPDLOG_ERROR("Connection error: {}", e.what());
     return false;
   }
 }
@@ -53,16 +52,16 @@ void DeviceBase::disconnect() {
     try {
       ws->close(websocket::close_code::normal);
       connected = false;
-      logInfo("Disconnected from server", deviceId);
+      SPDLOG_INFO("Disconnected from server");
     } catch (const std::exception &e) {
-      logError("Error disconnecting: " + std::string(e.what()), deviceId);
+      SPDLOG_ERROR("Error disconnecting: {}", e.what());
     }
   }
 }
 
 bool DeviceBase::registerDevice() {
   if (!connected) {
-    logError("Cannot register device: not connected to server", deviceId);
+    SPDLOG_ERROR("Cannot register device: not connected to server");
     return false;
   }
 
@@ -83,47 +82,46 @@ bool DeviceBase::registerDevice() {
       if (respJson["messageType"] == "RESPONSE" &&
           respJson["payload"]["status"] == "SUCCESS") {
 
-        logInfo("Device registered successfully", deviceId);
+        SPDLOG_INFO("Device registered successfully");
         return true;
       } else {
-        logError("Registration failed: " + response, deviceId);
+        SPDLOG_ERROR("Registration failed: {}", response);
         return false;
       }
     } catch (const std::exception &e) {
-      logError("Error parsing registration response: " + std::string(e.what()),
-               deviceId);
+      SPDLOG_ERROR("Error parsing registration response: {}", e.what());
       return false;
     }
   } catch (const std::exception &e) {
-    logError("Error registering device: " + std::string(e.what()), deviceId);
+    SPDLOG_ERROR("Error registering device: {}", e.what());
     return false;
   }
 }
 
 bool DeviceBase::start() {
   if (!connected) {
-    logError("Cannot start device: not connected to server", deviceId);
+    SPDLOG_ERROR("Cannot start device: not connected to server");
     return false;
   }
 
   running = true;
-  logInfo("Device started", deviceId);
+  SPDLOG_INFO("Device started");
   return true;
 }
 
 void DeviceBase::stop() {
   running = false;
-  logInfo("Device stopped", deviceId);
+  SPDLOG_INFO("Device stopped");
 }
 
 void DeviceBase::run() {
   if (!connected || !running) {
-    logError("Cannot run message loop: device not connected or not running",
-             deviceId);
+    SPDLOG_ERROR(
+        "Cannot run message loop: device not connected or not running");
     return;
   }
 
-  logInfo("Starting message loop", deviceId);
+  SPDLOG_INFO("Starting message loop");
 
   while (connected && running) {
     try {
@@ -134,18 +132,18 @@ void DeviceBase::run() {
       handleMessage(msg);
     } catch (beast::system_error const &se) {
       if (se.code() == websocket::error::closed) {
-        logInfo("WebSocket connection closed", deviceId);
+        SPDLOG_INFO("WebSocket connection closed");
         connected = false;
         break;
       } else {
-        logError("WebSocket error: " + se.code().message(), deviceId);
+        SPDLOG_ERROR("WebSocket error: {}", se.code().message());
       }
     } catch (const std::exception &e) {
-      logError("Error in message loop: " + std::string(e.what()), deviceId);
+      SPDLOG_ERROR("Error in message loop: {}", e.what());
     }
   }
 
-  logInfo("Message loop ended", deviceId);
+  SPDLOG_INFO("Message loop ended");
 }
 
 std::string DeviceBase::getDeviceId() const { return deviceId; }
@@ -209,7 +207,7 @@ json DeviceBase::getProperty(const std::string &property) const {
 void DeviceBase::registerCommandHandler(const std::string &command,
                                         CommandHandler handler) {
   commandHandlers[command] = handler;
-  logDebug("Registered handler for command: " + command, deviceId);
+  SPDLOG_DEBUG("Registered handler for command: {}", command);
 }
 
 void DeviceBase::handleMessage(const std::string &message) {
@@ -221,18 +219,17 @@ void DeviceBase::handleMessage(const std::string &message) {
       CommandMessage *cmdMsg = static_cast<CommandMessage *>(msg.get());
       handleCommandMessage(*cmdMsg);
     } else {
-      logWarning("Received non-command message: " +
-                     messageTypeToString(msg->getMessageType()),
-                 deviceId);
+      SPDLOG_WARN("Received non-command message: {}",
+                  messageTypeToString(msg->getMessageType()));
     }
   } catch (const std::exception &e) {
-    logError("Error handling message: " + std::string(e.what()), deviceId);
+    SPDLOG_ERROR("Error handling message: {}", e.what());
   }
 }
 
 void DeviceBase::handleCommandMessage(const CommandMessage &cmd) {
   std::string cmdName = cmd.getCommand();
-  logInfo("Received command: " + cmdName, deviceId);
+  SPDLOG_INFO("Received command: {}", cmdName);
 
   auto it = commandHandlers.find(cmdName);
 
@@ -246,8 +243,7 @@ void DeviceBase::handleCommandMessage(const CommandMessage &cmd) {
       // Call the registered handler
       it->second(cmd, response);
     } catch (const std::exception &e) {
-      logError("Error executing command handler: " + std::string(e.what()),
-               deviceId);
+      SPDLOG_ERROR("Error executing command handler: {}", e.what());
       response.setStatus("ERROR");
       response.setDetails(
           {{"error", "COMMAND_EXECUTION_FAILED"},
@@ -294,7 +290,7 @@ void DeviceBase::handleCommandMessage(const CommandMessage &cmd) {
     response.setProperties(updatedProps);
   } else {
     // Unknown command
-    logWarning("Unknown command: " + cmdName, deviceId);
+    SPDLOG_WARN("Unknown command: {}", cmdName);
     response.setStatus("ERROR");
     response.setDetails({{"error", "UNKNOWN_COMMAND"},
                          {"message", "Unknown command: " + cmdName}});
@@ -305,7 +301,7 @@ void DeviceBase::handleCommandMessage(const CommandMessage &cmd) {
 
 void DeviceBase::sendResponse(const ResponseMessage &response) {
   if (!connected) {
-    logWarning("Cannot send response: not connected", deviceId);
+    SPDLOG_WARN("Cannot send response: not connected", deviceId);
     return;
   }
 
@@ -313,17 +309,16 @@ void DeviceBase::sendResponse(const ResponseMessage &response) {
     std::string msgJson = response.toJson().dump();
     ws->write(net::buffer(msgJson));
 
-    logDebug("Sent response: " + response.getCommand() +
-                 ", status: " + response.getStatus(),
-             deviceId);
+    SPDLOG_DEBUG("Sent response: {}, status: {}", response.getCommand(),
+                 response.getStatus());
   } catch (const std::exception &e) {
-    logError("Error sending response: " + std::string(e.what()), deviceId);
+    SPDLOG_ERROR("Error sending response: {}", e.what());
   }
 }
 
 void DeviceBase::sendEvent(const EventMessage &event) {
   if (!connected) {
-    logWarning("Cannot send event: not connected", deviceId);
+    SPDLOG_WARN("Cannot send event: not connected", deviceId);
     return;
   }
 
@@ -335,9 +330,9 @@ void DeviceBase::sendEvent(const EventMessage &event) {
     std::string msgJson = eventCopy.toJson().dump();
     ws->write(net::buffer(msgJson));
 
-    logDebug("Sent event: " + event.getEvent(), deviceId);
+    SPDLOG_DEBUG("Sent event: {}", event.getEvent());
   } catch (const std::exception &e) {
-    logError("Error sending event: " + std::string(e.what()), deviceId);
+    SPDLOG_ERROR("Error sending event: {}", e.what());
   }
 }
 

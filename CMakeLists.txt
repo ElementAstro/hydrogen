@@ -39,7 +39,7 @@ FetchContent_MakeAvailable(cpp-base64)
 
 # 添加头文件路径
 include_directories(
-    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
     ${cpp-base64_SOURCE_DIR}
 )
 
@@ -70,21 +70,12 @@ target_link_libraries(astrocomm
 )
 
 # 服务器应用程序
-add_executable(astro_server apps/server_main.cpp)
+add_executable(astro_server src/apps/server_main.cpp)
 target_link_libraries(astro_server PRIVATE astrocomm)
 
-# 设备模拟器
-add_executable(telescope_device apps/telescope_device.cpp)
-target_link_libraries(telescope_device PRIVATE astrocomm)
-
 # 客户端应用程序
-add_executable(astro_client apps/client_app.cpp)
+add_executable(astro_client src/apps/client_app.cpp)
 target_link_libraries(astro_client PRIVATE astrocomm)
-
-# 安装规则
-install(TARGETS astro_server telescope_device astro_client
-    RUNTIME DESTINATION bin
-)
 
 FetchContent_Declare(
     pybind11

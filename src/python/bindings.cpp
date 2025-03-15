@@ -5,9 +5,11 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
-#include "common/logger.h"
 #include "common/message.h"
 #include "common/utils.h"
+#include "device/device_base.h"
+
+#include <spdlog/spdlog.h>
 
 namespace py = pybind11;
 using namespace astrocomm;
@@ -16,28 +18,27 @@ using namespace astrocomm;
 PYBIND11_MODULE(pyastrocomm, m) {
   m.doc() = "Python bindings for Astronomy Device Communication Protocol";
 
-  // 记录日志级别枚举
-  py::enum_<LogLevel>(m, "LogLevel")
-      .value("DEBUG", LogLevel::DEBUG)
-      .value("INFO", LogLevel::INFO)
-      .value("WARNING", LogLevel::WARNING)
-      .value("ERROR", LogLevel::ERROR)
-      .value("CRITICAL", LogLevel::CRITICAL)
-      .export_values();
-
-  // 日志功能
-  m.def("init_logger", &initLogger, py::arg("log_file_path") = "",
-        py::arg("level") = LogLevel::INFO, "Initialize the logger");
-  m.def("log_debug", &logDebug, py::arg("message"), py::arg("component") = "",
-        "Log a debug message");
-  m.def("log_info", &logInfo, py::arg("message"), py::arg("component") = "",
-        "Log an info message");
-  m.def("log_warning", &logWarning, py::arg("message"),
-        py::arg("component") = "", "Log a warning message");
-  m.def("log_error", &logError, py::arg("message"), py::arg("component") = "",
-        "Log an error message");
-  m.def("log_critical", &logCritical, py::arg("message"),
-        py::arg("component") = "", "Log a critical message");
+  // 设置 spdlog 格式和级别
+  m.def(
+      "set_log_level",
+      [](const std::string &level) {
+        if (level == "trace") {
+          spdlog::set_level(spdlog::level::trace);
+        } else if (level == "debug") {
+          spdlog::set_level(spdlog::level::debug);
+        } else if (level == "info") {
+          spdlog::set_level(spdlog::level::info);
+        } else if (level == "warn") {
+          spdlog::set_level(spdlog::level::warn);
+        } else if (level == "error") {
+          spdlog::set_level(spdlog::level::err);
+        } else if (level == "critical") {
+          spdlog::set_level(spdlog::level::critical);
+        } else {
+          throw std::invalid_argument("Invalid log level");
+        }
+      },
+      "Set the log level for spdlog");
 
   // 工具函数
   m.def("generate_uuid", &generateUuid, "Generate a UUID string");
@@ -180,4 +181,62 @@ PYBIND11_MODULE(pyastrocomm, m) {
                    "Convert a string to uppercase");
   string_utils.def("split", &string_utils::split,
                    "Split a string by delimiter");
+
+  // 绑定设备基类
+  py::class_<DeviceBase, std::shared_ptr<DeviceBase>>(m, "DeviceBase")
+      .def(py::init<const std::string &, const std::string &,
+                    const std::string &, const std::string &>(),
+           py::arg("device_id"), py::arg("device_type"),
+           py::arg("manufacturer"), py::arg("model"))
+      .def("connect", &DeviceBase::connect, py::arg("host"), py::arg("port"),
+           "Connect to server")
+      .def("disconnect", &DeviceBase::disconnect, "Disconnect from server")
+      .def("register_device", &DeviceBase::registerDevice,
+           "Register device with server")
+      .def("start", &DeviceBase::start, "Start the device")
+      .def("stop", &DeviceBase::stop, "Stop the device")
+      .def("run", &DeviceBase::run, "Run the message loop")
+      .def("get_device_id", &DeviceBase::getDeviceId, "Get the device ID")
+      .def("get_device_type", &DeviceBase::getDeviceType, "Get the device type")
+      .def("get_device_info", &DeviceBase::getDeviceInfo,
+           "Get device information as JSON")
+      .def("set_property", &DeviceBase::setProperty, py::arg("property"),
+           py::arg("value"), "Set a device property")
+      .def("get_property", &DeviceBase::getProperty, py::arg("property"),
+           "Get a device property")
+      .def(
+          "register_command_handler",
+          [](DeviceBase &device, const std::string &command,
+             py::function callback) {
+            device.registerCommandHandler(
+                command, [callback](const CommandMessage &cmd,
+                                    ResponseMessage &response) {
+                  py::gil_scoped_acquire acquire;
+                  try {
+                    callback(cmd, response);
+                  } catch (const py::error_already_set &e) {
+                    SPDLOG_ERROR("Python error in command handler: {}",
+                                 e.what());
+                    response.setStatus("ERROR");
+                    response.setDetails(
+                        {{"error", "PYTHON_EXCEPTION"}, {"message", e.what()}});
+                  }
+                });
+          },
+          py::arg("command"), py::arg("callback"),
+          "Register a Python function as command handler");
+
+  // 添加观测事件和异步处理的回调机制
+  m.def(
+      "set_async_exception_handler",
+      [](py::function handler) {
+        py::gil_scoped_acquire acquire;
+        // 全局异常处理器设置
+        static py::function exception_handler;
+        exception_handler = handler;
+
+        // 设置C++中的全局异常回调
+        // 这里可以添加异常捕获和处理的逻辑
+      },
+      py::arg("handler"), "Set global handler for asynchronous exceptions");
 }

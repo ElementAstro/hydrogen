@@ -1,81 +1,226 @@
 #pragma once
+
 #include "device/device_base.h"
-#include <array>
+
 #include <atomic>
+#include <memory>
 #include <mutex>
-#include <random>
 #include <thread>
-#include <vector>
 
 namespace astrocomm {
 
 // 导星状态枚举
-enum class GuiderState { IDLE, CALIBRATING, GUIDING, PAUSED, ERROR };
+enum class GuiderState {
+  DISCONNECTED, // 未连接
+  CONNECTED,    // 已连接但未导星
+  CALIBRATING,  // 校准中
+  GUIDING,      // 导星中
+  PAUSED,       // 导星暂停
+  SETTLING,     // 抖动后稳定中
+  ERROR         // 错误状态
+};
 
 // 校准状态
 enum class CalibrationState {
   IDLE,
   NORTH_MOVING,
-  NORTH_ANALYZING,
+  NORTH_COMPLETE,
   SOUTH_MOVING,
-  SOUTH_ANALYZING,
+  SOUTH_COMPLETE,
   EAST_MOVING,
-  EAST_ANALYZING,
+  EAST_COMPLETE,
   WEST_MOVING,
-  WEST_ANALYZING,
+  WEST_COMPLETE,
   COMPLETED,
   FAILED
 };
 
-// 导星器设备类
-class Guider : public DeviceBase {
-public:
-  Guider(const std::string &deviceId, const std::string &manufacturer = "QHY",
-         const std::string &model = "QHY5-II");
-  virtual ~Guider();
+// 导星器接口类型
+enum class GuiderInterfaceType {
+  PHD2,                  // PHD2
+  LINGUIDER,             // Lin-guider
+  METAGUIDE,             // MetaGuide
+  DIREKTGUIDER,          // DirectGuide
+  ASTROPHOTOGRAPHY_TOOL, // APT
+  KSTARS_EKOS,           // KStars/EKOS
+  MAXIM_DL,              // MaxIm DL
+  ASTROART,              // AstroArt
+  ASTAP,                 // ASTAP
+  VOYAGER,               // Voyager
+  NINA,                  // N.I.N.A
+  CUSTOM                 // 自定义接口
+};
 
-  // 重写启动和停止方法
+// 导星修正结构
+struct GuidingCorrection {
+  double raCorrection;  // RA修正 (毫秒)
+  double decCorrection; // DEC修正 (毫秒)
+  double raRaw;         // 原始RA误差 (像素)
+  double decRaw;        // 原始DEC误差 (像素)
+
+  GuidingCorrection()
+      : raCorrection(0), decCorrection(0), raRaw(0), decRaw(0) {}
+};
+
+// 校准数据结构
+struct CalibrationData {
+  double raAngle;  // RA轴角度
+  double decAngle; // DEC轴角度
+  double raRate;   // RA速率 (像素/秒)
+  double decRate;  // DEC速率 (像素/秒)
+  bool flipped;    // 镜像翻转
+  bool calibrated; // 是否已校准
+
+  CalibrationData()
+      : raAngle(0), decAngle(90), raRate(0), decRate(0), flipped(false),
+        calibrated(false) {}
+};
+
+// 导星星点信息
+struct StarInfo {
+  double x;    // X坐标
+  double y;    // Y坐标
+  double flux; // 亮度
+  double snr;  // 信噪比
+  bool locked; // 是否锁定
+
+  StarInfo() : x(0), y(0), flux(0), snr(0), locked(false) {}
+  StarInfo(double x, double y) : x(x), y(y), flux(0), snr(0), locked(false) {}
+};
+
+// 导星统计数据
+struct GuiderStats {
+  double rms;         // 总体RMS (像素)
+  double rmsRa;       // RA方向RMS (像素)
+  double rmsDec;      // DEC方向RMS (像素)
+  double peak;        // 峰值误差 (像素)
+  int totalFrames;    // 总帧数
+  double snr;         // 信噪比
+  double elapsedTime; // 导星持续时间(秒)
+
+  GuiderStats()
+      : rms(0), rmsRa(0), rmsDec(0), peak(0), totalFrames(0), snr(0),
+        elapsedTime(0) {}
+};
+
+// 导星接口基类 - 负责与外部导星程序通信
+class GuiderInterface {
+public:
+  virtual ~GuiderInterface() = default;
+
+  // 连接到导星软件
+  virtual bool connect(const std::string &host, int port) = 0;
+
+  // 断开连接
+  virtual void disconnect() = 0;
+
+  // 是否已连接
+  virtual bool isConnected() const = 0;
+
+  // 开始导星
+  virtual bool startGuiding() = 0;
+
+  // 停止导星
+  virtual bool stopGuiding() = 0;
+
+  // 暂停导星
+  virtual bool pauseGuiding() = 0;
+
+  // 恢复导星
+  virtual bool resumeGuiding() = 0;
+
+  // 开始校准
+  virtual bool startCalibration() = 0;
+
+  // 取消校准
+  virtual bool cancelCalibration() = 0;
+
+  // 执行抖动
+  virtual bool dither(double amount, double settleTime = 5.0,
+                      double settlePixels = 1.5) = 0;
+
+  // 获取当前状态
+  virtual GuiderState getGuiderState() const = 0;
+
+  // 获取校准状态
+  virtual CalibrationState getCalibrationState() const = 0;
+
+  // 获取导星统计
+  virtual GuiderStats getStats() const = 0;
+
+  // 获取当前导星星点
+  virtual StarInfo getGuideStar() const = 0;
+
+  // 获取校准数据
+  virtual CalibrationData getCalibrationData() const = 0;
+
+  // 设置像素比例
+  virtual void setPixelScale(double scaleArcsecPerPixel) = 0;
+
+  // 设置导星速率
+  virtual void setGuideRate(double raRateMultiplier,
+                            double decRateMultiplier) = 0;
+
+  // 获取当前修正
+  virtual GuidingCorrection getCurrentCorrection() const = 0;
+
+  // 获取接口类型
+  virtual GuiderInterfaceType getInterfaceType() const = 0;
+
+  // 获取接口名称
+  virtual std::string getInterfaceName() const = 0;
+
+  // 更新（非阻塞轮询）
+  virtual void update() = 0;
+};
+
+// 导星设备类 - 本地设备与远程导星软件的接口
+class GuiderDevice : public DeviceBase {
+public:
+  GuiderDevice(const std::string &deviceId,
+               const std::string &manufacturer = "Generic",
+               const std::string &model = "Guider");
+  virtual ~GuiderDevice();
+
+  // 重写DeviceBase方法
   virtual bool start() override;
   virtual void stop() override;
 
-  // 导星器特定方法
-  void startGuiding();
-  void stopGuiding();
-  void pauseGuiding();
-  void resumeGuiding();
-  void startCalibration();
-  void cancelCalibration();
-  void dither(double amount, bool settle = true);
-  void setCalibratedPixelScale(double scale);
-  void setAggressiveness(double ra, double dec);
-  void setGuideRate(double ra, double dec);
+  // 连接到导星软件
+  bool connectToGuider(GuiderInterfaceType type, const std::string &host,
+                       int port);
+
+  // 断开导星软件
+  void disconnectFromGuider();
+
+  // 获取接口类型
+  GuiderInterfaceType getInterfaceType() const;
+
+  // 接口类型转换为字符串
+  static std::string interfaceTypeToString(GuiderInterfaceType type);
+  static GuiderInterfaceType stringToInterfaceType(const std::string &typeStr);
+
+  // 导星状态转换为字符串
+  static std::string guiderStateToString(GuiderState state);
+  static std::string calibrationStateToString(CalibrationState state);
+
+  // 获取接口实例
+  std::shared_ptr<GuiderInterface> getInterface() const;
 
 protected:
-  // 模拟导星器的状态更新线程
-  void updateLoop();
-
-  // 处理导星计算
-  void calculateGuidingCorrections();
-
-  // 模拟恒星漂移
-  std::array<double, 2> simulateDrift();
-
-  // 模拟导星捕获图像
-  void captureGuideImage();
-
-  // 处理校准步骤
-  void processCalibration();
-
-  // 生成导星图像数据
-  std::vector<uint8_t> generateGuideImageData();
-
-  // 发送校准完成事件
-  void sendCalibrationCompletedEvent(const std::string &relatedMessageId);
-
-  // 发送导星状态事件
-  void sendGuidingStatusEvent();
+  // 处理导星软件状态变更
+  void statusUpdateLoop();
+  void handleStateChanged(GuiderState newState);
+  void handleCorrectionReceived(const GuidingCorrection &correction);
+  void handleCalibrationChanged(CalibrationState newState,
+                                const CalibrationData &data);
+  void handleStatsUpdated(const GuiderStats &newStats);
 
   // 命令处理器
+  void handleConnectCommand(const CommandMessage &cmd,
+                            ResponseMessage &response);
+  void handleDisconnectCommand(const CommandMessage &cmd,
+                               ResponseMessage &response);
   void handleStartGuidingCommand(const CommandMessage &cmd,
                                  ResponseMessage &response);
   void handleStopGuidingCommand(const CommandMessage &cmd,
@@ -92,80 +237,30 @@ protected:
                            ResponseMessage &response);
   void handleSetParametersCommand(const CommandMessage &cmd,
                                   ResponseMessage &response);
+  void handleGetStatusCommand(const CommandMessage &cmd,
+                              ResponseMessage &response);
 
-private:
-  // 状态
-  GuiderState state;
-  CalibrationState calibrationState;
+  // 接口实例
+  std::shared_ptr<GuiderInterface> guiderInterface;
+  GuiderInterfaceType interfaceType;
 
-  // 星体跟踪参数
-  double guideStarX;  // 导星星体X位置
-  double guideStarY;  // 导星星体Y位置
-  double targetStarX; // 目标X位置
-  double targetStarY; // 目标Y位置
-  double driftX;      // X方向漂移
-  double driftY;      // Y方向漂移
+  // 状态变量
+  GuiderState lastState;
+  CalibrationState lastCalState;
 
-  // 校准参数
-  struct CalibrationData {
-    double raAngle;  // RA轴角度
-    double decAngle; // DEC轴角度
-    double raRate;   // RA速率 (像素/秒)
-    double decRate;  // DEC速率 (像素/秒)
-    bool flipped;    // 镜像翻转
-    bool calibrated; // 是否已校准
-  } calibration;
+  // 状态更新线程
+  std::thread statusThread;
+  std::atomic<bool> running;
 
-  // 控制参数
-  double raAggressiveness;  // RA轴修正积极性 (0-1)
-  double decAggressiveness; // DEC轴修正积极性 (0-1)
-  double raGuideRate;       // RA轴导星速率 (恒星速率的倍数)
-  double decGuideRate;      // DEC轴导星速率 (恒星速率的倍数)
-  double pixelScale;        // 像素尺度 (角秒/像素)
+  // 线程安全
+  mutable std::mutex interfaceMutex;
 
-  // 修正输出
-  double raCorrection;      // RA修正量 (毫秒)
-  double decCorrection;     // DEC修正量 (毫秒)
-  double lastRaCorrection;  // 上次RA修正
-  double lastDecCorrection; // 上次DEC修正
-
-  // 性能指标
-  double rms;  // 均方根误差
-  double peak; // 峰值误差
-
-  // 抖动相关
-  bool isSettling;          // 是否正在稳定
-  double settleThreshold;   // 稳定阈值
-  int settleFrames;         // 达到阈值的帧数
-  int requiredSettleFrames; // 需要的稳定帧数
-
-  // 图像相关
-  int imageWidth;
-  int imageHeight;
-  std::vector<uint8_t> imageData;
-
-  // 时间相关
-  double exposureTime;     // 曝光时间 (秒)
-  int64_t lastCaptureTime; // 上次拍摄时间
-  int64_t guideStartTime;  // 导星开始时间
-  int totalFramesCapured;  // 总捕获帧数
-
-  // 校准相关
-  std::string currentCalibrationMessageId;
-
-  // 随机数生成器
-  std::mt19937 rng;
-
-  // 更新线程
-  std::thread updateThread;
-  std::atomic<bool> updateRunning;
-
-  // 线程安全的状态更新
-  mutable std::mutex statusMutex;
-
-  // 辅助函数
-  std::string guiderStateToString(GuiderState state) const;
-  std::string calibrationStateToString(CalibrationState state) const;
+  // 状态变更事件间隔
+  int statusUpdateInterval; // 毫秒
 };
+
+// 用于创建适当接口的工厂函数
+std::shared_ptr<GuiderInterface>
+createGuiderInterface(GuiderInterfaceType type);
 
 } // namespace astrocomm
