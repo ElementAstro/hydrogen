@@ -5,14 +5,18 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
-#include "common/message.h"
-#include "common/utils.h"
-#include "device/device_base.h"
+#include <astrocomm/core.h>
+#include <astrocomm/device.h>
+#include <astrocomm/client.h>
+#include <astrocomm/server.h>
 
 #include <spdlog/spdlog.h>
 
 namespace py = pybind11;
-using namespace astrocomm;
+using namespace astrocomm::core;
+using namespace astrocomm::device;
+using namespace astrocomm::client;
+using namespace astrocomm::server;
 
 // 定义模块名为 pyastrocomm
 PYBIND11_MODULE(pyastrocomm, m) {
@@ -52,7 +56,7 @@ PYBIND11_MODULE(pyastrocomm, m) {
       .value("COMMAND", MessageType::COMMAND)
       .value("RESPONSE", MessageType::RESPONSE)
       .value("EVENT", MessageType::EVENT)
-      .value("ERROR", MessageType::ERROR)
+      .value("ERROR", MessageType::ERR)
       .value("DISCOVERY_REQUEST", MessageType::DISCOVERY_REQUEST)
       .value("DISCOVERY_RESPONSE", MessageType::DISCOVERY_RESPONSE)
       .value("REGISTRATION", MessageType::REGISTRATION)

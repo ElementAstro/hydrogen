@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Find required dependencies
+find_dependency(AstroComm REQUIRED COMPONENTS Core)
+find_dependency(Crow REQUIRED)
+find_dependency(Threads REQUIRED)
+find_dependency(OpenSSL REQUIRED)
+
+# Conditionally find Boost if available
+find_dependency(Boost QUIET COMPONENTS system filesystem thread)
+
+# Include the targets file
+include("${CMAKE_CURRENT_LIST_DIR}/AstroCommServerTargets.cmake")
+
+check_required_components(AstroCommServer)

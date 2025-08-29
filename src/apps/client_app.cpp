@@ -1,4 +1,4 @@
-#include "client/device_client.h"
+#include <astrocomm/client.h>
 #include "common/logger.h"
 #include <chrono>
 #include <iomanip>
@@ -6,7 +6,7 @@
 #include <string>
 #include <thread>
 
-using namespace astrocomm;
+using namespace astrocomm::client;
 
 // 命令行界面颜色
 namespace Color {
@@ -234,17 +234,15 @@ void handleTelescopeControl() {
 }
 
 // Event and property update callbacks
-void onTelescopePropertyChanged(const std::string &deviceId,
-                                const std::string &property,
+void onTelescopePropertyChanged(const std::string &property,
                                 const json &value) {
-  std::cout << Color::CYAN << "\n[Event] " << deviceId
-            << " property changed: " << property << " = " << value.dump()
+  std::cout << Color::CYAN << "\n[Property] " << property << " = " << value.dump()
             << Color::RESET << std::endl;
 }
 
-void onTelescopeEvent(const std::string &deviceId, const std::string &event,
+void onTelescopeEvent(const std::string &event,
                       const json &details) {
-  std::cout << Color::MAGENTA << "\n[Event] " << deviceId << " event: " << event
+  std::cout << Color::MAGENTA << "\n[Event] " << event
             << ", details: " << details.dump() << Color::RESET << std::endl;
 }
 
@@ -287,7 +285,7 @@ int main(int argc, char *argv[]) {
               << std::endl;
 
     // 启动后台消息处理
-    client->startMessageProcessing();
+    // Message processing starts automatically when client connects
 
     // 发现设备
     json devices = client->discoverDevices();
@@ -390,7 +388,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 停止后台消息处理
-    client->stopMessageProcessing();
+    // Message processing stops automatically when client disconnects
 
     // 断开连接
     client->disconnect();

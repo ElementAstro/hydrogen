@@ -12,7 +12,7 @@ enum class MessageType {
   COMMAND,
   RESPONSE,
   EVENT,
-  ERROR,
+  ERR,  // Renamed from ERROR to avoid Windows macro conflict
   DISCOVERY_REQUEST,
   DISCOVERY_RESPONSE,
   REGISTRATION,
@@ -47,6 +47,32 @@ public:
   void setOriginalMessageId(const std::string &id);
   std::string getOriginalMessageId() const;
 
+  // QoS级别支持
+  enum class QoSLevel {
+    AT_MOST_ONCE,   // 最多一次传递，可能丢失（默认）
+    AT_LEAST_ONCE,  // 至少一次传递，可能重复
+    EXACTLY_ONCE    // 精确一次传递，不丢失不重复
+  };
+
+  void setQoSLevel(QoSLevel level);
+  QoSLevel getQoSLevel() const;
+  
+  // 消息优先级
+  enum class Priority {
+    LOW,
+    NORMAL,
+    HIGH,
+    CRITICAL
+  };
+  
+  void setPriority(Priority priority);
+  Priority getPriority() const;
+  
+  // 消息过期时间
+  void setExpireAfter(int seconds);
+  int getExpireAfter() const;
+  bool isExpired() const;
+
   // 序列化和反序列化
   virtual json toJson() const;
   virtual void fromJson(const json &j);
@@ -60,6 +86,9 @@ protected:
   std::string deviceId;
   std::string timestamp;
   std::string originalMessageId;
+  QoSLevel qosLevel{QoSLevel::AT_MOST_ONCE};
+  Priority priority{Priority::NORMAL};
+  int expireAfterSeconds{0}; // 0表示永不过期
 };
 
 // 命令消息

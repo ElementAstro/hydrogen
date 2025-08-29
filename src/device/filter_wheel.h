@@ -1,13 +1,23 @@
 #pragma once
+
 #include "device/device_base.h"
+
 #include <atomic>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
 namespace astrocomm {
 
-// 滤镜轮设备类
+// Filter wheel device exception class
+class FilterWheelException : public std::runtime_error {
+public:
+  explicit FilterWheelException(const std::string &message)
+      : std::runtime_error(message) {}
+};
+
+// Filter wheel device class
 class FilterWheel : public DeviceBase {
 public:
   FilterWheel(const std::string &deviceId,
@@ -15,60 +25,74 @@ public:
               const std::string &model = "CFW3");
   virtual ~FilterWheel();
 
-  // 重写启动和停止方法
+  // Override start and stop methods
   virtual bool start() override;
   virtual void stop() override;
 
-  // 滤镜轮特定方法
-  void setPosition(int position);
-  void setFilterNames(const std::vector<std::string> &names);
-  void setFilterOffsets(const std::vector<int> &offsets);
-  void abort();
+  // Filter wheel specific methods
+  virtual void setPosition(int position);
+  virtual void setFilterNames(const std::vector<std::string> &names);
+  virtual void setFilterOffsets(const std::vector<int> &offsets);
+  virtual void abort();
+
+  // Additional virtual methods for subclasses to override
+  virtual bool isMovementComplete() const;
+  virtual int getMaxFilterCount() const;
+  virtual void setFilterCount(int count);
+
+  // Public accessors for current state
+  virtual std::string getCurrentFilterName() const;
+  virtual int getCurrentFilterOffset() const;
 
 protected:
-  // 模拟滤镜轮的状态更新线程
-  void updateLoop();
+  // Filter wheel state
+  int position;                         // Current position
+  int targetPosition;                   // Target position
+  int filterCount;                      // Filter count
+  std::vector<std::string> filterNames; // Filter names
+  std::vector<int> filterOffsets;       // Focus offsets
 
-  // 发送位置变化完成事件
-  void sendPositionChangeCompletedEvent(const std::string &relatedMessageId);
-
-  // 获取当前滤镜名称
-  std::string getCurrentFilterName() const;
-
-  // 获取当前滤镜偏移量
-  int getCurrentFilterOffset() const;
-
-  // 命令处理器
-  void handleSetPositionCommand(const CommandMessage &cmd,
-                                ResponseMessage &response);
-  void handleSetFilterNamesCommand(const CommandMessage &cmd,
-                                   ResponseMessage &response);
-  void handleSetFilterOffsetsCommand(const CommandMessage &cmd,
-                                     ResponseMessage &response);
-  void handleAbortCommand(const CommandMessage &cmd, ResponseMessage &response);
-
-private:
-  // 滤镜轮状态
-  int position;                         // 当前位置
-  int targetPosition;                   // 目标位置
-  int filterCount;                      // 滤镜数量
-  std::vector<std::string> filterNames; // 滤镜名称
-  std::vector<int> filterOffsets;       // 聚焦偏移量
-
-  // 移动相关状态
+  // Movement related state
   std::atomic<bool> isMoving;
   std::string currentMoveMessageId;
-  int moveDirection; // 1 = 顺时针, -1 = 逆时针
+  int moveDirection; // 1 = clockwise, -1 = counterclockwise
 
-  // 更新线程
+  // Update thread
   std::thread updateThread;
   std::atomic<bool> updateRunning;
 
-  // 线程安全的状态更新
+  // Thread-safe state updates
   mutable std::mutex statusMutex;
 
-  // 决定最短路径移动方向
-  int determineShortestPath(int from, int to);
+  // Protected virtual methods for simulation and hardware control
+  virtual void simulateMovement(double elapsedSec);
+  virtual void updatePosition(); // Renamed from updatePositionInternal for
+                                 // clarity in overrides
+  virtual void validatePosition(int newPosition) const;
+
+  // Utility methods
+  virtual int determineShortestPath(int from, int to) const;
+
+  // Event methods
+  virtual void
+  sendPositionChangeCompletedEvent(const std::string &relatedMessageId);
+
+  // Main update loop - can be overridden for different movement behaviors
+  virtual void updateLoop();
+
+  // Internal helper, assumes lock is held - Renamed to avoid confusion with
+  // virtual updatePosition
+  void updatePositionInternal();
+
+  // Command handlers - can be overridden to provide custom logic
+  virtual void handleSetPositionCommand(const CommandMessage &cmd,
+                                        ResponseMessage &response);
+  virtual void handleSetFilterNamesCommand(const CommandMessage &cmd,
+                                           ResponseMessage &response);
+  virtual void handleSetFilterOffsetsCommand(const CommandMessage &cmd,
+                                             ResponseMessage &response);
+  virtual void handleAbortCommand(const CommandMessage &cmd,
+                                  ResponseMessage &response);
 };
 
 } // namespace astrocomm

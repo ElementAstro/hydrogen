@@ -1,5 +1,6 @@
 #include "message.h"
 #include "utils.h"
+#include <chrono>
 #include <stdexcept>
 
 namespace astrocomm {
@@ -12,7 +13,7 @@ std::string messageTypeToString(MessageType type) {
     return "RESPONSE";
   case MessageType::EVENT:
     return "EVENT";
-  case MessageType::ERROR:
+  case MessageType::ERR:
     return "ERROR";
   case MessageType::DISCOVERY_REQUEST:
     return "DISCOVERY_REQUEST";
@@ -35,7 +36,7 @@ MessageType stringToMessageType(const std::string &typeStr) {
   if (typeStr == "EVENT")
     return MessageType::EVENT;
   if (typeStr == "ERROR")
-    return MessageType::ERROR;
+    return MessageType::ERR;
   if (typeStr == "DISCOVERY_REQUEST")
     return MessageType::DISCOVERY_REQUEST;
   if (typeStr == "DISCOVERY_RESPONSE")
@@ -48,7 +49,7 @@ MessageType stringToMessageType(const std::string &typeStr) {
   throw std::invalid_argument("Unknown message type: " + typeStr);
 }
 
-// Message 基类实现
+// Base Message class implementation
 Message::Message() : messageType(MessageType::COMMAND) {
   messageId = generateUuid();
   timestamp = getIsoTimestamp();
@@ -81,6 +82,42 @@ void Message::setOriginalMessageId(const std::string &id) {
 
 std::string Message::getOriginalMessageId() const { return originalMessageId; }
 
+void Message::setQoSLevel(QoSLevel level) {
+  qosLevel = level;
+}
+
+Message::QoSLevel Message::getQoSLevel() const {
+  return qosLevel;
+}
+
+void Message::setPriority(Priority priority) {
+  this->priority = priority;
+}
+
+Message::Priority Message::getPriority() const {
+  return priority;
+}
+
+void Message::setExpireAfter(int seconds) {
+  expireAfterSeconds = seconds;
+}
+
+int Message::getExpireAfter() const {
+  return expireAfterSeconds;
+}
+
+bool Message::isExpired() const {
+  if (expireAfterSeconds <= 0) {
+    return false; // Never expires
+  }
+  
+  auto now = std::chrono::system_clock::now();
+  auto msgTime = string_utils::parseIsoTimestamp(timestamp);
+  auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - msgTime).count();
+  
+  return elapsed > expireAfterSeconds;
+}
+
 json Message::toJson() const {
   json j = {{"messageType", messageTypeToString(messageType)},
             {"timestamp", timestamp},
@@ -92,6 +129,19 @@ json Message::toJson() const {
 
   if (!originalMessageId.empty()) {
     j["originalMessageId"] = originalMessageId;
+  }
+  
+  // Add QoS related properties
+  if (qosLevel != QoSLevel::AT_MOST_ONCE) {
+    j["qos"] = static_cast<int>(qosLevel);
+  }
+  
+  if (priority != Priority::NORMAL) {
+    j["priority"] = static_cast<int>(priority);
+  }
+  
+  if (expireAfterSeconds > 0) {
+    j["expireAfter"] = expireAfterSeconds;
   }
 
   return j;
@@ -109,11 +159,24 @@ void Message::fromJson(const json &j) {
   if (j.contains("originalMessageId")) {
     originalMessageId = j["originalMessageId"];
   }
+  
+  // Parse QoS related properties
+  if (j.contains("qos")) {
+    qosLevel = static_cast<QoSLevel>(j["qos"].get<int>());
+  }
+  
+  if (j.contains("priority")) {
+    priority = static_cast<Priority>(j["priority"].get<int>());
+  }
+  
+  if (j.contains("expireAfter")) {
+    expireAfterSeconds = j["expireAfter"].get<int>();
+  }
 }
 
 std::string Message::toString() const { return toJson().dump(2); }
 
-// CommandMessage 实现
+// CommandMessage implementation
 CommandMessage::CommandMessage() : Message(MessageType::COMMAND) {}
 
 CommandMessage::CommandMessage(const std::string &cmd)
@@ -161,7 +224,7 @@ void CommandMessage::fromJson(const json &j) {
   }
 }
 
-// ResponseMessage 实现
+// ResponseMessage implementation
 ResponseMessage::ResponseMessage() : Message(MessageType::RESPONSE) {}
 
 void ResponseMessage::setStatus(const std::string &s) { status = s; }
@@ -218,7 +281,7 @@ void ResponseMessage::fromJson(const json &j) {
   }
 }
 
-// EventMessage 实现
+// EventMessage implementation
 EventMessage::EventMessage() : Message(MessageType::EVENT) {}
 
 EventMessage::EventMessage(const std::string &eventName)
@@ -282,11 +345,11 @@ void EventMessage::fromJson(const json &j) {
   }
 }
 
-// ErrorMessage 实现
-ErrorMessage::ErrorMessage() : Message(MessageType::ERROR) {}
+// ErrorMessage implementation
+ErrorMessage::ErrorMessage() : Message(MessageType::ERR) {}
 
 ErrorMessage::ErrorMessage(const std::string &code, const std::string &msg)
-    : Message(MessageType::ERROR), errorCode(code), errorMessage(msg) {}
+    : Message(MessageType::ERR), errorCode(code), errorMessage(msg) {}
 
 void ErrorMessage::setErrorCode(const std::string &code) { errorCode = code; }
 
@@ -325,7 +388,7 @@ void ErrorMessage::fromJson(const json &j) {
   }
 }
 
-// DiscoveryRequestMessage 实现
+// DiscoveryRequestMessage implementation
 DiscoveryRequestMessage::DiscoveryRequestMessage()
     : Message(MessageType::DISCOVERY_REQUEST) {}
 
@@ -358,7 +421,7 @@ void DiscoveryRequestMessage::fromJson(const json &j) {
   }
 }
 
-// DiscoveryResponseMessage 实现
+// DiscoveryResponseMessage implementation
 DiscoveryResponseMessage::DiscoveryResponseMessage()
     : Message(MessageType::DISCOVERY_RESPONSE) {}
 
@@ -380,7 +443,7 @@ void DiscoveryResponseMessage::fromJson(const json &j) {
   devices = j["payload"]["devices"];
 }
 
-// RegistrationMessage 实现
+// RegistrationMessage implementation
 RegistrationMessage::RegistrationMessage()
     : Message(MessageType::REGISTRATION) {}
 
@@ -402,7 +465,7 @@ void RegistrationMessage::fromJson(const json &j) {
   deviceInfo = j["payload"];
 }
 
-// AuthenticationMessage 实现
+// AuthenticationMessage implementation
 AuthenticationMessage::AuthenticationMessage()
     : Message(MessageType::AUTHENTICATION) {}
 
@@ -433,8 +496,12 @@ void AuthenticationMessage::fromJson(const json &j) {
   credentials = j["payload"]["credentials"];
 }
 
-// Factory function
+// Factory function to create messages from JSON
 std::unique_ptr<Message> createMessageFromJson(const json &j) {
+  if (!j.contains("messageType")) {
+    throw std::invalid_argument("JSON does not contain a messageType field");
+  }
+  
   std::string typeStr = j["messageType"];
   MessageType type = stringToMessageType(typeStr);
 
@@ -450,7 +517,7 @@ std::unique_ptr<Message> createMessageFromJson(const json &j) {
   case MessageType::EVENT:
     msg = std::make_unique<EventMessage>();
     break;
-  case MessageType::ERROR:
+  case MessageType::ERR:
     msg = std::make_unique<ErrorMessage>();
     break;
   case MessageType::DISCOVERY_REQUEST:
@@ -469,7 +536,12 @@ std::unique_ptr<Message> createMessageFromJson(const json &j) {
     throw std::invalid_argument("Unknown message type: " + typeStr);
   }
 
-  msg->fromJson(j);
+  try {
+    msg->fromJson(j);
+  } catch (const std::exception& e) {
+    throw std::runtime_error("Error parsing message: " + std::string(e.what()));
+  }
+  
   return msg;
 }
 

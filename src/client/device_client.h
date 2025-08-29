@@ -1,5 +1,7 @@
 #pragma once
+
 #include "common/message.h"
+#include "common/message_queue.h"
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
@@ -9,7 +11,6 @@
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
-#include <queue>
 #include <string>
 
 namespace astrocomm {
@@ -46,14 +47,35 @@ public:
   json setDeviceProperties(const std::string &deviceId, const json &properties);
 
   // 执行设备命令
-  json executeCommand(const std::string &deviceId, const std::string &command,
-                      const json &parameters = json::object());
+  json
+  executeCommand(const std::string &deviceId, const std::string &command,
+                 const json &parameters = json::object(),
+                 Message::QoSLevel qosLevel = Message::QoSLevel::AT_MOST_ONCE);
 
   // 批量执行命令
   json executeBatchCommands(
       const std::string &deviceId,
       const std::vector<std::pair<std::string, json>> &commands,
-      bool sequential = true);
+      bool sequential = true,
+      Message::QoSLevel qosLevel = Message::QoSLevel::AT_MOST_ONCE);
+
+  // 异步执行命令（不等待响应）
+  void executeCommandAsync(
+      const std::string &deviceId, const std::string &command,
+      const json &parameters = json::object(),
+      Message::QoSLevel qosLevel = Message::QoSLevel::AT_MOST_ONCE,
+      std::function<void(const json &)> callback = nullptr);
+
+  // 发布事件（针对作为设备的客户端使用）
+  void publishEvent(const std::string &eventName,
+                    const json &details = json::object(),
+                    Message::Priority priority = Message::Priority::NORMAL);
+
+  // 设置消息重试参数
+  void setMessageRetryParams(int maxRetries, int retryIntervalMs);
+
+  // 设置自动重连参数
+  void setAutoReconnect(bool enable, int intervalMs = 5000, int maxAttempts = 0);
 
   // 订阅设备属性变更
   using PropertyCallback =
@@ -90,6 +112,12 @@ public:
   // 停止后台消息处理
   void stopMessageProcessing();
 
+  // 获取连接状态
+  bool isConnected() const { return connected; }
+
+  // 获取客户端状态信息
+  json getStatusInfo() const;
+
 private:
   // WebSocket连接
   net::io_context ioc;
@@ -101,6 +129,7 @@ private:
   json devices;
 
   // 消息处理
+  std::mutex threadMutex;
   std::thread message_thread;
   bool running;
 
@@ -109,6 +138,10 @@ private:
   std::condition_variable responseCV;
   std::map<std::string, json> responses;
 
+  // 异步回调处理
+  std::mutex callbacksMutex;
+  std::map<std::string, std::function<void(const json &)>> asyncCallbacks;
+
   // 属性和事件订阅
   std::mutex subscriptionsMutex;
   std::map<std::string, std::map<std::string, PropertyCallback>>
@@ -116,11 +149,33 @@ private:
   std::map<std::string, std::map<std::string, EventCallback>>
       eventSubscriptions;
 
+  // 消息队列管理器
+  std::unique_ptr<MessageQueueManager> messageQueueManager;
+
+  // 连接断开后重连
+  bool enableAutoReconnect{true};
+  int reconnectIntervalMs{5000};
+  int maxReconnectAttempts{10};
+  int reconnectCount{0};
+  std::string lastHost;
+  uint16_t lastPort{0};
+  std::thread reconnectThread;
+  std::atomic<bool> reconnecting{false};
+
+  // 重连线程函数
+  void reconnectLoop();
+
+  // 尝试重新连接
+  bool tryReconnect();
+
   // 消息处理循环
   void messageLoop();
 
   // 处理接收到的消息
   void handleMessage(const std::string &message);
+
+  // 处理消息响应
+  void handleResponse(const std::string &originalMessageId, const json &responseJson);
 
   // 处理各类消息
   void handleDiscoveryResponse(const DiscoveryResponseMessage &msg);
@@ -131,6 +186,9 @@ private:
   // 发送消息并等待响应
   json sendAndWaitForResponse(const Message &msg, int timeoutSeconds = 10);
 
+  // 发送单个消息
+  bool sendMessage(const Message &msg);
+
   // 生成设备属性订阅键
   std::string makePropertyKey(const std::string &deviceId,
                               const std::string &property);
@@ -138,6 +196,12 @@ private:
   // 生成设备事件订阅键
   std::string makeEventKey(const std::string &deviceId,
                            const std::string &event);
+
+  // 连接状态变更处理
+  void handleConnectionStateChange(bool connected);
+
+  // 重置内部状态
+  void resetState();
 };
 
 } // namespace astrocomm

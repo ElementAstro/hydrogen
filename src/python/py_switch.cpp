@@ -6,6 +6,28 @@
 namespace py = pybind11;
 using namespace astrocomm;
 
+// 定义可被Python继承的类，以便Python代码可以重写虚方法
+class PySwitch : public Switch {
+public:
+  // 使用与基类相同的构造函数
+  using Switch::Switch;
+
+  // 为Python重写虚方法提供的转发方法
+  bool start() override {
+    PYBIND11_OVERRIDE(bool,   // 返回类型
+                      Switch, // 父类
+                      start   // 函数名
+    );
+  }
+
+  void stop() override {
+    PYBIND11_OVERRIDE(void,   // 返回类型
+                      Switch, // 父类
+                      stop    // 函数名
+    );
+  }
+};
+
 void init_switch(py::module_ &m) {
   // 绑定Switch::SwitchType枚举
   py::enum_<Switch::SwitchType>(m, "SwitchType")
@@ -20,8 +42,8 @@ void init_switch(py::module_ &m) {
       .value("ON", Switch::SwitchState::ON)
       .export_values();
 
-  // 绑定Switch类
-  py::class_<Switch, DeviceBase, std::shared_ptr<Switch>>(m, "Switch")
+  // 绑定Switch类，注意添加PySwitch作为继承类
+  py::class_<Switch, DeviceBase, PySwitch, std::shared_ptr<Switch>>(m, "Switch")
       .def(py::init<const std::string &, const std::string &,
                     const std::string &>(),
            py::arg("device_id"), py::arg("manufacturer") = "Generic",

@@ -7,7 +7,7 @@
 
 namespace astrocomm {
 
-// 导星设备实现
+// GuiderDevice implementation
 GuiderDevice::GuiderDevice(const std::string &deviceId,
                            const std::string &manufacturer,
                            const std::string &model)
@@ -17,7 +17,7 @@ GuiderDevice::GuiderDevice(const std::string &deviceId,
       lastCalState(CalibrationState::IDLE), running(false),
       statusUpdateInterval(500) {
 
-  // 初始化状态属性
+  // Initialize status properties
   setProperty("state", guiderStateToString(GuiderState::DISCONNECTED));
   setProperty("calibrationState",
               calibrationStateToString(CalibrationState::IDLE));
@@ -27,10 +27,24 @@ GuiderDevice::GuiderDevice(const std::string &deviceId,
   setProperty("interfaceType", "None");
   setProperty("connected", false);
 
-  // 设置能力
+  // Set capabilities
   capabilities = {"GUIDING", "CALIBRATION", "DITHERING"};
 
-  // 注册命令处理器
+  // Register command handlers
+  registerCommandHandlers();
+
+  spdlog::info("Guider device initialized: {}", deviceId);
+}
+
+GuiderDevice::~GuiderDevice() {
+  try {
+    stop();
+  } catch (const std::exception &e) {
+    spdlog::error("Exception during guider device shutdown: {}", e.what());
+  }
+}
+
+void GuiderDevice::registerCommandHandlers() {
   registerCommandHandler("CONNECT_GUIDER", [this](const CommandMessage &cmd,
                                                   ResponseMessage &response) {
     handleConnectCommand(cmd, response);
@@ -88,96 +102,115 @@ GuiderDevice::GuiderDevice(const std::string &deviceId,
                                               ResponseMessage &response) {
     handleGetStatusCommand(cmd, response);
   });
-
-  spdlog::info("Guider device initialized", deviceId);
 }
 
-GuiderDevice::~GuiderDevice() { stop(); }
-
 bool GuiderDevice::start() {
-  if (!DeviceBase::start()) {
+  try {
+    if (!DeviceBase::start()) {
+      spdlog::error("Failed to start base device: {}", deviceId);
+      return false;
+    }
+
+    // Start status update thread
+    running = true;
+    statusThread = std::thread(&GuiderDevice::statusUpdateLoop, this);
+
+    setProperty("connected", true);
+    spdlog::info("Guider device started: {}", deviceId);
+    return true;
+  } catch (const std::exception &e) {
+    spdlog::error("Exception during device start: {}", e.what());
     return false;
   }
-
-  // 启动状态更新线程
-  running = true;
-  statusThread = std::thread(&GuiderDevice::statusUpdateLoop, this);
-
-  setProperty("connected", true);
-  spdlog::info("Guider device started", deviceId);
-  return true;
 }
 
 void GuiderDevice::stop() {
-  // 停止状态更新线程
-  running = false;
-  if (statusThread.joinable()) {
-    statusThread.join();
+  try {
+    // Stop status update thread
+    running = false;
+    if (statusThread.joinable()) {
+      statusThread.join();
+    }
+
+    // Disconnect from guider software
+    disconnectFromGuider();
+
+    setProperty("connected", false);
+    DeviceBase::stop();
+    spdlog::info("Guider device stopped: {}", deviceId);
+  } catch (const std::exception &e) {
+    spdlog::error("Exception during device stop: {}: {}", deviceId, e.what());
   }
-
-  // 断开导星软件
-  disconnectFromGuider();
-
-  setProperty("connected", false);
-  DeviceBase::stop();
-  spdlog::info("Guider device stopped", deviceId);
 }
 
 bool GuiderDevice::connectToGuider(GuiderInterfaceType type,
                                    const std::string &host, int port) {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
 
-  // 断开现有连接
-  if (guiderInterface && guiderInterface->isConnected()) {
-    guiderInterface->disconnect();
-  }
-
-  // 创建新的接口
-  guiderInterface = createGuiderInterface(type);
-  if (!guiderInterface) {
-    spdlog::error("Failed to create guider interface", deviceId);
-    return false;
-  }
-
-  // 连接到导星软件
-  bool success = guiderInterface->connect(host, port);
-  if (!success) {
-    spdlog::error("Failed to connect to guider software", deviceId);
-    return false;
-  }
-
-  // 更新状态
-  interfaceType = type;
-  setProperty("interfaceType", interfaceTypeToString(type));
-  setProperty("state", guiderStateToString(guiderInterface->getGuiderState()));
-
-  spdlog::info("Connected to " + interfaceTypeToString(type), deviceId);
-  return true;
-}
-
-void GuiderDevice::disconnectFromGuider() {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
-
-  if (guiderInterface) {
-    if (guiderInterface->isConnected()) {
-      // 如果正在导星，先停止
-      if (guiderInterface->getGuiderState() == GuiderState::GUIDING ||
-          guiderInterface->getGuiderState() == GuiderState::SETTLING ||
-          guiderInterface->getGuiderState() == GuiderState::PAUSED) {
-        guiderInterface->stopGuiding();
-      }
-
+    // Disconnect existing connection
+    if (guiderInterface && guiderInterface->isConnected()) {
       guiderInterface->disconnect();
     }
 
-    guiderInterface.reset();
+    // Create new interface
+    guiderInterface = createGuiderInterface(type);
+    if (!guiderInterface) {
+      spdlog::error("Failed to create guider interface: {}", deviceId);
+      return false;
+    }
+
+    // Connect to guider software
+    bool success = guiderInterface->connect(host, port);
+    if (!success) {
+      spdlog::error("Failed to connect to guider software: {}", deviceId);
+      return false;
+    }
+
+    // Update status
+    interfaceType = type;
+    setProperty("interfaceType", interfaceTypeToString(type));
+    setProperty("state",
+                guiderStateToString(guiderInterface->getGuiderState()));
+
+    spdlog::info("Connected to {} guider software: {}",
+                 interfaceTypeToString(type), deviceId);
+    return true;
+  } catch (const std::exception &e) {
+    spdlog::error("Exception during guider connection: {}: {}", deviceId,
+                  e.what());
+    return false;
   }
+}
 
-  setProperty("state", guiderStateToString(GuiderState::DISCONNECTED));
-  setProperty("calibrationState",
-              calibrationStateToString(CalibrationState::IDLE));
+void GuiderDevice::disconnectFromGuider() {
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
 
-  spdlog::info("Disconnected from guider software", deviceId);
+    if (guiderInterface) {
+      if (guiderInterface->isConnected()) {
+        // Stop guiding if active
+        if (guiderInterface->getGuiderState() == GuiderState::GUIDING ||
+            guiderInterface->getGuiderState() == GuiderState::SETTLING ||
+            guiderInterface->getGuiderState() == GuiderState::PAUSED) {
+          guiderInterface->stopGuiding();
+        }
+
+        guiderInterface->disconnect();
+      }
+
+      guiderInterface.reset();
+    }
+
+    setProperty("state", guiderStateToString(GuiderState::DISCONNECTED));
+    setProperty("calibrationState",
+                calibrationStateToString(CalibrationState::IDLE));
+
+    spdlog::info("Disconnected from guider software: {}", deviceId);
+  } catch (const std::exception &e) {
+    spdlog::error("Exception during guider disconnection: {}: {}", deviceId,
+                  e.what());
+  }
 }
 
 GuiderInterfaceType GuiderDevice::getInterfaceType() const {
@@ -243,7 +276,7 @@ GuiderDevice::stringToInterfaceType(const std::string &typeStr) {
   if (typeStr == "Custom")
     return GuiderInterfaceType::CUSTOM;
 
-  return GuiderInterfaceType::PHD2; // 默认
+  return GuiderInterfaceType::PHD2; // Default
 }
 
 std::string GuiderDevice::guiderStateToString(GuiderState state) {
@@ -301,84 +334,89 @@ std::shared_ptr<GuiderInterface> GuiderDevice::getInterface() const {
   return guiderInterface;
 }
 
-// 状态更新循环
+// Status update loop
 void GuiderDevice::statusUpdateLoop() {
-  spdlog::info("Status update loop started", deviceId);
+  spdlog::info("Status update loop started: {}", deviceId);
 
   while (running) {
-    {
+    try {
       std::lock_guard<std::mutex> lock(interfaceMutex);
 
-      // 更新接口状态
+      // Update interface status
       if (guiderInterface) {
         guiderInterface->update();
 
-        // 获取当前状态
+        // Get current states
         GuiderState currentState = guiderInterface->getGuiderState();
         CalibrationState currentCalState =
             guiderInterface->getCalibrationState();
 
-        // 检测状态变化
+        // Detect state changes
         if (currentState != lastState) {
           handleStateChanged(currentState);
           lastState = currentState;
         }
 
-        // 检测校准状态变化
+        // Detect calibration state changes
         if (currentCalState != lastCalState) {
           handleCalibrationChanged(currentCalState,
                                    guiderInterface->getCalibrationData());
           lastCalState = currentCalState;
         }
 
-        // 更新修正信息
+        // Update correction information
         if (currentState == GuiderState::GUIDING ||
             currentState == GuiderState::SETTLING) {
           handleCorrectionReceived(guiderInterface->getCurrentCorrection());
         }
 
-        // 更新统计信息
+        // Update statistics
         handleStatsUpdated(guiderInterface->getStats());
       }
+    } catch (const std::exception &e) {
+      spdlog::error("Exception in status update loop: {}: {}", deviceId,
+                    e.what());
+      // Short delay to prevent tight exception loops
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    // 间隔
+    // Sleep interval
     std::this_thread::sleep_for(
         std::chrono::milliseconds(statusUpdateInterval));
   }
 
-  spdlog::info("Status update loop ended", deviceId);
+  spdlog::info("Status update loop ended: {}", deviceId);
 }
 
 void GuiderDevice::handleStateChanged(GuiderState newState) {
-  // 更新状态属性
+  // Update state property
   setProperty("state", guiderStateToString(newState));
 
-  // 发送状态变更事件
+  // Send state change event
   EventMessage event("GUIDER_STATE_CHANGED");
   event.setDetails({{"state", guiderStateToString(newState)}});
   sendEvent(event);
 
-  spdlog::info("Guider state changed to " + guiderStateToString(newState),
+  spdlog::info("Guider state changed to {}: {}", guiderStateToString(newState),
                deviceId);
 }
 
 void GuiderDevice::handleCorrectionReceived(
     const GuidingCorrection &correction) {
-  // 更新修正属性
+  // Update correction properties
   setProperty("raCorrection", correction.raCorrection);
   setProperty("decCorrection", correction.decCorrection);
   setProperty("raRaw", correction.raRaw);
   setProperty("decRaw", correction.decRaw);
 
-  // 只有在值有显著变化时才发送事件，以避免事件风暴
+  // Only send events for significant changes to avoid event storms
   static GuidingCorrection lastEventCorrection;
   static int correctionCounter = 0;
 
   double diffRaRaw = std::abs(correction.raRaw - lastEventCorrection.raRaw);
   double diffDecRaw = std::abs(correction.decRaw - lastEventCorrection.decRaw);
 
-  // 每10帧发送一次，或者当误差变化显著时
+  // Send event every 10 frames or when error changes significantly
   if (correctionCounter % 10 == 0 || diffRaRaw > 0.5 || diffDecRaw > 0.5) {
     EventMessage event("GUIDER_CORRECTION");
     event.setDetails({{"raCorrection", correction.raCorrection},
@@ -395,11 +433,11 @@ void GuiderDevice::handleCorrectionReceived(
 
 void GuiderDevice::handleCalibrationChanged(CalibrationState newState,
                                             const CalibrationData &data) {
-  // 更新校准状态属性
+  // Update calibration state property
   setProperty("calibrationState", calibrationStateToString(newState));
 
   if (newState == CalibrationState::COMPLETED) {
-    // 校准完成，更新校准数据
+    // Calibration completed, update calibration data
     setProperty("calibrated", true);
     setProperty("raAngle", data.raAngle);
     setProperty("decAngle", data.decAngle);
@@ -407,7 +445,7 @@ void GuiderDevice::handleCalibrationChanged(CalibrationState newState,
     setProperty("decRate", data.decRate);
     setProperty("flipped", data.flipped);
 
-    // 发送校准完成事件
+    // Send calibration completed event
     EventMessage event("CALIBRATION_COMPLETED");
     event.setDetails({{"raAngle", data.raAngle},
                       {"decAngle", data.decAngle},
@@ -416,26 +454,25 @@ void GuiderDevice::handleCalibrationChanged(CalibrationState newState,
                       {"flipped", data.flipped}});
     sendEvent(event);
   } else if (newState == CalibrationState::FAILED) {
-    // 校准失败
+    // Calibration failed
     setProperty("calibrated", false);
 
-    // 发送校准失败事件
+    // Send calibration failed event
     EventMessage event("CALIBRATION_FAILED");
     sendEvent(event);
   }
 
-  // 发送校准状态变更事件
+  // Send calibration state change event
   EventMessage event("CALIBRATION_STATE_CHANGED");
   event.setDetails({{"state", calibrationStateToString(newState)}});
   sendEvent(event);
 
-  spdlog::info("Calibration state changed to " +
-                   calibrationStateToString(newState),
-               deviceId);
+  spdlog::info("Calibration state changed to {}: {}",
+               calibrationStateToString(newState), deviceId);
 }
 
 void GuiderDevice::handleStatsUpdated(const GuiderStats &newStats) {
-  // 更新统计属性
+  // Update statistics properties
   setProperty("rms", newStats.rms);
   setProperty("rmsRa", newStats.rmsRa);
   setProperty("rmsDec", newStats.rmsDec);
@@ -443,9 +480,10 @@ void GuiderDevice::handleStatsUpdated(const GuiderStats &newStats) {
   setProperty("frames", newStats.totalFrames);
   setProperty("snr", newStats.snr);
 
-  // 只在显著变化时发送事件
+  // Only send events for significant changes
   static int statsCounter = 0;
-  if (statsCounter % this->statusUpdateInterval / 100 == 0) { // 大约每5秒一次
+  if (statsCounter % (this->statusUpdateInterval / 100) ==
+      0) { // About every 5 seconds
     EventMessage event("GUIDER_STATS");
     event.setDetails({{"rms", newStats.rms},
                       {"rmsRa", newStats.rmsRa},
@@ -458,7 +496,21 @@ void GuiderDevice::handleStatsUpdated(const GuiderStats &newStats) {
   statsCounter++;
 }
 
-// 命令处理器
+bool GuiderDevice::validateInterfaceConnection(
+    ResponseMessage &response) const {
+  std::lock_guard<std::mutex> lock(interfaceMutex);
+
+  if (!guiderInterface || !guiderInterface->isConnected()) {
+    response.setStatus("ERROR");
+    response.setDetails({{"error", "NOT_CONNECTED"},
+                         {"message", "Not connected to guider software"}});
+    return false;
+  }
+
+  return true;
+}
+
+// Command handlers
 
 void GuiderDevice::handleConnectCommand(const CommandMessage &cmd,
                                         ResponseMessage &response) {
@@ -475,7 +527,7 @@ void GuiderDevice::handleConnectCommand(const CommandMessage &cmd,
   GuiderInterfaceType type = stringToInterfaceType(typeStr);
 
   std::string host = params.value("host", "localhost");
-  int port = params.value("port", 4400); // PHD2默认端口
+  int port = params.value("port", 4400); // PHD2 default port
 
   bool success = connectToGuider(type, host, port);
 
@@ -501,16 +553,21 @@ void GuiderDevice::handleDisconnectCommand(const CommandMessage &cmd,
 
 void GuiderDevice::handleStartGuidingCommand(const CommandMessage &cmd,
                                              ResponseMessage &response) {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
-
-  if (!guiderInterface || !guiderInterface->isConnected()) {
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "NOT_CONNECTED"},
-                         {"message", "Not connected to guider software"}});
+  if (!validateInterfaceConnection(response)) {
     return;
   }
 
-  bool success = guiderInterface->startGuiding();
+  bool success = false;
+
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
+    success = guiderInterface->startGuiding();
+  } catch (const std::exception &e) {
+    response.setStatus("ERROR");
+    response.setDetails({{"error", "EXCEPTION"},
+                         {"message", std::string("Exception: ") + e.what()}});
+    return;
+  }
 
   if (success) {
     response.setStatus("SUCCESS");
@@ -526,16 +583,21 @@ void GuiderDevice::handleStartGuidingCommand(const CommandMessage &cmd,
 
 void GuiderDevice::handleStopGuidingCommand(const CommandMessage &cmd,
                                             ResponseMessage &response) {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
-
-  if (!guiderInterface || !guiderInterface->isConnected()) {
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "NOT_CONNECTED"},
-                         {"message", "Not connected to guider software"}});
+  if (!validateInterfaceConnection(response)) {
     return;
   }
 
-  bool success = guiderInterface->stopGuiding();
+  bool success = false;
+
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
+    success = guiderInterface->stopGuiding();
+  } catch (const std::exception &e) {
+    response.setStatus("ERROR");
+    response.setDetails({{"error", "EXCEPTION"},
+                         {"message", std::string("Exception: ") + e.what()}});
+    return;
+  }
 
   if (success) {
     response.setStatus("SUCCESS");
@@ -549,16 +611,21 @@ void GuiderDevice::handleStopGuidingCommand(const CommandMessage &cmd,
 
 void GuiderDevice::handlePauseGuidingCommand(const CommandMessage &cmd,
                                              ResponseMessage &response) {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
-
-  if (!guiderInterface || !guiderInterface->isConnected()) {
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "NOT_CONNECTED"},
-                         {"message", "Not connected to guider software"}});
+  if (!validateInterfaceConnection(response)) {
     return;
   }
 
-  bool success = guiderInterface->pauseGuiding();
+  bool success = false;
+
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
+    success = guiderInterface->pauseGuiding();
+  } catch (const std::exception &e) {
+    response.setStatus("ERROR");
+    response.setDetails({{"error", "EXCEPTION"},
+                         {"message", std::string("Exception: ") + e.what()}});
+    return;
+  }
 
   if (success) {
     response.setStatus("SUCCESS");
@@ -572,16 +639,21 @@ void GuiderDevice::handlePauseGuidingCommand(const CommandMessage &cmd,
 
 void GuiderDevice::handleResumeGuidingCommand(const CommandMessage &cmd,
                                               ResponseMessage &response) {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
-
-  if (!guiderInterface || !guiderInterface->isConnected()) {
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "NOT_CONNECTED"},
-                         {"message", "Not connected to guider software"}});
+  if (!validateInterfaceConnection(response)) {
     return;
   }
 
-  bool success = guiderInterface->resumeGuiding();
+  bool success = false;
+
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
+    success = guiderInterface->resumeGuiding();
+  } catch (const std::exception &e) {
+    response.setStatus("ERROR");
+    response.setDetails({{"error", "EXCEPTION"},
+                         {"message", std::string("Exception: ") + e.what()}});
+    return;
+  }
 
   if (success) {
     response.setStatus("SUCCESS");
@@ -595,16 +667,21 @@ void GuiderDevice::handleResumeGuidingCommand(const CommandMessage &cmd,
 
 void GuiderDevice::handleStartCalibrationCommand(const CommandMessage &cmd,
                                                  ResponseMessage &response) {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
-
-  if (!guiderInterface || !guiderInterface->isConnected()) {
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "NOT_CONNECTED"},
-                         {"message", "Not connected to guider software"}});
+  if (!validateInterfaceConnection(response)) {
     return;
   }
 
-  bool success = guiderInterface->startCalibration();
+  bool success = false;
+
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
+    success = guiderInterface->startCalibration();
+  } catch (const std::exception &e) {
+    response.setStatus("ERROR");
+    response.setDetails({{"error", "EXCEPTION"},
+                         {"message", std::string("Exception: ") + e.what()}});
+    return;
+  }
 
   if (success) {
     response.setStatus("SUCCESS");
@@ -621,16 +698,21 @@ void GuiderDevice::handleStartCalibrationCommand(const CommandMessage &cmd,
 
 void GuiderDevice::handleCancelCalibrationCommand(const CommandMessage &cmd,
                                                   ResponseMessage &response) {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
-
-  if (!guiderInterface || !guiderInterface->isConnected()) {
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "NOT_CONNECTED"},
-                         {"message", "Not connected to guider software"}});
+  if (!validateInterfaceConnection(response)) {
     return;
   }
 
-  bool success = guiderInterface->cancelCalibration();
+  bool success = false;
+
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
+    success = guiderInterface->cancelCalibration();
+  } catch (const std::exception &e) {
+    response.setStatus("ERROR");
+    response.setDetails({{"error", "EXCEPTION"},
+                         {"message", std::string("Exception: ") + e.what()}});
+    return;
+  }
 
   if (success) {
     response.setStatus("SUCCESS");
@@ -644,12 +726,7 @@ void GuiderDevice::handleCancelCalibrationCommand(const CommandMessage &cmd,
 
 void GuiderDevice::handleDitherCommand(const CommandMessage &cmd,
                                        ResponseMessage &response) {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
-
-  if (!guiderInterface || !guiderInterface->isConnected()) {
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "NOT_CONNECTED"},
-                         {"message", "Not connected to guider software"}});
+  if (!validateInterfaceConnection(response)) {
     return;
   }
 
@@ -666,7 +743,17 @@ void GuiderDevice::handleDitherCommand(const CommandMessage &cmd,
   double settleTime = params.value("settleTime", 5.0);
   double settlePixels = params.value("settlePixels", 1.5);
 
-  bool success = guiderInterface->dither(amount, settleTime, settlePixels);
+  bool success = false;
+
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
+    success = guiderInterface->dither(amount, settleTime, settlePixels);
+  } catch (const std::exception &e) {
+    response.setStatus("ERROR");
+    response.setDetails({{"error", "EXCEPTION"},
+                         {"message", std::string("Exception: ") + e.what()}});
+    return;
+  }
 
   if (success) {
     response.setStatus("SUCCESS");
@@ -683,41 +770,45 @@ void GuiderDevice::handleDitherCommand(const CommandMessage &cmd,
 
 void GuiderDevice::handleSetParametersCommand(const CommandMessage &cmd,
                                               ResponseMessage &response) {
-  std::lock_guard<std::mutex> lock(interfaceMutex);
-
-  if (!guiderInterface || !guiderInterface->isConnected()) {
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "NOT_CONNECTED"},
-                         {"message", "Not connected to guider software"}});
+  if (!validateInterfaceConnection(response)) {
     return;
   }
 
   json params = cmd.getParameters();
   json updated = json::object();
 
-  if (params.contains("pixelScale")) {
-    double scale = params["pixelScale"];
-    guiderInterface->setPixelScale(scale);
-    updated["pixelScale"] = scale;
-  }
+  try {
+    std::lock_guard<std::mutex> lock(interfaceMutex);
 
-  if (params.contains("raGuideRate")) {
-    double raRate = params["raGuideRate"];
-
-    if (params.contains("decGuideRate")) {
-      double decRate = params["decGuideRate"];
-      guiderInterface->setGuideRate(raRate, decRate);
-      updated["raGuideRate"] = raRate;
-      updated["decGuideRate"] = decRate;
+    if (params.contains("pixelScale")) {
+      double scale = params["pixelScale"];
+      guiderInterface->setPixelScale(scale);
+      updated["pixelScale"] = scale;
     }
-  }
 
-  if (params.contains("statusUpdateInterval")) {
-    int interval = params["statusUpdateInterval"];
-    if (interval >= 100 && interval <= 5000) {
-      statusUpdateInterval = interval;
-      updated["statusUpdateInterval"] = interval;
+    if (params.contains("raGuideRate")) {
+      double raRate = params["raGuideRate"];
+
+      if (params.contains("decGuideRate")) {
+        double decRate = params["decGuideRate"];
+        guiderInterface->setGuideRate(raRate, decRate);
+        updated["raGuideRate"] = raRate;
+        updated["decGuideRate"] = decRate;
+      }
     }
+
+    if (params.contains("statusUpdateInterval")) {
+      int interval = params["statusUpdateInterval"];
+      if (interval >= 100 && interval <= 5000) {
+        statusUpdateInterval = interval;
+        updated["statusUpdateInterval"] = interval;
+      }
+    }
+  } catch (const std::exception &e) {
+    response.setStatus("ERROR");
+    response.setDetails({{"error", "EXCEPTION"},
+                         {"message", std::string("Exception: ") + e.what()}});
+    return;
   }
 
   response.setStatus("SUCCESS");
@@ -732,43 +823,50 @@ void GuiderDevice::handleGetStatusCommand(const CommandMessage &cmd,
   json status = json::object();
 
   if (guiderInterface && guiderInterface->isConnected()) {
-    GuiderState state = guiderInterface->getGuiderState();
-    CalibrationState calState = guiderInterface->getCalibrationState();
-    GuiderStats stats = guiderInterface->getStats();
-    StarInfo star = guiderInterface->getGuideStar();
-    CalibrationData cal = guiderInterface->getCalibrationData();
-    GuidingCorrection corr = guiderInterface->getCurrentCorrection();
+    try {
+      GuiderState state = guiderInterface->getGuiderState();
+      CalibrationState calState = guiderInterface->getCalibrationState();
+      GuiderStats stats = guiderInterface->getStats();
+      StarInfo star = guiderInterface->getGuideStar();
+      CalibrationData cal = guiderInterface->getCalibrationData();
+      GuidingCorrection corr = guiderInterface->getCurrentCorrection();
 
-    status = {{"connected", true},
-              {"interfaceType", interfaceTypeToString(interfaceType)},
-              {"state", guiderStateToString(state)},
-              {"calibrationState", calibrationStateToString(calState)},
-              {"calibrated", cal.calibrated},
-              {"stats",
-               {{"rms", stats.rms},
-                {"rmsRa", stats.rmsRa},
-                {"rmsDec", stats.rmsDec},
-                {"peak", stats.peak},
-                {"frames", stats.totalFrames},
-                {"snr", stats.snr},
-                {"elapsedTime", stats.elapsedTime}}},
-              {"star",
-               {{"x", star.x},
-                {"y", star.y},
-                {"flux", star.flux},
-                {"snr", star.snr},
-                {"locked", star.locked}}},
-              {"calibration",
-               {{"raAngle", cal.raAngle},
-                {"decAngle", cal.decAngle},
-                {"raRate", cal.raRate},
-                {"decRate", cal.decRate},
-                {"flipped", cal.flipped}}},
-              {"correction",
-               {{"raCorrection", corr.raCorrection},
-                {"decCorrection", corr.decCorrection},
-                {"raRaw", corr.raRaw},
-                {"decRaw", corr.decRaw}}}};
+      status = {{"connected", true},
+                {"interfaceType", interfaceTypeToString(interfaceType)},
+                {"state", guiderStateToString(state)},
+                {"calibrationState", calibrationStateToString(calState)},
+                {"calibrated", cal.calibrated},
+                {"stats",
+                 {{"rms", stats.rms},
+                  {"rmsRa", stats.rmsRa},
+                  {"rmsDec", stats.rmsDec},
+                  {"peak", stats.peak},
+                  {"frames", stats.totalFrames},
+                  {"snr", stats.snr},
+                  {"elapsedTime", stats.elapsedTime}}},
+                {"star",
+                 {{"x", star.x},
+                  {"y", star.y},
+                  {"flux", star.flux},
+                  {"snr", star.snr},
+                  {"locked", star.locked}}},
+                {"calibration",
+                 {{"raAngle", cal.raAngle},
+                  {"decAngle", cal.decAngle},
+                  {"raRate", cal.raRate},
+                  {"decRate", cal.decRate},
+                  {"flipped", cal.flipped}}},
+                {"correction",
+                 {{"raCorrection", corr.raCorrection},
+                  {"decCorrection", corr.decCorrection},
+                  {"raRaw", corr.raRaw},
+                  {"decRaw", corr.decRaw}}}};
+    } catch (const std::exception &e) {
+      status = {{"connected", true},
+                {"interfaceType", interfaceTypeToString(interfaceType)},
+                {"state", "ERROR"},
+                {"error", e.what()}};
+    }
   } else {
     status = {{"connected", false},
               {"interfaceType", interfaceTypeToString(interfaceType)},
@@ -777,6 +875,42 @@ void GuiderDevice::handleGetStatusCommand(const CommandMessage &cmd,
 
   response.setStatus("SUCCESS");
   response.setDetails(status);
+}
+
+// Factory function implementation
+std::shared_ptr<GuiderInterface> createGuiderInterface(GuiderInterfaceType type) {
+  switch (type) {
+    case GuiderInterfaceType::PHD2:
+      // For now, return nullptr as PHD2Interface is in custom directory
+      // In a real implementation, this would create a PHD2Interface instance
+      spdlog::warn("PHD2 interface not available in this build");
+      return nullptr;
+
+    case GuiderInterfaceType::LINGUIDER:
+      // For now, return nullptr as LinGuiderInterface is in custom directory
+      // In a real implementation, this would create a LinGuiderInterface instance
+      spdlog::warn("Lin-guider interface not available in this build");
+      return nullptr;
+
+    case GuiderInterfaceType::METAGUIDE:
+    case GuiderInterfaceType::DIREKTGUIDER:
+    case GuiderInterfaceType::ASTROPHOTOGRAPHY_TOOL:
+    case GuiderInterfaceType::KSTARS_EKOS:
+    case GuiderInterfaceType::MAXIM_DL:
+    case GuiderInterfaceType::ASTROART:
+    case GuiderInterfaceType::ASTAP:
+    case GuiderInterfaceType::VOYAGER:
+    case GuiderInterfaceType::NINA:
+    case GuiderInterfaceType::CUSTOM:
+      spdlog::warn("Guider interface type {} not implemented",
+                   static_cast<int>(type));
+      return nullptr;
+
+    default:
+      spdlog::error("Unknown guider interface type: {}",
+                    static_cast<int>(type));
+      return nullptr;
+  }
 }
 
 } // namespace astrocomm

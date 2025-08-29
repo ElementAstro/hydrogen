@@ -132,9 +132,9 @@ public:
 
   bool startAutoFocus(int startPos, int endPos, int steps,
                       bool useExistingCurve = false) override {
-    PYBIND11_OVERRIDE(bool,           // 返回类型
-                      Focuser,        // 父类
-                      startAutoFocus, // 调用的函数
+    PYBIND11_OVERRIDE(bool,                                     // 返回类型
+                      Focuser,                                  // 父类
+                      startAutoFocus,                           // 调用的函数
                       startPos, endPos, steps, useExistingCurve // 参数
     );
   }

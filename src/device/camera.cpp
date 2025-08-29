@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <stdexcept>
 
 #include <spdlog/spdlog.h>
 
@@ -24,11 +25,11 @@ Camera::Camera(const std::string &deviceId, const std::string &manufacturer,
       coolerPower(0), currentFilterPosition(0), exposureDelay(0.0),
       updateRunning(false), baseImplementation(true) {
 
-  // 设置随机数生成器种子
+  // Initialize random number generator with a high-quality seed
   std::random_device rd;
   rng.seed(rd());
 
-  // 初始化ROI为全幅面
+  // Initialize ROI to full frame
   roi.x = 0;
   roi.y = 0;
   roi.width = params.width;
@@ -36,14 +37,14 @@ Camera::Camera(const std::string &deviceId, const std::string &manufacturer,
   roi.binX = 1;
   roi.binY = 1;
 
-  // 初始化默认滤镜名称
+  // Initialize default filter names
   if (params.hasFilterWheel && params.numFilters > 0) {
     for (int i = 0; i < params.numFilters; ++i) {
       filterNames[i] = "Filter " + std::to_string(i + 1);
     }
   }
 
-  // 初始化属性
+  // Initialize properties
   setProperty("sensorWidth", params.width);
   setProperty("sensorHeight", params.height);
   setProperty("pixelSizeX", params.pixelSizeX);
@@ -76,7 +77,7 @@ Camera::Camera(const std::string &deviceId, const std::string &manufacturer,
     setProperty("filterNames", filtersJson);
   }
 
-  // 设置能力
+  // Set capabilities
   capabilities = {"EXPOSURE", "GAIN_CONTROL", "ROI", "BINNING"};
 
   if (params.hasCooler) {
@@ -93,7 +94,7 @@ Camera::Camera(const std::string &deviceId, const std::string &manufacturer,
     capabilities.push_back("MONOCHROME");
   }
 
-  // 注册命令处理器
+  // Register command handlers
   registerCommandHandler("START_EXPOSURE", [this](const CommandMessage &cmd,
                                                   ResponseMessage &response) {
     handleStartExposureCommand(cmd, response);
@@ -132,101 +133,123 @@ Camera::Camera(const std::string &deviceId, const std::string &manufacturer,
   SPDLOG_INFO("Camera device initialized: {}", deviceId);
 }
 
-Camera::~Camera() { stop(); }
+Camera::~Camera() {
+  // Make sure to stop the device properly
+  stop();
+}
 
 bool Camera::start() {
-  if (!DeviceBase::start()) {
+  try {
+    if (!DeviceBase::start()) {
+      return false;
+    }
+
+    // Start update thread
+    updateRunning = true;
+    updateThread = std::thread(&Camera::updateLoop, this);
+
+    setProperty("connected", true);
+    SPDLOG_INFO("Camera started: {}", deviceId);
+    return true;
+  } catch (const std::exception &e) {
+    SPDLOG_ERROR("Failed to start camera: {}: {}", e.what(), deviceId);
     return false;
   }
-
-  // 启动更新线程
-  updateRunning = true;
-  updateThread = std::thread(&Camera::updateLoop, this);
-
-  setProperty("connected", true);
-  SPDLOG_INFO("Camera started: {}", deviceId);
-  return true;
 }
 
 void Camera::stop() {
-  // 停止更新线程
-  updateRunning = false;
+  try {
+    // Stop update thread
+    updateRunning = false;
 
-  // 通知任何等待的条件变量
-  exposureCV.notify_all();
+    // Notify any waiting condition variables
+    exposureCV.notify_all();
 
-  if (updateThread.joinable()) {
-    updateThread.join();
+    if (updateThread.joinable()) {
+      updateThread.join();
+    }
+
+    setProperty("connected", false);
+    DeviceBase::stop();
+    SPDLOG_INFO("Camera stopped: {}", deviceId);
+  } catch (const std::exception &e) {
+    SPDLOG_ERROR("Error during camera stop: {}: {}", e.what(), deviceId);
   }
-
-  setProperty("connected", false);
-  DeviceBase::stop();
-  SPDLOG_INFO("Camera stopped: {}", deviceId);
 }
 
 bool Camera::startExposure(double duration, ImageType type, bool saveImage) {
   std::lock_guard lock(stateMutex);
 
-  if (cameraState != CameraState::IDLE) {
-    SPDLOG_WARN("Cannot start exposure: camera is busy: {}", deviceId);
+  try {
+    if (cameraState != CameraState::IDLE) {
+      SPDLOG_WARN("Cannot start exposure: camera is busy: {}", deviceId);
+      return false;
+    }
+
+    if (duration < cameraParams.minExposureTime ||
+        duration > cameraParams.maxExposureTime) {
+      SPDLOG_WARN("Invalid exposure time: {}", duration);
+      return false;
+    }
+
+    exposureDuration = duration;
+    currentImageType = type;
+    autoSave = saveImage;
+    exposureProgress = 0.0;
+
+    // Set camera state
+    cameraState = CameraState::EXPOSING;
+    setProperty("state", cameraStateToString(cameraState));
+    setProperty("exposureProgress", 0.0);
+    setProperty("exposureDuration", duration);
+    setProperty("imageType", imageTypeToString(type));
+    setProperty("imageReady", false);
+
+    SPDLOG_INFO("Starting exposure: {}s, type: {}", duration,
+                imageTypeToString(type));
+
+    // Trigger condition variable to start exposure
+    exposureCV.notify_one();
+    return true;
+  } catch (const std::exception &e) {
+    SPDLOG_ERROR("Error starting exposure: {}: {}", e.what(), deviceId);
     return false;
   }
-
-  if (duration < cameraParams.minExposureTime ||
-      duration > cameraParams.maxExposureTime) {
-    SPDLOG_WARN("Invalid exposure time: {}", duration);
-    return false;
-  }
-
-  exposureDuration = duration;
-  currentImageType = type;
-  autoSave = saveImage;
-  exposureProgress = 0.0;
-
-  // 设置相机状态
-  cameraState = CameraState::EXPOSING;
-  setProperty("state", cameraStateToString(cameraState));
-  setProperty("exposureProgress", 0.0);
-  setProperty("exposureDuration", duration);
-  setProperty("imageType", imageTypeToString(type));
-  setProperty("imageReady", false);
-
-  SPDLOG_INFO("Starting exposure: {}s, type: {}", duration,
-              imageTypeToString(type));
-
-  // 触发条件变量来启动曝光
-  exposureCV.notify_one();
-  return true;
 }
 
 bool Camera::abortExposure() {
   std::lock_guard lock(stateMutex);
 
-  if (cameraState != CameraState::EXPOSING &&
-      cameraState != CameraState::WAITING_TRIGGER) {
-    SPDLOG_WARN("No exposure to abort: {}", deviceId);
+  try {
+    if (cameraState != CameraState::EXPOSING &&
+        cameraState != CameraState::WAITING_TRIGGER) {
+      SPDLOG_WARN("No exposure to abort: {}", deviceId);
+      return false;
+    }
+
+    // Reset state
+    cameraState = CameraState::IDLE;
+    setProperty("state", cameraStateToString(cameraState));
+    setProperty("exposureProgress", 0.0);
+    currentExposureMessageId.clear();
+
+    SPDLOG_INFO("Exposure aborted: {}", deviceId);
+
+    // Send abort event
+    EventMessage event("EXPOSURE_ABORTED");
+    sendEvent(event);
+
+    // Call callback function (if set)
+    if (exposureCallback) {
+      std::lock_guard cbLock(callbackMutex);
+      exposureCallback(false, "Exposure aborted");
+    }
+
+    return true;
+  } catch (const std::exception &e) {
+    SPDLOG_ERROR("Error aborting exposure: {}: {}", e.what(), deviceId);
     return false;
   }
-
-  // 重置状态
-  cameraState = CameraState::IDLE;
-  setProperty("state", cameraStateToString(cameraState));
-  setProperty("exposureProgress", 0.0);
-  currentExposureMessageId.clear();
-
-  SPDLOG_INFO("Exposure aborted: {}", deviceId);
-
-  // 发送中止事件
-  EventMessage event("EXPOSURE_ABORTED");
-  sendEvent(event);
-
-  // 调用回调函数(如果设置了)
-  if (exposureCallback) {
-    std::lock_guard cbLock(callbackMutex);
-    exposureCallback(false, "Exposure aborted");
-  }
-
-  return true;
 }
 
 std::vector<uint8_t> Camera::getImageData() const {
@@ -243,20 +266,20 @@ bool Camera::saveImage(const std::string &filename, const std::string &format) {
   }
 
   try {
-    // 生成文件名(如果未提供)
+    // Generate filename (if not provided)
     std::string actualFilename = filename;
     if (actualFilename.empty()) {
-      // 使用日期时间创建文件名
+      // Create filename using date and time
       auto now = std::chrono::system_clock::now();
       auto now_time_t = std::chrono::system_clock::to_time_t(now);
       std::stringstream ss;
       ss << "image_"
          << std::put_time(std::localtime(&now_time_t), "%Y%m%d_%H%M%S");
 
-      // 添加图像类型
+      // Add image type
       ss << "_" << imageTypeToString(currentImageType);
 
-      // 添加扩展名
+      // Add extension
       if (format == "FITS") {
         ss << ".fits";
       } else if (format == "JPEG" || format == "JPG") {
@@ -266,13 +289,13 @@ bool Camera::saveImage(const std::string &filename, const std::string &format) {
       } else if (format == "RAW") {
         ss << ".raw";
       } else {
-        ss << ".dat"; // 默认二进制格式
+        ss << ".dat"; // Default binary format
       }
 
       actualFilename = ss.str();
     }
 
-    // 打开文件
+    // Open file
     std::ofstream outFile(actualFilename, std::ios::binary);
     if (!outFile) {
       SPDLOG_ERROR("Failed to open file for writing: {}: {}", actualFilename,
@@ -280,8 +303,8 @@ bool Camera::saveImage(const std::string &filename, const std::string &format) {
       return false;
     }
 
-    // 这里可以根据格式添加特定的文件头处理
-    // 但对于简单的演示，我们只是写入原始数据
+    // For a simple demonstration, we just write the raw data
+    // Format-specific file header processing can be added here
     outFile.write(reinterpret_cast<const char *>(imageData.data()),
                   imageData.size());
 
@@ -318,21 +341,21 @@ bool Camera::setOffset(int offsetValue) {
 }
 
 bool Camera::setROI(int x, int y, int width, int height) {
-  // 验证参数
+  // Validate parameters
   if (x < 0 || y < 0 || width <= 0 || height <= 0 ||
       x + width > cameraParams.width || y + height > cameraParams.height) {
     SPDLOG_WARN("Invalid ROI parameters: {}", deviceId);
     return false;
   }
 
-  // 更新ROI
+  // Update ROI
   std::lock_guard lock(stateMutex);
   roi.x = x;
   roi.y = y;
   roi.width = width;
   roi.height = height;
 
-  // 更新属性
+  // Update properties
   json roiJson = {{"x", x}, {"y", y}, {"width", width}, {"height", height}};
   setProperty("roi", roiJson);
 
@@ -342,19 +365,19 @@ bool Camera::setROI(int x, int y, int width, int height) {
 }
 
 bool Camera::setBinning(int binX, int binY) {
-  // 验证参数
+  // Validate parameters
   if (binX < 1 || binX > cameraParams.maxBinningX || binY < 1 ||
       binY > cameraParams.maxBinningY) {
     SPDLOG_WARN("Invalid binning parameters: {}", deviceId);
     return false;
   }
 
-  // 更新合并设置
+  // Update binning settings
   std::lock_guard lock(stateMutex);
   roi.binX = binX;
   roi.binY = binY;
 
-  // 更新属性
+  // Update properties
   setProperty("binningX", binX);
   setProperty("binningY", binY);
 
@@ -389,7 +412,7 @@ bool Camera::setCoolerEnabled(bool enabled) {
   setProperty("coolerEnabled", coolerEnabled.load());
 
   if (!enabled) {
-    // 如果禁用冷却器，冷却功率设为0
+    // If cooler is disabled, set power to 0
     coolerPower = 0;
     setProperty("coolerPower", coolerPower.load());
   }
@@ -413,12 +436,12 @@ bool Camera::setFilterPosition(int position) {
     return false;
   }
 
-  // 在实际相机中，这可能是一个需要时间的操作
-  // 在这个模拟中，我们立即更改位置
+  // In a real camera, this might be a time-consuming operation
+  // In this simulation, we change position immediately
   currentFilterPosition = position;
   setProperty("filterPosition", position);
 
-  // 获取并设置当前滤镜名称
+  // Get and set current filter name
   std::string filterName;
   {
     std::lock_guard lock(filterMutex);
@@ -443,13 +466,13 @@ bool Camera::setFilterName(int position, const std::string &name) {
     return false;
   }
 
-  // 更新滤镜名称
+  // Update filter name
   {
     std::lock_guard lock(filterMutex);
     filterNames[position] = name;
   }
 
-  // 更新所有滤镜名称的属性
+  // Update all filter names property
   json filtersJson = json::array();
   {
     std::lock_guard lock(filterMutex);
@@ -459,7 +482,7 @@ bool Camera::setFilterName(int position, const std::string &name) {
   }
   setProperty("filterNames", filtersJson);
 
-  // 如果当前位置就是被更新的位置，也更新当前滤镜名称
+  // If current position is the updated position, update current filter name
   if (currentFilterPosition == position) {
     setProperty("currentFilter", name);
   }
@@ -538,316 +561,337 @@ bool Camera::isBaseImplementation() const { return baseImplementation; }
 void Camera::updateLoop() {
   SPDLOG_INFO("Update loop started: {}", deviceId);
 
-  // 随机数分布用于温度和噪声模拟
+  // Random distributions for temperature and noise simulation
   std::uniform_real_distribution<> tempDist(-0.1, 0.1);
 
-  while (updateRunning) {
-    // 更新温度模拟
-    if (cameraParams.hasCooler) {
-      if (coolerEnabled) {
-        // 计算需要的冷却功率
-        double tempDiff = sensorTemperature - targetTemperature;
-        if (std::abs(tempDiff) > 0.1) {
-          // 根据温差调整冷却功率
-          if (tempDiff > 0) {
-            // 需要冷却
-            coolerPower = std::min(100, static_cast<int>(tempDiff * 10));
-            // 模拟冷却效果
-            sensorTemperature.store(0.1 * coolerPower / 100.0);
+  try {
+    while (updateRunning) {
+      // Update temperature simulation
+      if (cameraParams.hasCooler) {
+        if (coolerEnabled) {
+          // Calculate required cooling power
+          double tempDiff = sensorTemperature - targetTemperature;
+          if (std::abs(tempDiff) > 0.1) {
+            // Adjust cooling power based on temperature difference
+            if (tempDiff > 0) {
+              // Need cooling
+              coolerPower = std::min(100, static_cast<int>(tempDiff * 10));
+              // Simulate cooling effect
+              sensorTemperature.store(sensorTemperature.load() -
+                                      (0.1 * coolerPower / 100.0));
+            } else {
+              // Need warming (stop cooling)
+              coolerPower = 0;
+              // Natural warming
+              sensorTemperature.store(sensorTemperature.load() + 0.05);
+            }
           } else {
-            // 需要增温(停止冷却)
-            coolerPower = 0;
-            // 自然升温
-            sensorTemperature.store(0.05);
+            // Temperature has reached target, adjust to maintenance power
+            coolerPower = 30; // Assume 30% power maintains temperature
+            sensorTemperature.store(sensorTemperature.load() +
+                                    tempDist(rng) * 0.05); // Small fluctuation
           }
         } else {
-          // 温度已达到目标，调整为维持功率
-          coolerPower = 30; // 假设30%功率足以维持温度
-          sensorTemperature.store(tempDist(rng) * 0.05); // 微小波动
+          // Cooler off, temperature naturally rises to ambient
+          if (sensorTemperature < 20.0) {
+            sensorTemperature.store(sensorTemperature.load() + 0.1);
+          } else {
+            sensorTemperature =
+                20.0 + (tempDist(rng) * 0.2); // Room temp fluctuation
+          }
+          coolerPower = 0;
         }
-      } else {
-        // 冷却器关闭，温度自然上升至室温
-        if (sensorTemperature < 20.0) {
-          sensorTemperature.store(0.1);
-        } else {
-          sensorTemperature = 20.0 + (tempDist(rng) * 0.2); // 室温波动
-        }
-        coolerPower = 0;
+
+        // Update temperature and cooling power properties
+        setProperty("temperature", sensorTemperature.load());
+        setProperty("coolerPower", coolerPower.load());
       }
 
-      // 更新温度和冷却功率属性
-      setProperty("temperature", sensorTemperature.load());
-      setProperty("coolerPower", coolerPower.load());
-    }
+      // Exposure state machine handling
+      std::unique_lock lock(stateMutex);
 
-    // 曝光状态机处理
-    std::unique_lock lock(stateMutex);
+      switch (cameraState) {
+      case CameraState::IDLE:
+        // Wait for new exposure command
+        exposureCV.wait_for(lock, std::chrono::milliseconds(100), [this] {
+          return cameraState != CameraState::IDLE || !updateRunning;
+        });
+        break;
 
-    switch (cameraState) {
-    case CameraState::IDLE:
-      // 等待新的曝光命令
-      exposureCV.wait_for(lock, std::chrono::milliseconds(100), [this] {
-        return cameraState != CameraState::IDLE || !updateRunning;
-      });
-      break;
-
-    case CameraState::EXPOSING: {
-      // 处理曝光延迟
-      if (exposureDelay > 0) {
-        cameraState = CameraState::WAITING_TRIGGER;
-        setProperty("state", cameraStateToString(cameraState));
-
-        // 等待延迟时间
-        exposureCV.wait_for(
-            lock,
-            std::chrono::milliseconds(static_cast<int>(exposureDelay * 1000)),
-            [this] {
-              return cameraState != CameraState::WAITING_TRIGGER ||
-                     !updateRunning;
-            });
-
-        if (cameraState == CameraState::WAITING_TRIGGER && updateRunning) {
-          // 延迟结束，重新开始曝光
-          cameraState = CameraState::EXPOSING;
+      case CameraState::EXPOSING: {
+        // Handle exposure delay
+        if (exposureDelay > 0) {
+          cameraState = CameraState::WAITING_TRIGGER;
           setProperty("state", cameraStateToString(cameraState));
-          exposureProgress = 0.0;
-          break;
+
+          // Wait for delay time
+          exposureCV.wait_for(
+              lock,
+              std::chrono::milliseconds(static_cast<int>(exposureDelay * 1000)),
+              [this] {
+                return cameraState != CameraState::WAITING_TRIGGER ||
+                       !updateRunning;
+              });
+
+          if (cameraState == CameraState::WAITING_TRIGGER && updateRunning) {
+            // Delay ended, restart exposure
+            cameraState = CameraState::EXPOSING;
+            setProperty("state", cameraStateToString(cameraState));
+            exposureProgress = 0.0;
+            break;
+          } else {
+            // May have been aborted
+            break;
+          }
+        }
+
+        // Update exposure progress
+        double increment =
+            0.05 / exposureDuration; // Progress increment each 100ms
+        double newProgress = exposureProgress + increment;
+
+        if (newProgress >= 1.0) {
+          // Exposure complete
+          exposureProgress = 1.0;
+          cameraState = CameraState::READING_OUT;
+          setProperty("state", cameraStateToString(cameraState));
+          setProperty("exposureProgress", 1.0);
+
+          SPDLOG_INFO("Exposure completed, reading out: {}", deviceId);
         } else {
-          // 可能已被中止
-          break;
+          // Exposure in progress
+          exposureProgress = newProgress;
+          setProperty("exposureProgress", exposureProgress.load());
+
+          // Send periodic progress events
+          if (static_cast<int>(exposureProgress * 100) % 10 == 0) {
+            sendExposureProgressEvent(exposureProgress);
+          }
         }
+        break;
       }
 
-      // 更新曝光进度
-      double increment = 0.05 / exposureDuration; // 每100ms的进度增量
-      double newProgress = exposureProgress + increment;
+      case CameraState::READING_OUT: {
+        // Simulate readout time (about 1 second)
+        exposureCV.wait_for(lock, std::chrono::milliseconds(1000), [this] {
+          return cameraState != CameraState::READING_OUT || !updateRunning;
+        });
 
-      if (newProgress >= 1.0) {
-        // 曝光完成
-        exposureProgress = 1.0;
-        cameraState = CameraState::READING_OUT;
-        setProperty("state", cameraStateToString(cameraState));
-        setProperty("exposureProgress", 1.0);
+        // If state is still READING_OUT, readout is complete
+        if (cameraState == CameraState::READING_OUT && updateRunning) {
+          // Generate image data
+          cameraState = CameraState::PROCESSING;
+          setProperty("state", cameraStateToString(cameraState));
 
-        SPDLOG_INFO("Exposure completed, reading out...", deviceId);
-      } else {
-        // 曝光进行中
-        exposureProgress = newProgress;
-        setProperty("exposureProgress", exposureProgress.load());
+          SPDLOG_INFO("Reading out completed, processing: {}", deviceId);
 
-        // 定期发送进度事件
-        if (static_cast<int>(exposureProgress * 100) % 10 == 0) {
-          sendExposureProgressEvent(exposureProgress);
-        }
-      }
-      break;
-    }
-
-    case CameraState::READING_OUT: {
-      // 模拟读出时间(约1秒)
-      exposureCV.wait_for(lock, std::chrono::milliseconds(1000), [this] {
-        return cameraState != CameraState::READING_OUT || !updateRunning;
-      });
-
-      // 如果状态仍然是READING_OUT，表示读出完成
-      if (cameraState == CameraState::READING_OUT && updateRunning) {
-        // 生成图像数据
-        cameraState = CameraState::PROCESSING;
-        setProperty("state", cameraStateToString(cameraState));
-
-        SPDLOG_INFO("Reading out completed, processing...", deviceId);
-
-        // 处理图像(在锁外完成，避免阻塞)
-        lock.unlock();
-        generateImageData();
-        lock.lock();
-
-        // 处理完成
-        cameraState = CameraState::IDLE;
-        setProperty("state", cameraStateToString(cameraState));
-        setProperty("imageReady", true);
-
-        SPDLOG_INFO("Image ready", deviceId);
-
-        // 如果配置了自动保存
-        if (autoSave) {
+          // Process image (do outside lock to avoid blocking)
           lock.unlock();
-          saveImage();
+          generateImageData();
           lock.lock();
-        }
 
-        // 发送完成事件
-        if (!currentExposureMessageId.empty()) {
-          sendExposureCompleteEvent(currentExposureMessageId);
-          currentExposureMessageId.clear();
-        }
+          // Processing complete
+          cameraState = CameraState::IDLE;
+          setProperty("state", cameraStateToString(cameraState));
+          setProperty("imageReady", true);
 
-        // 调用回调函数(如果设置了)
-        if (exposureCallback) {
-          std::lock_guard cbLock(callbackMutex);
-          exposureCallback(true, "Exposure completed successfully");
+          SPDLOG_INFO("Image ready: {}", deviceId);
+
+          // If configured to auto-save
+          if (autoSave) {
+            lock.unlock();
+            saveImage();
+            lock.lock();
+          }
+
+          // Send completion event
+          if (!currentExposureMessageId.empty()) {
+            sendExposureCompleteEvent(currentExposureMessageId);
+            currentExposureMessageId.clear();
+          }
+
+          // Call callback function (if set)
+          if (exposureCallback) {
+            std::lock_guard cbLock(callbackMutex);
+            exposureCallback(true, "Exposure completed successfully");
+          }
         }
+        break;
       }
-      break;
-    }
 
-    case CameraState::WAITING_TRIGGER:
-    case CameraState::DOWNLOADING:
-    case CameraState::PROCESSING:
-    case CameraState::ERROR:
-    case CameraState::COOLING:
-    case CameraState::WARMING_UP:
-      // 其他状态的处理...
-      exposureCV.wait_for(lock, std::chrono::milliseconds(100));
-      break;
+      case CameraState::WAITING_TRIGGER:
+      case CameraState::DOWNLOADING:
+      case CameraState::PROCESSING:
+      case CameraState::ERROR:
+      case CameraState::COOLING:
+      case CameraState::WARMING_UP:
+        // Handle other states...
+        exposureCV.wait_for(lock, std::chrono::milliseconds(100));
+        break;
+      }
     }
+  } catch (const std::exception &e) {
+    SPDLOG_ERROR("Exception in update loop: {}: {}", e.what(), deviceId);
   }
 
   SPDLOG_INFO("Update loop ended: {}", deviceId);
 }
 
 void Camera::generateImageData() {
-  // 计算图像大小
-  int effectiveWidth = roi.width / roi.binX;
-  int effectiveHeight = roi.height / roi.binY;
-  int bytesPerPixel = cameraParams.bitDepth / 8;
-  if (bytesPerPixel < 1)
-    bytesPerPixel = 1;
-
-  // 颜色通道数
-  int channels = cameraParams.hasColorSensor ? 3 : 1;
-
-  // 计算总数据大小
-  size_t dataSize = effectiveWidth * effectiveHeight * bytesPerPixel * channels;
-
-  {
-    std::lock_guard lock(imageDataMutex);
-    imageData.resize(dataSize);
-
-    // 基础亮度取决于曝光时间和增益
-    double baseIntensity =
-        std::min(1.0, exposureDuration / 10.0) * (1.0 + gain / 100.0);
-
-    // 根据图像类型调整
-    if (currentImageType == ImageType::DARK) {
-      baseIntensity = 0.05; // 暗场有微小信号
-    } else if (currentImageType == ImageType::BIAS) {
-      baseIntensity = 0.02; // 偏置帧只有偏置
-    } else if (currentImageType == ImageType::FLAT) {
-      baseIntensity = 0.7; // 平场相对均匀且亮度中等
-    }
-
-    // 生成图像数据
-    std::uniform_real_distribution<> noiseDist(-0.1, 0.1);
-    std::normal_distribution<> starDist(0.5, 0.2);
-
-    for (int y = 0; y < effectiveHeight; ++y) {
-      for (int x = 0; x < effectiveWidth; ++x) {
-        // 基础值(加上噪声)
-        double value = baseIntensity * (1.0 + noiseDist(rng) * 0.1);
-
-        // 对于光照和平场图像，添加一些结构
-        if (currentImageType == ImageType::LIGHT) {
-          // 添加一些随机星星
-          if (starDist(rng) > 0.95) {
-            value = std::min(1.0, value * (5.0 + starDist(rng) * 10.0));
-          }
-
-          // 添加一些渐变
-          value *= 1.0 + 0.1 * std::sin(x * 0.01) * std::cos(y * 0.01);
-        } else if (currentImageType == ImageType::FLAT) {
-          // 平场有轻微的渐变
-          value *=
-              1.0 -
-              0.1 *
-                  ((x - effectiveWidth / 2.0) * (x - effectiveWidth / 2.0) +
-                   (y - effectiveHeight / 2.0) * (y - effectiveHeight / 2.0)) /
-                  (effectiveWidth * effectiveHeight / 4.0);
-        }
-
-        // 将值转换为像素值
-        int pixelValue =
-            static_cast<int>(value * ((1 << cameraParams.bitDepth) - 1));
-        pixelValue =
-            std::max(0, std::min(pixelValue, (1 << cameraParams.bitDepth) - 1));
-
-        // 填充像素数据
-        for (int c = 0; c < channels; ++c) {
-          size_t index = (y * effectiveWidth + x) * bytesPerPixel * channels +
-                         c * bytesPerPixel;
-
-          // 对于颜色传感器，为不同通道添加不同强度
-          double channelFactor = 1.0;
-          if (channels > 1) {
-            // 在彩色传感器上模拟RGB通道不同响应
-            if (c == 0)
-              channelFactor = 1.0; // 红色通道
-            else if (c == 1)
-              channelFactor = 0.8; // 绿色通道
-            else
-              channelFactor = 0.6; // 蓝色通道
-          }
-
-          int channelValue = static_cast<int>(pixelValue * channelFactor);
-
-          // 填充字节(按大端序)
-          for (int b = 0; b < bytesPerPixel; ++b) {
-            imageData[index + b] =
-                (channelValue >> (8 * (bytesPerPixel - b - 1))) & 0xFF;
-          }
-        }
-      }
-    }
-
-    // 应用一些额外图像效果
-    applyImageEffects(imageData);
-  }
-
-  // 设置图像参数属性
-  setProperty("imageWidth", effectiveWidth);
-  setProperty("imageHeight", effectiveHeight);
-  setProperty("imageChannels", channels);
-  setProperty("imageDepth", cameraParams.bitDepth);
-  setProperty("imageSize", dataSize);
-}
-
-void Camera::applyImageEffects(std::vector<uint8_t> &imageData) {
-  // 这个方法可以应用各种图像效果，如热像素、坏列、渐晕等
-
-  // 添加一些热像素(只在曝光时间长的情况下)
-  if (exposureDuration > 1.0) {
+  try {
+    // Calculate image dimensions
     int effectiveWidth = roi.width / roi.binX;
     int effectiveHeight = roi.height / roi.binY;
     int bytesPerPixel = cameraParams.bitDepth / 8;
     if (bytesPerPixel < 1)
       bytesPerPixel = 1;
+
+    // Number of color channels
     int channels = cameraParams.hasColorSensor ? 3 : 1;
 
-    // 热像素数量与曝光时间和传感器温度有关
-    int hotPixelCount = static_cast<int>(
-        5.0 * exposureDuration * std::exp((sensorTemperature + 20) / 30.0));
+    // Calculate total data size
+    size_t dataSize =
+        effectiveWidth * effectiveHeight * bytesPerPixel * channels;
 
-    std::uniform_int_distribution<> xDist(0, effectiveWidth - 1);
-    std::uniform_int_distribution<> yDist(0, effectiveHeight - 1);
+    {
+      std::lock_guard lock(imageDataMutex);
+      imageData.resize(dataSize);
 
-    for (int i = 0; i < hotPixelCount; ++i) {
-      int x = xDist(rng);
-      int y = yDist(rng);
+      // Base brightness depends on exposure time and gain
+      double baseIntensity =
+          std::min(1.0, exposureDuration / 10.0) * (1.0 + gain / 100.0);
 
-      // 设置为较高值
-      for (int c = 0; c < channels; ++c) {
-        size_t index = (y * effectiveWidth + x) * bytesPerPixel * channels +
-                       c * bytesPerPixel;
+      // Adjust based on image type
+      if (currentImageType == ImageType::DARK) {
+        baseIntensity = 0.05; // Dark frames have minimal signal
+      } else if (currentImageType == ImageType::BIAS) {
+        baseIntensity = 0.02; // Bias frames only have bias level
+      } else if (currentImageType == ImageType::FLAT) {
+        baseIntensity =
+            0.7; // Flat frames are relatively uniform with medium brightness
+      }
 
-        // 将所有字节设为最大值(热像素)
-        for (int b = 0; b < bytesPerPixel; ++b) {
-          imageData[index + b] = 0xFF;
+      // Generate image data
+      std::uniform_real_distribution<> noiseDist(-0.1, 0.1);
+      std::normal_distribution<> starDist(0.5, 0.2);
+
+      for (int y = 0; y < effectiveHeight; ++y) {
+        for (int x = 0; x < effectiveWidth; ++x) {
+          // Base value (with noise)
+          double value = baseIntensity * (1.0 + noiseDist(rng) * 0.1);
+
+          // For light and flat frames, add some structure
+          if (currentImageType == ImageType::LIGHT) {
+            // Add some random stars
+            if (starDist(rng) > 0.95) {
+              value = std::min(1.0, value * (5.0 + starDist(rng) * 10.0));
+            }
+
+            // Add some gradient
+            value *= 1.0 + 0.1 * std::sin(x * 0.01) * std::cos(y * 0.01);
+          } else if (currentImageType == ImageType::FLAT) {
+            // Flat frames have slight vignetting
+            value *= 1.0 - 0.1 *
+                               ((x - effectiveWidth / 2.0) *
+                                    (x - effectiveWidth / 2.0) +
+                                (y - effectiveHeight / 2.0) *
+                                    (y - effectiveHeight / 2.0)) /
+                               (effectiveWidth * effectiveHeight / 4.0);
+          }
+
+          // Convert value to pixel value
+          int pixelValue =
+              static_cast<int>(value * ((1 << cameraParams.bitDepth) - 1));
+          pixelValue = std::max(
+              0, std::min(pixelValue, (1 << cameraParams.bitDepth) - 1));
+
+          // Fill pixel data
+          for (int c = 0; c < channels; ++c) {
+            size_t index = (y * effectiveWidth + x) * bytesPerPixel * channels +
+                           c * bytesPerPixel;
+
+            // For color sensors, add different intensities for different
+            // channels
+            double channelFactor = 1.0;
+            if (channels > 1) {
+              // Simulate different RGB channel responses on color sensors
+              if (c == 0)
+                channelFactor = 1.0; // Red channel
+              else if (c == 1)
+                channelFactor = 0.8; // Green channel
+              else
+                channelFactor = 0.6; // Blue channel
+            }
+
+            int channelValue = static_cast<int>(pixelValue * channelFactor);
+
+            // Fill bytes (in big-endian order)
+            for (int b = 0; b < bytesPerPixel; ++b) {
+              imageData[index + b] =
+                  (channelValue >> (8 * (bytesPerPixel - b - 1))) & 0xFF;
+            }
+          }
+        }
+      }
+
+      // Apply additional image effects
+      applyImageEffects(imageData);
+    }
+
+    // Set image parameter properties
+    setProperty("imageWidth", effectiveWidth);
+    setProperty("imageHeight", effectiveHeight);
+    setProperty("imageChannels", channels);
+    setProperty("imageDepth", cameraParams.bitDepth);
+    setProperty("imageSize", dataSize);
+  } catch (const std::exception &e) {
+    SPDLOG_ERROR("Error generating image data: {}: {}", e.what(), deviceId);
+    throw; // Re-throw to be caught by updateLoop
+  }
+}
+
+void Camera::applyImageEffects(std::vector<uint8_t> &imageData) {
+  // This method can apply various image effects like hot pixels, bad columns,
+  // vignetting etc.
+
+  try {
+    // Add some hot pixels (only for longer exposures)
+    if (exposureDuration > 1.0) {
+      int effectiveWidth = roi.width / roi.binX;
+      int effectiveHeight = roi.height / roi.binY;
+      int bytesPerPixel = cameraParams.bitDepth / 8;
+      if (bytesPerPixel < 1)
+        bytesPerPixel = 1;
+      int channels = cameraParams.hasColorSensor ? 3 : 1;
+
+      // Number of hot pixels depends on exposure time and sensor temperature
+      int hotPixelCount = static_cast<int>(
+          5.0 * exposureDuration * std::exp((sensorTemperature + 20) / 30.0));
+
+      std::uniform_int_distribution<> xDist(0, effectiveWidth - 1);
+      std::uniform_int_distribution<> yDist(0, effectiveHeight - 1);
+
+      for (int i = 0; i < hotPixelCount; ++i) {
+        int x = xDist(rng);
+        int y = yDist(rng);
+
+        // Set to high value
+        for (int c = 0; c < channels; ++c) {
+          size_t index = (y * effectiveWidth + x) * bytesPerPixel * channels +
+                         c * bytesPerPixel;
+
+          // Set all bytes to max value (hot pixel)
+          for (int b = 0; b < bytesPerPixel; ++b) {
+            imageData[index + b] = 0xFF;
+          }
         }
       }
     }
-  }
 
-  // 这里可以添加更多效果...
+    // More effects can be added here...
+  } catch (const std::exception &e) {
+    SPDLOG_ERROR("Error applying image effects: {}: {}", e.what(), deviceId);
+  }
 }
 
 void Camera::sendExposureProgressEvent(double progress) {
@@ -958,12 +1002,12 @@ std::string Camera::cameraStateToString(CameraState state) {
   }
 }
 
-// 命令处理器实现
+// Command handler implementations
 void Camera::handleStartExposureCommand(const CommandMessage &cmd,
                                         ResponseMessage &response) {
   json params = cmd.getParameters();
 
-  // 检查必要参数
+  // Check required parameters
   if (!params.contains("duration")) {
     response.setStatus("ERROR");
     response.setDetails({{"error", "INVALID_PARAMETERS"},
@@ -973,29 +1017,30 @@ void Camera::handleStartExposureCommand(const CommandMessage &cmd,
 
   double duration = params["duration"];
 
-  // 图像类型(可选)
+  // Image type (optional)
   ImageType type = ImageType::LIGHT;
   if (params.contains("type") && params["type"].is_string()) {
     type = stringToImageType(params["type"]);
   }
 
-  // 是否自动保存(可选)
+  // Auto-save (optional)
   bool saveImage = false;
   if (params.contains("autoSave") && params["autoSave"].is_boolean()) {
     saveImage = params["autoSave"];
   }
 
-  // 存储消息ID以便完成事件
+  // Store message ID for completion event
   currentExposureMessageId = cmd.getMessageId();
 
-  // 开始曝光
+  // Start exposure
   bool success = startExposure(duration, type, saveImage);
 
   if (success) {
-    // 计算估计完成时间
+    // Calculate estimated completion time
     auto now = std::chrono::system_clock::now();
-    auto completeTime = now + std::chrono::milliseconds(static_cast<int>(
-                                  (duration + 1.0) * 1000)); // 加1秒用于读出
+    auto completeTime =
+        now + std::chrono::milliseconds(static_cast<int>(
+                  (duration + 1.0) * 1000)); // Add 1 second for readout
     auto complete_itt = std::chrono::system_clock::to_time_t(completeTime);
     std::ostringstream est_ss;
     est_ss << std::put_time(std::localtime(&complete_itt), "%FT%T") << "Z";
@@ -1038,8 +1083,8 @@ void Camera::handleGetImageCommand(const CommandMessage &cmd,
     return;
   }
 
-  // 此处我们不发送实际图像数据(可能很大)
-  // 而是提供一个下载URL或数据摘要信息
+  // Here we don't send the actual image data (which might be large)
+  // but provide a download URL or data summary information
   response.setStatus("SUCCESS");
   response.setDetails({{"imageReady", true},
                        {"imageSize", imageData.size()},
@@ -1048,8 +1093,8 @@ void Camera::handleGetImageCommand(const CommandMessage &cmd,
                        {"imageDepth", cameraParams.bitDepth},
                        {"imageChannels", cameraParams.hasColorSensor ? 3 : 1}});
 
-  // 在真实实现中，这里可以设置一个数据传输会话ID或URL
-  // 客户端随后可以使用它来下载完整图像
+  // In a real implementation, a data transfer session ID or URL could be set
+  // here The client could then use this to download the complete image
   SPDLOG_INFO("Image data info sent to client: {}", deviceId);
 }
 
@@ -1059,7 +1104,7 @@ void Camera::handleSetCoolerCommand(const CommandMessage &cmd,
   bool success = true;
   std::string errorMessage;
 
-  // 设置制冷器启用状态
+  // Set cooler enable state
   if (params.contains("enabled")) {
     if (!params["enabled"].is_boolean()) {
       success = false;
@@ -1070,7 +1115,7 @@ void Camera::handleSetCoolerCommand(const CommandMessage &cmd,
     }
   }
 
-  // 设置目标温度
+  // Set target temperature
   if (success && params.contains("temperature")) {
     if (!params["temperature"].is_number()) {
       success = false;
@@ -1100,7 +1145,7 @@ void Camera::handleSetROICommand(const CommandMessage &cmd,
   bool success = true;
   std::string errorMessage;
 
-  // 设置ROI
+  // Set ROI
   if (params.contains("x") && params.contains("y") &&
       params.contains("width") && params.contains("height")) {
 
@@ -1121,7 +1166,7 @@ void Camera::handleSetROICommand(const CommandMessage &cmd,
     }
   }
 
-  // 设置像素合并
+  // Set binning
   if (success && params.contains("binX") && params.contains("binY")) {
     if (!params["binX"].is_number() || !params["binY"].is_number()) {
       success = false;
@@ -1160,7 +1205,7 @@ void Camera::handleSetGainOffsetCommand(const CommandMessage &cmd,
   bool success = true;
   std::string errorMessage;
 
-  // 设置增益
+  // Set gain
   if (params.contains("gain")) {
     if (!params["gain"].is_number()) {
       success = false;
@@ -1171,7 +1216,7 @@ void Camera::handleSetGainOffsetCommand(const CommandMessage &cmd,
     }
   }
 
-  // 设置偏移量
+  // Set offset
   if (success && params.contains("offset")) {
     if (!params["offset"].is_number()) {
       success = false;
@@ -1205,7 +1250,7 @@ void Camera::handleSetFilterCommand(const CommandMessage &cmd,
   bool success = true;
   std::string errorMessage;
 
-  // 设置滤镜位置
+  // Set filter position
   if (params.contains("position")) {
     if (!params["position"].is_number()) {
       success = false;
@@ -1216,7 +1261,7 @@ void Camera::handleSetFilterCommand(const CommandMessage &cmd,
     }
   }
 
-  // 设置滤镜名称
+  // Set filter name
   if (success && params.contains("name") && params.contains("namePosition")) {
     int pos = params["namePosition"];
     std::string name = params["name"];
@@ -1230,7 +1275,7 @@ void Camera::handleSetFilterCommand(const CommandMessage &cmd,
   if (success) {
     response.setStatus("SUCCESS");
 
-    // 获取滤镜名称列表
+    // Get filter name list
     json filterNamesJson = json::array();
     {
       std::lock_guard lock(filterMutex);

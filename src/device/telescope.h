@@ -2,11 +2,15 @@
 #include "device/device_base.h"
 #include <atomic>
 #include <cmath>
+#include <mutex>
 #include <thread>
 
 namespace astrocomm {
 
-// 望远镜设备类
+/**
+ * Telescope device base class
+ * Provides core functionality for controlling astronomical telescopes
+ */
 class Telescope : public DeviceBase {
 public:
   Telescope(const std::string &deviceId,
@@ -14,63 +18,82 @@ public:
             const std::string &model = "NexStar 8SE");
   virtual ~Telescope();
 
-  // 重写启动和停止方法
+  // Override base DeviceBase methods
   virtual bool start() override;
   virtual void stop() override;
 
-  // 望远镜特定方法
-  void gotoPosition(double ra, double dec);
-  void setTracking(bool enabled);
-  void setSlewRate(int rate);
-  void abort();
-  void park();
-  void unpark();
-  void sync(double ra, double dec);
+  // Telescope specific methods - all virtual for customization
+  virtual void gotoPosition(double ra, double dec);
+  virtual void setTracking(bool enabled);
+  virtual void setSlewRate(int rate);
+  virtual void abort();
+  virtual void park();
+  virtual void unpark();
+  virtual void sync(double ra, double dec);
+  
+  // Position setters and getters
+  virtual void setObserverLocation(double latitude, double longitude);
+  virtual std::pair<double, double> getPosition() const;
+  virtual std::pair<double, double> getAltAz() const;
+  virtual bool isTracking() const;
+  virtual bool isParked() const;
+  virtual bool isMoving() const;
 
 protected:
-  // 模拟望远镜的状态更新线程
-  void updateLoop();
+  // Simulation update thread 
+  virtual void updateLoop();
+  virtual double getCurrentLST() const;
 
-  // 更新高度角和方位角（基于赤经赤纬）
-  void updateAltAz();
+  // Coordinate conversion methods 
+  virtual void updateAltAz();
+  virtual void updateRaDec();
+  
+  // Event notification methods
+  virtual void sendGotoCompletedEvent(const std::string &relatedMessageId);
+  virtual void sendTrackingChangedEvent(bool enabled);
+  virtual void sendPositionChangedEvent();
 
-  // 更新赤经赤纬（基于高度角和方位角）
-  void updateRaDec();
+  // Command handlers - can be overridden by derived classes
+  virtual void handleGotoCommand(const CommandMessage &cmd, ResponseMessage &response);
+  virtual void handleTrackingCommand(const CommandMessage &cmd, ResponseMessage &response);
+  virtual void handleParkCommand(const CommandMessage &cmd, ResponseMessage &response);
+  virtual void handleSyncCommand(const CommandMessage &cmd, ResponseMessage &response);
+  virtual void handleAbortCommand(const CommandMessage &cmd, ResponseMessage &response);
+  
+  // Hook methods for derived classes
+  virtual void onGotoStart(double targetRa, double targetDec);
+  virtual void onGotoComplete();
+  virtual void onTrackingChanged(bool enabled);
+  virtual void onParked();
+  virtual void onUnparked();
+  virtual void onSynced(double ra, double dec);
+  virtual void onAborted();
+  
+  // Protected member variables for derived classes
+  double ra;       // Right ascension (hours, 0-24)
+  double dec;      // Declination (degrees, -90 to +90)
+  double altitude; // Altitude (degrees, 0-90)
+  double azimuth;  // Azimuth (degrees, 0-360)
+  int slew_rate;   // Slew rate (1-10)
+  bool tracking;   // Tracking state
+  bool is_parked;  // Parking state
 
-  // 发送GOTO完成事件
-  void sendGotoCompletedEvent(const std::string &relatedMessageId);
-
-  // 命令处理器
-  void handleGotoCommand(const CommandMessage &cmd, ResponseMessage &response);
-  void handleTrackingCommand(const CommandMessage &cmd,
-                             ResponseMessage &response);
-  void handleParkCommand(const CommandMessage &cmd, ResponseMessage &response);
-  void handleSyncCommand(const CommandMessage &cmd, ResponseMessage &response);
-  void handleAbortCommand(const CommandMessage &cmd, ResponseMessage &response);
-
-private:
-  // 望远镜状态
-  double ra;       // 赤经 (小时, 0-24)
-  double dec;      // 赤纬 (度, -90 到 +90)
-  double altitude; // 高度角 (度, 0-90)
-  double azimuth;  // 方位角 (度, 0-360)
-  int slew_rate;   // 速度 (1-10)
-  bool tracking;   // 跟踪状态
-  bool is_parked;  // 停放状态
-
-  // GOTO相关状态
+  // GOTO related state
   std::atomic<bool> is_moving;
   double target_ra;
   double target_dec;
   std::string current_goto_message_id;
 
-  // 更新线程
-  std::thread update_thread;
-  std::atomic<bool> update_running;
-
-  // 观测者位置（用于坐标转换）
+  // Observer's location (for coordinate conversion)
   double observer_latitude;
   double observer_longitude;
+  
+  // Thread management
+  std::thread update_thread;
+  std::atomic<bool> update_running;
+  
+  // Mutex for thread safety
+  mutable std::mutex position_mutex;
 };
 
 } // namespace astrocomm

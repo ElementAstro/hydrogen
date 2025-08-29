@@ -7,214 +7,274 @@
 namespace py = pybind11;
 using namespace astrocomm;
 
-// 首先定义用于Python继承的派生类
+// First define a derived class for Python inheritance
 class PyGuiderInterface : public GuiderInterface {
 public:
-  // 使用pybind11虚函数封装机制
+  // Using pybind11 trampoline mechanism for virtual functions
   bool connect(const std::string &host, int port) override {
-    PYBIND11_OVERRIDE_PURE(bool,            // 返回类型
-                           GuiderInterface, // 父类
-                           connect,         // 调用的函数
-                           host, port       // 参数
+    PYBIND11_OVERRIDE_PURE(bool,            // Return type
+                           GuiderInterface, // Parent class
+                           connect,         // Function name
+                           host, port       // Parameters
     );
   }
 
   void disconnect() override {
-    PYBIND11_OVERRIDE_PURE(void,            // 返回类型
-                           GuiderInterface, // 父类
-                           disconnect,      // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(void,            // Return type
+                           GuiderInterface, // Parent class
+                           disconnect,      // Function name
+                                            /* No parameters */
     );
   }
 
   bool isConnected() const override {
-    PYBIND11_OVERRIDE_PURE(bool,            // 返回类型
-                           GuiderInterface, // 父类
-                           isConnected,     // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(bool,            // Return type
+                           GuiderInterface, // Parent class
+                           isConnected,     // Function name
+                                            /* No parameters */
     );
   }
 
   bool startGuiding() override {
-    PYBIND11_OVERRIDE_PURE(bool,            // 返回类型
-                           GuiderInterface, // 父类
-                           startGuiding,    // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(bool,            // Return type
+                           GuiderInterface, // Parent class
+                           startGuiding,    // Function name
+                                            /* No parameters */
     );
   }
 
   bool stopGuiding() override {
-    PYBIND11_OVERRIDE_PURE(bool,            // 返回类型
-                           GuiderInterface, // 父类
-                           stopGuiding,     // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(bool,            // Return type
+                           GuiderInterface, // Parent class
+                           stopGuiding,     // Function name
+                                            /* No parameters */
     );
   }
 
   bool pauseGuiding() override {
-    PYBIND11_OVERRIDE_PURE(bool,            // 返回类型
-                           GuiderInterface, // 父类
-                           pauseGuiding,    // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(bool,            // Return type
+                           GuiderInterface, // Parent class
+                           pauseGuiding,    // Function name
+                                            /* No parameters */
     );
   }
 
   bool resumeGuiding() override {
-    PYBIND11_OVERRIDE_PURE(bool,            // 返回类型
-                           GuiderInterface, // 父类
-                           resumeGuiding,   // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(bool,            // Return type
+                           GuiderInterface, // Parent class
+                           resumeGuiding,   // Function name
+                                            /* No parameters */
     );
   }
 
   bool startCalibration() override {
-    PYBIND11_OVERRIDE_PURE(bool,             // 返回类型
-                           GuiderInterface,  // 父类
-                           startCalibration, // 调用的函数
-                                             /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(bool,             // Return type
+                           GuiderInterface,  // Parent class
+                           startCalibration, // Function name
+                                             /* No parameters */
     );
   }
 
   bool cancelCalibration() override {
-    PYBIND11_OVERRIDE_PURE(bool,              // 返回类型
-                           GuiderInterface,   // 父类
-                           cancelCalibration, // 调用的函数
-                                              /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(bool,              // Return type
+                           GuiderInterface,   // Parent class
+                           cancelCalibration, // Function name
+                                              /* No parameters */
     );
   }
 
   bool dither(double amount, double settleTime, double settlePixels) override {
-    PYBIND11_OVERRIDE_PURE(bool,                            // 返回类型
-                           GuiderInterface,                 // 父类
-                           dither,                          // 调用的函数
-                           amount, settleTime, settlePixels // 参数
+    PYBIND11_OVERRIDE_PURE(bool,                            // Return type
+                           GuiderInterface,                 // Parent class
+                           dither,                          // Function name
+                           amount, settleTime, settlePixels // Parameters
     );
   }
 
   GuiderState getGuiderState() const override {
-    PYBIND11_OVERRIDE_PURE(GuiderState,     // 返回类型
-                           GuiderInterface, // 父类
-                           getGuiderState,  // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(GuiderState,     // Return type
+                           GuiderInterface, // Parent class
+                           getGuiderState,  // Function name
+                                            /* No parameters */
     );
   }
 
   CalibrationState getCalibrationState() const override {
-    PYBIND11_OVERRIDE_PURE(CalibrationState,    // 返回类型
-                           GuiderInterface,     // 父类
-                           getCalibrationState, // 调用的函数
-                                                /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(CalibrationState,    // Return type
+                           GuiderInterface,     // Parent class
+                           getCalibrationState, // Function name
+                                                /* No parameters */
     );
   }
 
   GuiderStats getStats() const override {
-    PYBIND11_OVERRIDE_PURE(GuiderStats,     // 返回类型
-                           GuiderInterface, // 父类
-                           getStats,        // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(GuiderStats,     // Return type
+                           GuiderInterface, // Parent class
+                           getStats,        // Function name
+                                            /* No parameters */
     );
   }
 
   StarInfo getGuideStar() const override {
-    PYBIND11_OVERRIDE_PURE(StarInfo,        // 返回类型
-                           GuiderInterface, // 父类
-                           getGuideStar,    // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(StarInfo,        // Return type
+                           GuiderInterface, // Parent class
+                           getGuideStar,    // Function name
+                                            /* No parameters */
     );
   }
 
   CalibrationData getCalibrationData() const override {
-    PYBIND11_OVERRIDE_PURE(CalibrationData,    // 返回类型
-                           GuiderInterface,    // 父类
-                           getCalibrationData, // 调用的函数
-                                               /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(CalibrationData,    // Return type
+                           GuiderInterface,    // Parent class
+                           getCalibrationData, // Function name
+                                               /* No parameters */
     );
   }
 
   void setPixelScale(double scaleArcsecPerPixel) override {
-    PYBIND11_OVERRIDE_PURE(void,               // 返回类型
-                           GuiderInterface,    // 父类
-                           setPixelScale,      // 调用的函数
-                           scaleArcsecPerPixel // 参数
+    PYBIND11_OVERRIDE_PURE(void,               // Return type
+                           GuiderInterface,    // Parent class
+                           setPixelScale,      // Function name
+                           scaleArcsecPerPixel // Parameters
     );
   }
 
   void setGuideRate(double raRateMultiplier,
                     double decRateMultiplier) override {
-    PYBIND11_OVERRIDE_PURE(void,            // 返回类型
-                           GuiderInterface, // 父类
-                           setGuideRate,    // 调用的函数
-                           raRateMultiplier, decRateMultiplier // 参数
+    PYBIND11_OVERRIDE_PURE(void,                               // Return type
+                           GuiderInterface,                    // Parent class
+                           setGuideRate,                       // Function name
+                           raRateMultiplier, decRateMultiplier // Parameters
     );
   }
 
   GuidingCorrection getCurrentCorrection() const override {
-    PYBIND11_OVERRIDE_PURE(GuidingCorrection,    // 返回类型
-                           GuiderInterface,      // 父类
-                           getCurrentCorrection, // 调用的函数
-                                                 /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(GuidingCorrection,    // Return type
+                           GuiderInterface,      // Parent class
+                           getCurrentCorrection, // Function name
+                                                 /* No parameters */
     );
   }
 
   GuiderInterfaceType getInterfaceType() const override {
-    PYBIND11_OVERRIDE_PURE(GuiderInterfaceType, // 返回类型
-                           GuiderInterface,     // 父类
-                           getInterfaceType,    // 调用的函数
-                                                /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(GuiderInterfaceType, // Return type
+                           GuiderInterface,     // Parent class
+                           getInterfaceType,    // Function name
+                                                /* No parameters */
     );
   }
 
   std::string getInterfaceName() const override {
-    PYBIND11_OVERRIDE_PURE(std::string,      // 返回类型
-                           GuiderInterface,  // 父类
-                           getInterfaceName, // 调用的函数
-                                             /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(std::string,      // Return type
+                           GuiderInterface,  // Parent class
+                           getInterfaceName, // Function name
+                                             /* No parameters */
     );
   }
 
   void update() override {
-    PYBIND11_OVERRIDE_PURE(void,            // 返回类型
-                           GuiderInterface, // 父类
-                           update,          // 调用的函数
-                                            /* 参数列表为空 */
+    PYBIND11_OVERRIDE_PURE(void,            // Return type
+                           GuiderInterface, // Parent class
+                           update,          // Function name
+                                            /* No parameters */
     );
   }
 };
 
-// 定义PyGuiderDevice
+// Define PyGuiderDevice
 class PyGuiderDevice : public GuiderDevice {
 public:
-  // 使用与基类相同的构造函数
+  // Use the same constructor as the base class
   using GuiderDevice::GuiderDevice;
 
-  // 为Python覆盖提供虚函数
+  // Provide trampoline for virtual functions
   bool start() override {
-    PYBIND11_OVERRIDE(bool,         // 返回类型
-                      GuiderDevice, // 父类
-                      start,        // 调用的函数
-                                    /* 参数列表为空 */
+    PYBIND11_OVERRIDE(bool,         // Return type
+                      GuiderDevice, // Parent class
+                      start,        // Function name
+                                    /* No parameters */
     );
   }
 
   void stop() override {
-    PYBIND11_OVERRIDE(void,         // 返回类型
-                      GuiderDevice, // 父类
-                      stop,         // 调用的函数
-                                    /* 参数列表为空 */
+    PYBIND11_OVERRIDE(void,         // Return type
+                      GuiderDevice, // Parent class
+                      stop,         // Function name
+                                    /* No parameters */
     );
   }
 
   json getDeviceInfo() const override {
-    PYBIND11_OVERRIDE(json,          // 返回类型
-                      GuiderDevice,  // 父类
-                      getDeviceInfo, // 调用的函数
-                                     /* 参数列表为空 */
+    PYBIND11_OVERRIDE(json,          // Return type
+                      GuiderDevice,  // Parent class
+                      getDeviceInfo, // Function name
+                                     /* No parameters */
+    );
+  }
+
+  // Add new overrides for optimized virtual methods
+  bool connectToGuider(GuiderInterfaceType type, const std::string &host,
+                       int port) override {
+    PYBIND11_OVERRIDE(bool,            // Return type
+                      GuiderDevice,    // Parent class
+                      connectToGuider, // Function name
+                      type, host, port // Parameters
+    );
+  }
+
+  void disconnectFromGuider() override {
+    PYBIND11_OVERRIDE(void,                 // Return type
+                      GuiderDevice,         // Parent class
+                      disconnectFromGuider, // Function name
+                                            // No parameters
+    );
+  }
+
+  std::shared_ptr<GuiderInterface> getInterface() const override {
+    PYBIND11_OVERRIDE(std::shared_ptr<GuiderInterface>, // Return type
+                      GuiderDevice,                     // Parent class
+                      getInterface,                     // Function name
+                                                        // No parameters
+    );
+  }
+
+  // Add overrides for protected methods that Python may need to customize
+  void handleStateChanged(GuiderState newState) override {
+    PYBIND11_OVERRIDE(void,               // Return type
+                      GuiderDevice,       // Parent class
+                      handleStateChanged, // Function name
+                      newState            // Parameters
+    );
+  }
+
+  void handleCorrectionReceived(const GuidingCorrection &correction) override {
+    PYBIND11_OVERRIDE(void,                     // Return type
+                      GuiderDevice,             // Parent class
+                      handleCorrectionReceived, // Function name
+                      correction                // Parameters
+    );
+  }
+
+  void handleCalibrationChanged(CalibrationState newState,
+                                const CalibrationData &data) override {
+    PYBIND11_OVERRIDE(void,                     // Return type
+                      GuiderDevice,             // Parent class
+                      handleCalibrationChanged, // Function name
+                      newState, data            // Parameters
+    );
+  }
+
+  void handleStatsUpdated(const GuiderStats &newStats) override {
+    PYBIND11_OVERRIDE(void,               // Return type
+                      GuiderDevice,       // Parent class
+                      handleStatsUpdated, // Function name
+                      newStats            // Parameters
     );
   }
 };
 
 void register_guider_bindings(py::module &m) {
-  // GuiderState 枚举
+  // GuiderState enum
   py::enum_<GuiderState>(m, "GuiderState")
       .value("DISCONNECTED", GuiderState::DISCONNECTED)
       .value("CONNECTED", GuiderState::CONNECTED)
@@ -225,7 +285,7 @@ void register_guider_bindings(py::module &m) {
       .value("ERROR", GuiderState::ERROR)
       .export_values();
 
-  // CalibrationState 枚举
+  // CalibrationState enum
   py::enum_<CalibrationState>(m, "CalibrationState")
       .value("IDLE", CalibrationState::IDLE)
       .value("NORTH_MOVING", CalibrationState::NORTH_MOVING)
@@ -240,7 +300,7 @@ void register_guider_bindings(py::module &m) {
       .value("FAILED", CalibrationState::FAILED)
       .export_values();
 
-  // GuiderInterfaceType 枚举
+  // GuiderInterfaceType enum
   py::enum_<GuiderInterfaceType>(m, "GuiderInterfaceType")
       .value("PHD2", GuiderInterfaceType::PHD2)
       .value("LINGUIDER", GuiderInterfaceType::LINGUIDER)
@@ -257,7 +317,7 @@ void register_guider_bindings(py::module &m) {
       .value("CUSTOM", GuiderInterfaceType::CUSTOM)
       .export_values();
 
-  // 注册数据结构
+  // Register data structures
   py::class_<GuidingCorrection>(m, "GuidingCorrection")
       .def(py::init<>())
       .def_readwrite("ra_correction", &GuidingCorrection::raCorrection)
@@ -293,7 +353,7 @@ void register_guider_bindings(py::module &m) {
       .def_readwrite("snr", &GuiderStats::snr)
       .def_readwrite("elapsed_time", &GuiderStats::elapsedTime);
 
-  // 注册GuiderInterface接口（现在PyGuiderInterface已经定义）
+  // Register GuiderInterface interface (now with PyGuiderInterface defined)
   py::class_<GuiderInterface, PyGuiderInterface,
              std::shared_ptr<GuiderInterface>>(m, "GuiderInterface")
       .def(py::init<>())
@@ -320,9 +380,9 @@ void register_guider_bindings(py::module &m) {
       .def("get_interface_name", &GuiderInterface::getInterfaceName)
       .def("update", &GuiderInterface::update);
 
-  // 注册GuiderDevice类
-  py::class_<GuiderDevice, DeviceBase, std::shared_ptr<GuiderDevice>>(
-      m, "GuiderDevice")
+  // Register GuiderDevice class with extended functionality
+  py::class_<GuiderDevice, PyGuiderDevice, DeviceBase,
+             std::shared_ptr<GuiderDevice>>(m, "GuiderDevice")
       .def(py::init<const std::string &, const std::string &,
                     const std::string &>(),
            py::arg("device_id"), py::arg("manufacturer") = "Generic",
@@ -347,15 +407,26 @@ void register_guider_bindings(py::module &m) {
                   &GuiderDevice::calibrationStateToString,
                   "Convert calibration state to string");
 
-  // 工厂函数
+  // Factory function
   m.def("create_guider_interface", &createGuiderInterface, py::arg("type"),
         "Create a guider interface of specified type");
 
-  // Python扩展类 - 现在PyGuiderDevice已经定义
+  // Python extension class - now with PyGuiderDevice defined with all overrides
   py::class_<PyGuiderDevice, GuiderDevice, std::shared_ptr<PyGuiderDevice>>(
       m, "PyGuiderDevice")
       .def(py::init<const std::string &, const std::string &,
                     const std::string &>(),
            py::arg("device_id"), py::arg("manufacturer") = "PythonGuider",
-           py::arg("model") = "v1.0");
+           py::arg("model") = "v1.0")
+      // Expose protected methods so Python can override them
+      .def("handle_state_changed", &PyGuiderDevice::handleStateChanged,
+           "Handle guider state changes")
+      .def("handle_correction_received",
+           &PyGuiderDevice::handleCorrectionReceived,
+           "Handle guiding corrections")
+      .def("handle_calibration_changed",
+           &PyGuiderDevice::handleCalibrationChanged,
+           "Handle calibration state changes")
+      .def("handle_stats_updated", &PyGuiderDevice::handleStatsUpdated,
+           "Handle guider statistics updates");
 }

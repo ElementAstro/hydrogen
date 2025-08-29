@@ -1,3 +1,49 @@
+# =============================================================================
+# Hydrogen Project .gitignore - Comprehensive Coverage
+# Modern astronomical device communication protocol and framework
+# =============================================================================
+
+# =============================================================================
+# Build Artifacts & Compiled Files
+# =============================================================================
+
+# CMake build artifacts
+build/
+Build/
+BUILD/
+out/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Ninja build files
+.ninja_deps
+.ninja_log
+build.ninja
+
+# Visual Studio build artifacts
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+x64/
+x86/
+Win32/
+ARM/
+ARM64/
+*.vcxproj.user
+*.vcxproj.filters
+*.VC.db
+*.VC.VC.opendb
+
 # Prerequisites
 *.d
 
@@ -31,5 +77,244 @@
 *.out
 *.app
 
+# =============================================================================
+# Package Managers
+# =============================================================================
+
+# Conan
+.conan/
+conan.lock
+conanbuildinfo.*
+conaninfo.txt
+graph_info.json
+
+# vcpkg
+vcpkg_installed/
+.vcpkg-root
+
+# =============================================================================
+# Python (for bindings)
+# =============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# =============================================================================
+# IDEs and Editors
+# =============================================================================
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Visual Studio
+.vs/
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# JetBrains IDEs (CLion, etc.)
+.idea/
+*.iws
+*.iml
+*.ipr
+cmake-build-*/
+
+# Qt Creator
+CMakeLists.txt.user*
+*.pro.user*
+*.qbs.user*
+*.creator
+*.creator.*
+
+# Code::Blocks
+*.cbp
+*.layout
+*.depend
+
+# Dev-C++
+*.dev
+
+# =============================================================================
+# Operating Systems
+# =============================================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# Logs and Temporary Files
+# =============================================================================
+
+# Log files
+*.log
+*.log.*
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.backup
+*.bak
+
+# =============================================================================
+# Documentation and Generated Files
+# =============================================================================
+
+# Doxygen
+html/
+latex/
+man/
+rtf/
+xml/
+Doxyfile.bak
+
+# Sphinx documentation
+docs/_build/
+docs/build/
+
+# =============================================================================
+# Testing and Coverage
+# =============================================================================
+
+# Test results
+test_results/
+test_reports/
+*.xml
+*.junit
+
+# Coverage reports
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Benchmark results
+benchmark_results/
+
+# =============================================================================
+# Miscellaneous
+# =============================================================================
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Cache directories
 .cache/
+cache/
+
+# Node.js (if any web components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.cmake-cache/

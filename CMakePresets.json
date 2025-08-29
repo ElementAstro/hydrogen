@@ -1,0 +1,202 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 15,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default Config",
+      "description": "Default build using vcpkg",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "environment": {
+        "VCPKG_FEATURE_FLAGS": "manifests,versions,binarycaching"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Debug build with vcpkg",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "HYDROGEN_ENABLE_WARNINGS": "ON",
+        "HYDROGEN_ENABLE_SANITIZERS": "ON",
+        "HYDROGEN_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Release build with vcpkg",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "HYDROGEN_ENABLE_LTO": "ON",
+        "HYDROGEN_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "relwithdebinfo",
+      "displayName": "RelWithDebInfo",
+      "description": "Release with debug info using vcpkg",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "HYDROGEN_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "windows-x64",
+      "displayName": "Windows x64",
+      "description": "Windows x64 build using vcpkg",
+      "inherits": "default",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "windows-x64-static",
+      "displayName": "Windows x64 Static",
+      "description": "Windows x64 static build using vcpkg",
+      "inherits": "windows-x64",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
+      }
+    },
+    {
+      "name": "linux-x64",
+      "displayName": "Linux x64",
+      "description": "Linux x64 build using vcpkg",
+      "inherits": "default",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    },
+    {
+      "name": "macos-x64",
+      "displayName": "macOS x64",
+      "description": "macOS x64 build using vcpkg",
+      "inherits": "default",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-osx"
+      }
+    },
+    {
+      "name": "with-python",
+      "displayName": "With Python Bindings",
+      "description": "Build with Python bindings enabled",
+      "inherits": "default",
+      "cacheVariables": {
+        "HYDROGEN_ENABLE_PYTHON_BINDINGS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "python-bindings"
+      }
+    },
+    {
+      "name": "with-tests",
+      "displayName": "With Tests",
+      "description": "Build with tests enabled",
+      "inherits": "default",
+      "cacheVariables": {
+        "HYDROGEN_BUILD_TESTS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "tests"
+      }
+    },
+    {
+      "name": "full-features",
+      "displayName": "Full Features",
+      "description": "Build with all features enabled",
+      "inherits": "default",
+      "cacheVariables": {
+        "HYDROGEN_BUILD_TESTS": "ON",
+        "HYDROGEN_BUILD_EXAMPLES": "ON",
+        "HYDROGEN_BUILD_BENCHMARKS": "ON",
+        "HYDROGEN_ENABLE_PYTHON_BINDINGS": "ON",
+        "HYDROGEN_ENABLE_COMPRESSION": "ON",
+        "VCPKG_MANIFEST_FEATURES": "tests;python-bindings;compression;benchmarks"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug Build",
+      "configurePreset": "debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release",
+      "displayName": "Release Build", 
+      "configurePreset": "release",
+      "configuration": "Release"
+    },
+    {
+      "name": "relwithdebinfo",
+      "displayName": "RelWithDebInfo Build",
+      "configurePreset": "relwithdebinfo",
+      "configuration": "RelWithDebInfo"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug Tests",
+      "configurePreset": "debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release Tests",
+      "configurePreset": "release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "default",
+      "displayName": "Default Package",
+      "configurePreset": "release",
+      "generators": [
+        "ZIP"
+      ]
+    }
+  ]
+}

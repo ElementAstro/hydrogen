@@ -11,225 +11,231 @@
 namespace astrocomm {
 
 /**
- * @brief 步进模式枚举，定义电机的步进模式
+ * @brief Stepping mode enumeration for motor control
  */
 enum class StepMode {
-  FULL_STEP = 1,         // 全步
-  HALF_STEP = 2,         // 半步
-  QUARTER_STEP = 4,      // 1/4步
-  EIGHTH_STEP = 8,       // 1/8步
-  SIXTEENTH_STEP = 16,   // 1/16步
-  THIRTYSECOND_STEP = 32 // 1/32步
+  FULL_STEP = 1,         // Full step
+  HALF_STEP = 2,         // Half step
+  QUARTER_STEP = 4,      // Quarter step
+  EIGHTH_STEP = 8,       // Eighth step
+  SIXTEENTH_STEP = 16,   // Sixteenth step
+  THIRTYSECOND_STEP = 32 // Thirty-second step
 };
 
 /**
- * @brief 对焦曲线数据点结构
+ * @brief Focus curve data point structure
  */
 struct FocusPoint {
-  int position;          // 位置
-  double metric;         // 对焦质量度量 (更高 = 更好的焦点)
-  double temperature;    // 记录时的温度
-  std::string timestamp; // 记录时间戳
+  int position;          // Position
+  double metric;         // Focus quality metric (higher = better focus)
+  double temperature;    // Temperature at time of measurement
+  std::string timestamp; // Timestamp of measurement
 };
 
 /**
- * @brief 调焦器基类 - 提供调焦器设备的基本功能实现
+ * @brief Focuser base class - provides core functionality for focuser devices
  *
- * 这个类为可继承的基类，实现了调焦器的核心功能，可以被派生类扩展
+ * This is an inheritable base class that implements core focuser functionality
+ * which can be extended by derived classes for specific devices.
  */
 class Focuser : public DeviceBase {
 public:
   /**
-   * @brief 构造函数
-   * @param deviceId 设备ID
-   * @param manufacturer 制造商
-   * @param model 型号
+   * @brief Constructor
+   * @param deviceId Device identifier
+   * @param manufacturer Manufacturer name
+   * @param model Model name
    */
   Focuser(const std::string &deviceId, const std::string &manufacturer = "ZWO",
           const std::string &model = "EAF");
 
   /**
-   * @brief 虚析构函数，确保正确析构派生类
+   * @brief Virtual destructor to ensure proper destruction of derived classes
    */
   virtual ~Focuser();
 
-  // 重写启动和停止方法
+  // Override start and stop methods
   virtual bool start() override;
   virtual void stop() override;
 
-  // ==== 调焦器基本操作 ====
+  // ==== Basic Focuser Operations ====
 
   /**
-   * @brief 移动到绝对位置
-   * @param position 目标位置
-   * @param synchronous 如果为true，会等待移动完成
-   * @return 如果操作成功启动则返回true
+   * @brief Move to absolute position
+   * @param position Target position
+   * @param synchronous If true, wait for movement to complete
+   * @return True if operation started successfully
    */
   virtual bool moveAbsolute(int position, bool synchronous = false);
 
   /**
-   * @brief 相对移动指定的步数
-   * @param steps 移动步数(正值向外，负值向内)
-   * @param synchronous 如果为true，会等待移动完成
-   * @return 如果操作成功启动则返回true
+   * @brief Move relative number of steps
+   * @param steps Steps to move (positive outward, negative inward)
+   * @param synchronous If true, wait for movement to complete
+   * @return True if operation started successfully
    */
   virtual bool moveRelative(int steps, bool synchronous = false);
 
   /**
-   * @brief 中止当前移动
-   * @return 如果成功中止则返回true
+   * @brief Abort current movement
+   * @return True if successful
    */
   virtual bool abort();
 
-  // ==== 调焦器参数设置 ====
+  // ==== Focuser Parameter Settings ====
 
   /**
-   * @brief 设置最大位置
-   * @param maxPos 最大位置值
-   * @return 设置是否成功
+   * @brief Set maximum position
+   * @param maxPos Maximum position value
+   * @return True if successful
    */
   virtual bool setMaxPosition(int maxPos);
 
   /**
-   * @brief 设置移动速度
-   * @param speedValue 速度值(1-10)
-   * @return 设置是否成功
+   * @brief Set movement speed
+   * @param speedValue Speed value (1-10)
+   * @return True if successful
    */
   virtual bool setSpeed(int speedValue);
 
   /**
-   * @brief 设置反向间隙补偿值
-   * @param backlashValue 反向间隙步数
-   * @return 设置是否成功
+   * @brief Set backlash compensation value
+   * @param backlashValue Backlash steps
+   * @return True if successful
    */
   virtual bool setBacklash(int backlashValue);
 
   /**
-   * @brief 设置步进模式
-   * @param mode 步进模式枚举值
-   * @return 设置是否成功
+   * @brief Set stepping mode
+   * @param mode Stepping mode enum value
+   * @return True if successful
    */
   virtual bool setStepMode(StepMode mode);
 
   /**
-   * @brief 设置温度补偿
-   * @param enabled 是否启用
-   * @param coefficient 补偿系数
-   * @return 设置是否成功
+   * @brief Set temperature compensation
+   * @param enabled Whether enabled
+   * @param coefficient Compensation coefficient
+   * @return True if successful
    */
   virtual bool setTemperatureCompensation(bool enabled,
                                           double coefficient = 0.0);
 
-  // ==== 高级功能 ====
+  // ==== Advanced Features ====
 
   /**
-   * @brief 保存当前位置为命名焦点
-   * @param name 焦点名称
-   * @param description 可选描述
-   * @return 保存是否成功
+   * @brief Save current position as a named focus point
+   * @param name Focus point name
+   * @param description Optional description
+   * @return True if successful
    */
   virtual bool saveFocusPoint(const std::string &name,
                               const std::string &description = "");
 
   /**
-   * @brief 移动到已保存的焦点
-   * @param name 焦点名称
-   * @param synchronous 如果为true，会等待移动完成
-   * @return 移动是否成功启动
+   * @brief Move to saved focus point
+   * @param name Focus point name
+   * @param synchronous If true, wait for movement to complete
+   * @return True if movement started successfully
    */
   virtual bool moveToSavedPoint(const std::string &name,
                                 bool synchronous = false);
 
   /**
-   * @brief 获取所有保存的焦点
-   * @return 焦点名称和位置的JSON对象
+   * @brief Get all saved focus points
+   * @return JSON object with focus point names and positions
    */
   virtual json getSavedFocusPoints() const;
 
   /**
-   * @brief 启动自动对焦过程
-   * @param startPos 起始位置
-   * @param endPos 结束位置
-   * @param steps 步进次数
-   * @param useExistingCurve 是否使用现有曲线数据
-   * @return 是否成功启动自动对焦
+   * @brief Start auto focus process
+   * @param startPos Starting position
+   * @param endPos Ending position
+   * @param steps Number of steps
+   * @param useExistingCurve Whether to use existing curve data
+   * @return True if auto focus started successfully
    */
   virtual bool startAutoFocus(int startPos, int endPos, int steps,
                               bool useExistingCurve = false);
 
   /**
-   * @brief 获取对焦曲线数据
-   * @return 对焦曲线数据点的JSON数组
+   * @brief Get focus curve data
+   * @return JSON array of focus curve data points
    */
   virtual json getFocusCurveData() const;
 
   /**
-   * @brief 保存设备配置
-   * @param filePath 配置文件路径
-   * @return 保存是否成功
+   * @brief Save device configuration
+   * @param filePath Configuration file path
+   * @return True if successful
    */
   virtual bool saveConfiguration(const std::string &filePath) const;
 
   /**
-   * @brief 加载设备配置
-   * @param filePath 配置文件路径
-   * @return 加载是否成功
+   * @brief Load device configuration
+   * @param filePath Configuration file path
+   * @return True if successful
    */
   virtual bool loadConfiguration(const std::string &filePath);
 
   /**
-   * @brief 设置对焦质量度量回调
-   * 这个回调会在自动对焦过程中被调用来评估当前位置的对焦质量
-   * @param callback 回调函数，接收位置参数，返回对焦质量(更高=更好)
+   * @brief Set focus quality metric callback
+   * This callback is called during auto focus to evaluate focus quality at
+   * current position
+   * @param callback Callback function that accepts position and returns quality
+   * metric (higher=better)
    */
   using FocusMetricCallback = std::function<double(int position)>;
   void setFocusMetricCallback(FocusMetricCallback callback);
 
 protected:
-  // ==== 保护的更新方法 ====
+  // ==== Protected Update Methods ====
 
   /**
-   * @brief 调焦器状态更新线程
-   * 子类可以重写此方法实现自定义更新逻辑
+   * @brief Focuser status update thread
+   * Derived classes can override this method to implement custom update logic
    */
   virtual void updateLoop();
 
   /**
-   * @brief 发送移动完成事件
-   * @param relatedMessageId 相关命令消息ID
+   * @brief Send move completed event
+   * @param relatedMessageId Related command message ID
    */
   virtual void sendMoveCompletedEvent(const std::string &relatedMessageId);
 
   /**
-   * @brief 应用温度补偿算法
-   * 子类可以重写此方法实现自定义温度补偿算法
-   * @param currentPosition 当前位置
-   * @return 温度补偿后的位置
+   * @brief Apply temperature compensation algorithm
+   * Derived classes can override this method to implement custom temperature
+   * compensation
+   * @param currentPosition Current position
+   * @return Temperature-compensated position
    */
   virtual int applyTemperatureCompensation(int currentPosition);
 
   /**
-   * @brief 计算对焦质量度量
-   * 子类应该重写这个方法来提供实际的对焦质量评估
-   * @param position 当前位置
-   * @return 对焦质量值(更高=更好)
+   * @brief Calculate focus quality metric
+   * Derived classes should override this method to provide actual focus quality
+   * evaluation
+   * @param position Current position
+   * @return Focus quality value (higher=better)
    */
   virtual double calculateFocusMetric(int position);
 
   /**
-   * @brief 执行自动对焦算法
-   * 子类可以重写此方法提供自定义自动对焦算法
+   * @brief Perform auto focus algorithm
+   * Derived classes can override this method to provide custom auto focus
+   * algorithm
    */
   virtual void performAutoFocus();
 
   /**
-   * @brief 等待移动完成
-   * @param timeoutMs 超时毫秒数，0表示一直等待
-   * @return 如果移动成功完成返回true，如果超时返回false
+   * @brief Wait for movement to complete
+   * @param timeoutMs Timeout in milliseconds, 0 means wait indefinitely
+   * @return True if movement completed successfully, false if timeout
    */
   bool waitForMoveComplete(int timeoutMs = 0);
 
-  // ==== 命令处理器 ====
+  // ==== Command Handlers ====
   virtual void handleMoveAbsoluteCommand(const CommandMessage &cmd,
                                          ResponseMessage &response);
   virtual void handleMoveRelativeCommand(const CommandMessage &cmd,
@@ -253,43 +259,44 @@ protected:
   virtual void handleAutoFocusCommand(const CommandMessage &cmd,
                                       ResponseMessage &response);
 
-  // ==== 保护的状态变量 ====
-  int position;                           // 当前位置
-  int targetPosition;                     // 目标位置
-  int maxPosition;                        // 最大位置
-  int speed;                              // 移动速度 (1-10)
-  int backlash;                           // 反向间隙补偿
-  bool tempCompEnabled;                   // 温度补偿是否启用
-  double tempCompCoefficient;             // 温度补偿系数
-  double temperature;                     // 当前温度
-  StepMode stepMode;                      // 步进模式
-  std::atomic<bool> isMoving;             // 是否正在移动
-  std::atomic<bool> isAutoFocusing;       // 是否正在自动对焦
-  std::string currentMoveMessageId;       // 当前移动命令的消息ID
-  bool movingDirection;                   // true = 向外, false = 向内
-  std::condition_variable moveCompleteCv; // 移动完成条件变量
+  // ==== Protected State Variables ====
+  int position;                     // Current position
+  int targetPosition;               // Target position
+  int maxPosition;                  // Maximum position
+  int speed;                        // Movement speed (1-10)
+  int backlash;                     // Backlash compensation
+  bool tempCompEnabled;             // Temperature compensation enabled
+  double tempCompCoefficient;       // Temperature compensation coefficient
+  double temperature;               // Current temperature
+  StepMode stepMode;                // Step mode
+  std::atomic<bool> isMoving;       // Whether currently moving
+  std::atomic<bool> isAutoFocusing; // Whether auto focusing
+  std::string currentMoveMessageId; // Current move command message ID
+  bool movingDirection;             // true = outward, false = inward
+  std::condition_variable
+      moveCompleteCv; // Movement completion condition variable
 
-  // 温度模拟参数
-  double ambientTemperature; // 环境温度
-  double temperatureDrift;   // 温度变化趋势
+  // Temperature simulation parameters
+  double ambientTemperature; // Ambient temperature
+  double temperatureDrift;   // Temperature drift trend
 
-  // 自动对焦参数
-  std::vector<FocusPoint> focusCurve;      // 对焦曲线数据
-  std::atomic<bool> cancelAutoFocus;       // 取消自动对焦标志
-  FocusMetricCallback focusMetricCallback; // 对焦质量评估回调
+  // Auto focus parameters
+  std::vector<FocusPoint> focusCurve;      // Focus curve data
+  std::atomic<bool> cancelAutoFocus;       // Cancel auto focus flag
+  FocusMetricCallback focusMetricCallback; // Focus quality evaluation callback
 
-  // 保存的焦点
+  // Saved focus points
   std::unordered_map<std::string, std::pair<int, std::string>>
-      savedFocusPoints; // 名称 -> (位置,描述)
+      savedFocusPoints; // name -> (position,description)
 
-  // 更新线程
+  // Update thread
   std::thread updateThread;
   std::atomic<bool> updateRunning;
 
-  // 自动对焦线程
+  // Auto focus thread
   std::thread autoFocusThread;
 
-  // 线程安全的状态访问
+  // Thread-safe state access
   mutable std::mutex statusMutex;
   mutable std::mutex focusCurveMutex;
   mutable std::mutex focusPointsMutex;

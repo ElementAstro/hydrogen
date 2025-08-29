@@ -1,0 +1,105 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "hydrogen",
+  "version": "1.0.0",
+  "description": "Hydrogen - Modern astronomical device communication protocol and framework",
+  "homepage": "https://github.com/hydrogen-project/hydrogen",
+  "documentation": "https://hydrogen-project.github.io/hydrogen",
+  "license": "MIT",
+  "supports": "!uwp",
+  "dependencies": [
+    {
+      "name": "boost-system",
+      "version>=": "1.82.0"
+    },
+    {
+      "name": "boost-filesystem",
+      "version>=": "1.82.0"
+    },
+    {
+      "name": "boost-thread",
+      "version>=": "1.82.0"
+    },
+    {
+      "name": "openssl",
+      "version>=": "3.0.0"
+    },
+    {
+      "name": "nlohmann-json",
+      "version>=": "3.11.0"
+    },
+    {
+      "name": "crow",
+      "version>=": "1.0.0"
+    }
+  ],
+  "features": {
+    "tests": {
+      "description": "Build unit tests",
+      "dependencies": [
+        {
+          "name": "gtest",
+          "version>=": "1.14.0"
+        }
+      ]
+    },
+    "python-bindings": {
+      "description": "Build Python bindings",
+      "dependencies": [
+        {
+          "name": "pybind11",
+          "version>=": "2.10.0"
+        }
+      ]
+    },
+    "compression": {
+      "description": "Enable compression support",
+      "dependencies": [
+        {
+          "name": "zlib",
+          "version>=": "1.2.11"
+        }
+      ]
+    },
+    "benchmarks": {
+      "description": "Build performance benchmarks",
+      "dependencies": [
+        {
+          "name": "benchmark",
+          "version>=": "1.8.0"
+        }
+      ]
+    },
+    "docs": {
+      "description": "Build documentation",
+      "dependencies": [
+        {
+          "name": "doxygen",
+          "host": true
+        }
+      ]
+    }
+  },
+  "overrides": [
+    {
+      "name": "boost-system",
+      "version": "1.84.0"
+    },
+    {
+      "name": "boost-filesystem", 
+      "version": "1.84.0"
+    },
+    {
+      "name": "boost-thread",
+      "version": "1.84.0"
+    },
+    {
+      "name": "boost-winapi",
+      "version": "1.84.0"
+    },
+    {
+      "name": "boost-vcpkg-helpers",
+      "version": "7#2"
+    }
+  ]
+}
