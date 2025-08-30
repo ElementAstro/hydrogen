@@ -1,0 +1,113 @@
+{
+  "test_configuration": {
+    "name": "AstroComm Server Test Configuration",
+    "version": "1.0.0",
+    "description": "Configuration file for AstroComm server tests"
+  },
+  "server": {
+    "host": "localhost",
+    "port": 8080,
+    "threads": 2,
+    "timeout": 30
+  },
+  "database": {
+    "path": "./test_data",
+    "type": "json",
+    "backup_enabled": false
+  },
+  "logging": {
+    "level": "DEBUG",
+    "file": "./test_data/test.log",
+    "console": true,
+    "max_file_size": "10MB",
+    "max_files": 3
+  },
+  "communication": {
+    "protocols": {
+      "http": {
+        "enabled": true,
+        "port": 8080
+      },
+      "grpc": {
+        "enabled": true,
+        "port": 50051
+      },
+      "mqtt": {
+        "enabled": false,
+        "port": 1883
+      },
+      "zeromq": {
+        "enabled": false,
+        "port": 5555
+      }
+    },
+    "timeout": 10,
+    "retry_count": 3
+  },
+  "devices": {
+    "scan_interval": 30,
+    "connection_timeout": 5,
+    "supported_types": [
+      "telescope",
+      "camera",
+      "focuser",
+      "rotator",
+      "solver",
+      "switch",
+      "guider"
+    ]
+  },
+  "security": {
+    "enable_ssl": false,
+    "session_timeout": 1800,
+    "max_login_attempts": 3
+  },
+  "test_data": {
+    "sample_users": [
+      {
+        "id": "test_user_1",
+        "username": "testuser1",
+        "email": "test1@example.com",
+        "roles": ["user"]
+      },
+      {
+        "id": "test_user_2", 
+        "username": "testuser2",
+        "email": "test2@example.com",
+        "roles": ["admin"]
+      }
+    ],
+    "sample_devices": [
+      {
+        "id": "test_telescope_1",
+        "name": "Test Telescope",
+        "type": "telescope",
+        "manufacturer": "Test Corp",
+        "model": "TestScope 2000"
+      },
+      {
+        "id": "test_camera_1",
+        "name": "Test Camera",
+        "type": "camera",
+        "manufacturer": "Test Corp",
+        "model": "TestCam Pro"
+      }
+    ],
+    "sample_messages": [
+      {
+        "sender": "test_user_1",
+        "recipient": "test_user_2",
+        "content": "Test message 1",
+        "type": "TEXT",
+        "priority": "NORMAL"
+      },
+      {
+        "sender": "test_user_2",
+        "recipient": "test_user_1",
+        "content": "Test message 2",
+        "type": "COMMAND",
+        "priority": "HIGH"
+      }
+    ]
+  }
+}

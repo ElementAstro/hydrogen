@@ -115,9 +115,9 @@ include_directories(
 
 # Add component subdirectories in dependency order
 message(STATUS "Hydrogen: Building components...")
+add_subdirectory(src/common)
 add_subdirectory(src/core)
-# Temporarily disable server component due to Crow/ASIO compatibility issues
-# add_subdirectory(src/server_component)
+add_subdirectory(src/server)
 add_subdirectory(src/client_component)
 add_subdirectory(src/device_component)
 
@@ -142,8 +142,9 @@ endif()
 # Create a convenience library that includes all components (for backward compatibility)
 add_library(astrocomm INTERFACE)
 target_link_libraries(astrocomm INTERFACE
+    AstroComm::Common
     AstroComm::Core
-    # AstroComm::Server  # Temporarily disabled
+    AstroComm::Server
     AstroComm::Client
     AstroComm::Device
 )
@@ -165,12 +166,19 @@ if(HYDROGEN_ENABLE_PYTHON_BINDINGS)
 
     # pybind11 should already be found by the dependency system
     if(pybind11_FOUND)
-        # Python module
-        pybind11_add_module(pyhydrogen src/python/bindings.cpp)
+        # Python module with comprehensive bindings and 100% API parity
+        pybind11_add_module(pyhydrogen
+            src/python/bindings.cpp
+            src/python/py_dome.cpp
+            src/python/py_observing_conditions.cpp
+            src/python/py_error_handling.cpp
+            src/python/py_type_safety.cpp
+            src/python/py_documentation.cpp
+        )
         target_link_libraries(pyhydrogen PRIVATE
             AstroComm::Device
             AstroComm::Client
-            # AstroComm::Server  # Temporarily disabled
+            AstroComm::Server
             AstroComm::Core
         )
 
@@ -201,8 +209,9 @@ include(GNUInstallDirs)
 # =============================================================================
 
 # Export all targets using the new export system
+hydrogen_export_target(astrocomm_common EXPORT_NAME Common COMPONENT Development)
 hydrogen_export_target(astrocomm_core EXPORT_NAME Core COMPONENT Development)
-# hydrogen_export_target(astrocomm_server EXPORT_NAME Server COMPONENT Development)  # Temporarily disabled
+hydrogen_export_target(astrocomm_server EXPORT_NAME Server COMPONENT Development)
 hydrogen_export_target(astrocomm_client EXPORT_NAME Client COMPONENT Development)
 hydrogen_export_target(astrocomm_device EXPORT_NAME Device COMPONENT Development)
 hydrogen_export_target(astrocomm EXPORT_NAME AstroComm COMPONENT Runtime)
@@ -219,7 +228,7 @@ message(STATUS "=== Hydrogen Build Summary ===")
 message(STATUS "Project: ${PROJECT_NAME} ${PROJECT_VERSION}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Package manager: ${HYDROGEN_PRIMARY_PACKAGE_MANAGER}")
-message(STATUS "Components: Core, Client, Device (Server temporarily disabled)")
+message(STATUS "Components: Core, Server, Client, Device")
 message(STATUS "Applications: ${HYDROGEN_BUILD_EXAMPLES}")
 message(STATUS "Tests: ${HYDROGEN_BUILD_TESTS}")
 message(STATUS "Python bindings: ${HYDROGEN_ENABLE_PYTHON_BINDINGS}")

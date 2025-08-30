@@ -38,6 +38,13 @@ function(hydrogen_define_dependencies)
     list(APPEND HYDROGEN_OPTIONAL_DEPS "GTest|gtest|https://github.com/google/googletest.git|v1.14.0")
     list(APPEND HYDROGEN_OPTIONAL_DEPS "pybind11|pybind11|https://github.com/pybind/pybind11.git|v2.11.1")
     list(APPEND HYDROGEN_OPTIONAL_DEPS "benchmark|benchmark|https://github.com/google/benchmark.git|v1.8.3")
+
+    # Communication protocol dependencies
+    set(HYDROGEN_PROTOCOL_DEPS "")
+    list(APPEND HYDROGEN_PROTOCOL_DEPS "gRPC|grpc|https://github.com/grpc/grpc.git|v1.60.0")
+    list(APPEND HYDROGEN_PROTOCOL_DEPS "cppzmq|cppzmq|https://github.com/zeromq/cppzmq.git|v4.10.0")
+    list(APPEND HYDROGEN_PROTOCOL_DEPS "libzmq|zeromq|https://github.com/zeromq/libzmq.git|v4.3.5")
+    list(APPEND HYDROGEN_PROTOCOL_DEPS "mosquitto|mosquitto|https://github.com/eclipse/mosquitto.git|v2.0.18")
     
     # Store in parent scope
     set(HYDROGEN_CORE_DEPS "${HYDROGEN_CORE_DEPS}" PARENT_SCOPE)
@@ -157,7 +164,7 @@ function(hydrogen_find_dependency package_name)
     
     # Find the package configuration
     set(package_config "")
-    foreach(dep_list ${HYDROGEN_CORE_DEPS} ${HYDROGEN_WEB_DEPS} ${HYDROGEN_OPTIONAL_DEPS})
+    foreach(dep_list ${HYDROGEN_CORE_DEPS} ${HYDROGEN_WEB_DEPS} ${HYDROGEN_OPTIONAL_DEPS} ${HYDROGEN_PROTOCOL_DEPS})
         string(REPLACE "|" ";" dep_config "${dep_list}")
         list(GET dep_config 0 dep_name)
         if(dep_name STREQUAL package_name)
@@ -284,33 +291,54 @@ endfunction()
 # Find optional dependencies based on features
 function(hydrogen_find_optional_dependencies)
     message(STATUS "Hydrogen: Resolving optional dependencies...")
-    
+
     if(HYDROGEN_ENABLE_COMPRESSION)
         hydrogen_find_dependency(ZLIB)
     endif()
-    
+
     if(HYDROGEN_BUILD_TESTS)
         hydrogen_find_dependency(GTest)
     endif()
-    
+
     if(HYDROGEN_ENABLE_PYTHON_BINDINGS)
         hydrogen_find_dependency(pybind11)
     endif()
-    
+
     if(HYDROGEN_BUILD_BENCHMARKS)
         hydrogen_find_dependency(benchmark)
     endif()
-    
+
     message(STATUS "Hydrogen: Optional dependencies resolved")
+endfunction()
+
+# Find protocol dependencies based on features
+function(hydrogen_find_protocol_dependencies)
+    message(STATUS "Hydrogen: Resolving protocol dependencies...")
+
+    if(HYDROGEN_HAS_GRPC_SUPPORT)
+        hydrogen_find_dependency(gRPC)
+    endif()
+
+    if(HYDROGEN_HAS_ZEROMQ_SUPPORT)
+        hydrogen_find_dependency(cppzmq)
+        hydrogen_find_dependency(libzmq)
+    endif()
+
+    if(HYDROGEN_HAS_MQTT_SUPPORT)
+        hydrogen_find_dependency(mosquitto)
+    endif()
+
+    message(STATUS "Hydrogen: Protocol dependencies resolved")
 endfunction()
 
 # Find all dependencies
 function(hydrogen_find_all_dependencies)
     message(STATUS "Hydrogen: Starting dependency resolution...")
-    
+
     hydrogen_find_core_dependencies()
     hydrogen_find_web_dependencies()
     hydrogen_find_optional_dependencies()
-    
+    hydrogen_find_protocol_dependencies()
+
     message(STATUS "Hydrogen: All dependencies resolved")
 endfunction()

@@ -1,1432 +1,536 @@
-#include "device/focuser.h"
-#include "common/utils.h"
-
-#include <algorithm>
-#include <cmath>
-#include <fstream>
-#include <random>
+#include "focuser.h"
+#include "behaviors/movable_behavior.h"
+#include "behaviors/temperature_control_behavior.h"
 #include <spdlog/spdlog.h>
-#include <sstream>
+#include <thread>
+#include <random>
 
 namespace astrocomm {
+namespace device {
 
-Focuser::Focuser(const std::string &deviceId, const std::string &manufacturer,
-                 const std::string &model)
-    : DeviceBase(deviceId, "FOCUSER", manufacturer, model), position(5000),
-      targetPosition(5000), maxPosition(10000), speed(5), backlash(0),
-      tempCompEnabled(false), tempCompCoefficient(0.0), temperature(20.0),
-      stepMode(StepMode::FULL_STEP), isMoving(false), isAutoFocusing(false),
-      movingDirection(true), ambientTemperature(20.0), temperatureDrift(0.0),
-      cancelAutoFocus(false), updateRunning(false) {
+// FocuserMovableBehavior implementation
+class FocuserMovableBehavior : public behaviors::MovableBehavior {
+public:
+    explicit FocuserMovableBehavior(Focuser* focuser)
+        : MovableBehavior("focuser_movable"), focuser_(focuser) {
+    }
 
-  try {
-    // Initialize properties
-    setProperty("position", position);
-    setProperty("maxPosition", maxPosition);
-    setProperty("speed", speed);
-    setProperty("backlash", backlash);
-    setProperty("temperatureCompensation", tempCompEnabled);
-    setProperty("tempCompCoefficient", tempCompCoefficient);
-    setProperty("temperature", temperature);
-    setProperty("isMoving", false);
-    setProperty("stepMode", static_cast<int>(stepMode));
-    setProperty("connected", false);
-    setProperty("absolutePosition", true);
-    setProperty("isAutoFocusing", false);
+protected:
+    bool executeMovement(int targetPosition) override {
+        return focuser_->executeMovement(targetPosition);
+    }
 
-    // Set capabilities
-    capabilities = {"ABSOLUTE_POSITION",
-                    "RELATIVE_POSITION",
-                    "TEMPERATURE_COMPENSATION",
-                    "BACKLASH_COMPENSATION",
-                    "STEP_MODE_CONTROL",
-                    "AUTO_FOCUS",
-                    "FOCUS_PRESETS"};
+    bool executeStop() override {
+        return focuser_->executeStop();
+    }
 
-    // Register command handlers
-    registerCommandHandler("MOVE_ABSOLUTE", [this](const CommandMessage &cmd,
-                                                   ResponseMessage &response) {
-      handleMoveAbsoluteCommand(cmd, response);
-    });
+    bool executeHome() override {
+        return focuser_->executeHome();
+    }
 
-    registerCommandHandler("MOVE_RELATIVE", [this](const CommandMessage &cmd,
-                                                   ResponseMessage &response) {
-      handleMoveRelativeCommand(cmd, response);
-    });
+private:
+    Focuser* focuser_;
+};
 
-    registerCommandHandler(
-        "ABORT", [this](const CommandMessage &cmd, ResponseMessage &response) {
-          handleAbortCommand(cmd, response);
-        });
+// FocuserTemperatureBehavior implementation
+class FocuserTemperatureBehavior : public behaviors::TemperatureControlBehavior {
+public:
+    explicit FocuserTemperatureBehavior(Focuser* focuser)
+        : TemperatureControlBehavior("focuser_temperature"), focuser_(focuser) {
+    }
 
-    registerCommandHandler(
-        "SET_MAX_POSITION",
-        [this](const CommandMessage &cmd, ResponseMessage &response) {
-          handleSetMaxPositionCommand(cmd, response);
-        });
+protected:
+    double readCurrentTemperature() override {
+        return focuser_->readTemperature();
+    }
 
-    registerCommandHandler("SET_SPEED", [this](const CommandMessage &cmd,
-                                               ResponseMessage &response) {
-      handleSetSpeedCommand(cmd, response);
-    });
+    double readAmbientTemperature() override {
+        return focuser_->readAmbientTemperature();
+    }
 
-    registerCommandHandler("SET_BACKLASH", [this](const CommandMessage &cmd,
-                                                  ResponseMessage &response) {
-      handleSetBacklashCommand(cmd, response);
-    });
+    bool setControlPower(double power) override {
+        return focuser_->setTemperatureControl(power);
+    }
 
-    registerCommandHandler(
-        "SET_TEMPERATURE_COMPENSATION",
-        [this](const CommandMessage &cmd, ResponseMessage &response) {
-          handleSetTempCompCommand(cmd, response);
-        });
+private:
+    Focuser* focuser_;
+};
 
-    registerCommandHandler("SET_STEP_MODE", [this](const CommandMessage &cmd,
-                                                   ResponseMessage &response) {
-      handleSetStepModeCommand(cmd, response);
-    });
+// Focuser implementation
+Focuser::Focuser(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
+    : ModernDeviceBase(deviceId, "FOCUSER", manufacturer, model)
+    , movableBehavior_(nullptr)
+    , temperatureBehavior_(nullptr)
+    , maxPosition_(10000)
+    , stepSize_(1)
+    , backlash_(0)
+    , temperatureCompensation_(false)
+    , tempCompCoefficient_(0.0)
+    , currentTemperature_(20.0)
+    , ambientTemperature_(20.0)
+    , hardwareMaxPosition_(30000)
+    , hardwareMinPosition_(0)
+    , hardwareStepSize_(1.0)
+    , hasTemperatureSensor_(true)
+    , hasTemperatureControl_(false)
+    , serialPort_("")
+    , baudRate_(9600)
+    , maxSpeed_(1000)
+    , acceleration_(500)
+    , temperatureOffset_(0.0)
+    , temperatureScale_(1.0)
+    , cancelAutoFocus_(false) {
 
-    registerCommandHandler(
-        "SAVE_FOCUS_POINT",
-        [this](const CommandMessage &cmd, ResponseMessage &response) {
-          handleSaveFocusPointCommand(cmd, response);
-        });
+    initializeHardware();
 
-    registerCommandHandler(
-        "MOVE_TO_SAVED_POINT",
-        [this](const CommandMessage &cmd, ResponseMessage &response) {
-          handleMoveToSavedPointCommand(cmd, response);
-        });
-
-    registerCommandHandler("AUTO_FOCUS", [this](const CommandMessage &cmd,
-                                                ResponseMessage &response) {
-      handleAutoFocusCommand(cmd, response);
-    });
-
-    SPDLOG_INFO("Focuser device initialized: {}", deviceId);
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Failed to initialize focuser device {}: {}", deviceId,
-                 e.what());
-    throw;
-  }
+    SPDLOG_INFO("Focuser {} created with manufacturer: {}, model: {}", deviceId, manufacturer, model);
 }
 
 Focuser::~Focuser() {
-  try {
     stop();
-
-    // Ensure auto focus thread is stopped
-    cancelAutoFocus = true;
-    if (autoFocusThread.joinable()) {
-      autoFocusThread.join();
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error during focuser destruction: {}", e.what());
-  }
 }
 
-bool Focuser::start() {
-  try {
-    if (!DeviceBase::start()) {
-      return false;
-    }
-
-    // Start update thread
-    updateRunning = true;
-    updateThread = std::thread(&Focuser::updateLoop, this);
-
-    setProperty("connected", true);
-    SPDLOG_INFO("Focuser started: {}", deviceId);
+bool Focuser::initializeDevice() {
+    initializeFocuserBehaviors();
+    
+    // Initialize focuser-specific properties
+    setProperty("maxPosition", maxPosition_.load());
+    setProperty("stepSize", stepSize_.load());
+    setProperty("backlash", backlash_.load());
+    setProperty("temperatureCompensation", temperatureCompensation_.load());
+    setProperty("tempCompCoefficient", tempCompCoefficient_.load());
+    setProperty("currentTemperature", currentTemperature_.load());
+    setProperty("ambientTemperature", ambientTemperature_.load());
+    
     return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Failed to start focuser {}: {}", deviceId, e.what());
+}
+
+bool Focuser::startDevice() {
+    return true; // Behaviors handle their own lifecycle
+}
+
+void Focuser::stopDevice() {
+    // Stop any ongoing movement
+    if (isMoving()) {
+        stopMovement();
+    }
+    
+    // Stop temperature control
+    if (temperatureBehavior_) {
+        temperatureBehavior_->stopControl();
+    }
+}
+
+void Focuser::initializeHardware() {
+    // Set manufacturer-specific parameters (enhanced from modern_focuser)
+    std::string manufacturer = getDeviceInfo()["manufacturer"];
+    if (manufacturer == "ZWO") {
+        hardwareMaxPosition_ = 30000;
+        serialPort_ = "COM3"; // Default for ZWO EAF
+        baudRate_ = 115200;
+        hasTemperatureSensor_ = true;
+        hasTemperatureControl_ = false;
+        temperatureOffset_ = 0.0;
+        temperatureScale_ = 1.0;
+        maxSpeed_ = 1000;
+        acceleration_ = 500;
+    }
+    else if (manufacturer == "Celestron") {
+        hardwareMaxPosition_ = 9999;
+        serialPort_ = "COM4";
+        baudRate_ = 9600;
+        hasTemperatureSensor_ = false;
+        hasTemperatureControl_ = false;
+        temperatureOffset_ = 0.0;
+        temperatureScale_ = 1.0;
+        maxSpeed_ = 800;
+        acceleration_ = 400;
+    }
+    else if (manufacturer == "Moonlite") {
+        hardwareMaxPosition_ = 65535;
+        serialPort_ = "COM5";
+        baudRate_ = 9600;
+        hasTemperatureSensor_ = true;
+        hasTemperatureControl_ = true;
+        temperatureOffset_ = -2.5; // Typical offset for Moonlite
+        temperatureScale_ = 1.0;
+        maxSpeed_ = 1200;
+        acceleration_ = 600;
+    }
+    else if (manufacturer == "QHY") {
+        hardwareMaxPosition_ = 50000;
+        serialPort_ = "COM6";
+        baudRate_ = 115200;
+        hasTemperatureSensor_ = true;
+        hasTemperatureControl_ = false;
+        temperatureOffset_ = 0.5;
+        temperatureScale_ = 1.0;
+        maxSpeed_ = 1500;
+        acceleration_ = 750;
+    }
+
+    // Update max position in atomic variable
+    maxPosition_ = hardwareMaxPosition_;
+}
+
+void Focuser::initializeFocuserBehaviors() {
+    // Add movable behavior for position control
+    movableBehavior_ = new FocuserMovableBehavior(this);
+    addBehavior(std::unique_ptr<behaviors::DeviceBehavior>(movableBehavior_));
+
+    // Add temperature control behavior
+    temperatureBehavior_ = new FocuserTemperatureBehavior(this);
+    addBehavior(std::unique_ptr<behaviors::DeviceBehavior>(temperatureBehavior_));
+}
+
+// IMovable interface implementation (delegated to MovableBehavior)
+bool Focuser::moveToPosition(int position) {
+    if (movableBehavior_) {
+        return movableBehavior_->moveToPosition(position);
+    }
     return false;
-  }
 }
 
-void Focuser::stop() {
-  try {
-    // Stop auto focus
-    cancelAutoFocus = true;
-    if (autoFocusThread.joinable()) {
-      autoFocusThread.join();
+bool Focuser::moveRelative(int steps) {
+    if (movableBehavior_) {
+        return movableBehavior_->moveRelative(steps);
     }
-
-    // Stop update thread
-    updateRunning = false;
-
-    // Use condition variable to wake any waiting threads
-    moveCompleteCv.notify_all();
-
-    if (updateThread.joinable()) {
-      updateThread.join();
-    }
-
-    setProperty("connected", false);
-    DeviceBase::stop();
-    SPDLOG_INFO("Focuser stopped: {}", deviceId);
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error stopping focuser {}: {}", deviceId, e.what());
-  }
+    return false;
 }
 
-bool Focuser::moveAbsolute(int newPosition, bool synchronous) {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    // Validate position range
-    if (newPosition < 0 || newPosition > maxPosition) {
-      SPDLOG_WARN("Invalid position value: {}", newPosition);
-      return false;
+bool Focuser::stopMovement() {
+    if (movableBehavior_) {
+        return movableBehavior_->stopMovement();
     }
+    return false;
+}
 
-    // If no change, don't move
-    if (newPosition == position && !isMoving) {
-      SPDLOG_INFO("Already at requested position: {}", position);
-      return true; // Already at target position, considered success
+bool Focuser::home() {
+    if (movableBehavior_) {
+        return movableBehavior_->home();
     }
+    return false;
+}
 
-    // Set movement direction and target
-    movingDirection = (newPosition > position);
-
-    // Apply backlash compensation
-    if (backlash > 0 &&
-        ((targetPosition > position && newPosition < position) ||
-         (targetPosition < position && newPosition > position))) {
-      // Direction changed, add backlash
-      if (movingDirection) {
-        newPosition += backlash;
-      } else {
-        newPosition -= backlash;
-      }
-      // Ensure within valid range
-      newPosition = std::max(0, std::min(maxPosition, newPosition));
+int Focuser::getCurrentPosition() const {
+    if (movableBehavior_) {
+        return movableBehavior_->getCurrentPosition();
     }
+    return 0;
+}
 
-    targetPosition = newPosition;
-    isMoving = true;
-    setProperty("isMoving", true);
-
-    SPDLOG_INFO("Starting absolute move to position: {}", targetPosition);
-
-    // If synchronous mode, wait for move to complete
-    if (synchronous) {
-      statusMutex.unlock(); // Unlock to prevent deadlock
-      bool success = waitForMoveComplete();
-      statusMutex.lock(); // Restore lock
-      return success;
+bool Focuser::isMoving() const {
+    if (movableBehavior_) {
+        return movableBehavior_->isMoving();
     }
+    return false;
+}
 
+// IFocuser specific interface
+double Focuser::getTemperature() const {
+    return currentTemperature_;
+}
+
+bool Focuser::supportsTemperatureCompensation() const {
+    return true; // Most modern focusers support temperature compensation
+}
+
+bool Focuser::setTemperatureCompensation(bool enabled) {
+    temperatureCompensation_ = enabled;
+    setProperty("temperatureCompensation", enabled);
+    
+    SPDLOG_INFO("Focuser {} temperature compensation {}", getDeviceId(), enabled ? "enabled" : "disabled");
     return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in moveAbsolute: {}", e.what());
-    return false;
-  }
 }
 
-bool Focuser::moveRelative(int steps, bool synchronous) {
-  try {
-    std::unique_lock<std::mutex> lock(statusMutex);
-
-    // Calculate new position
-    int newPosition = position + steps;
-
-    // Ensure within valid range
-    newPosition = std::max(0, std::min(maxPosition, newPosition));
-
-    SPDLOG_INFO("Starting relative move by steps: {}", steps);
-
-    // Release lock before calling moveAbsolute to prevent deadlock
-    lock.unlock();
-    return moveAbsolute(newPosition, synchronous);
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in moveRelative: {}", e.what());
-    return false;
-  }
-}
-
-bool Focuser::abort() {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    if (!isMoving) {
-      SPDLOG_INFO("No movement to abort");
-      return true; // No movement in progress, considered success
+// ITemperatureControlled interface implementation (delegated to TemperatureControlBehavior)
+bool Focuser::setTargetTemperature(double temperature) {
+    if (temperatureBehavior_) {
+        return temperatureBehavior_->setTargetTemperature(temperature);
     }
-
-    isMoving = false;
-    targetPosition = position; // Stop at current position
-    currentMoveMessageId.clear();
-    setProperty("isMoving", false);
-
-    // Notify all waiting threads
-    moveCompleteCv.notify_all();
-
-    SPDLOG_INFO("Movement aborted");
-
-    // Send abort event
-    EventMessage event("ABORTED");
-    event.setDetails({{"position", position}});
-    sendEvent(event);
-
-    return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in abort: {}", e.what());
     return false;
-  }
+}
+
+double Focuser::getCurrentTemperature() const {
+    if (temperatureBehavior_) {
+        return temperatureBehavior_->getCurrentTemperature();
+    }
+    return currentTemperature_;
+}
+
+double Focuser::getTargetTemperature() const {
+    if (temperatureBehavior_) {
+        return temperatureBehavior_->getTargetTemperature();
+    }
+    return currentTemperature_;
+}
+
+bool Focuser::stopTemperatureControl() {
+    if (temperatureBehavior_) {
+        return temperatureBehavior_->stopControl();
+    }
+    return true;
+}
+
+bool Focuser::isTemperatureStable() const {
+    if (temperatureBehavior_) {
+        return temperatureBehavior_->isStable();
+    }
+    return true;
+}
+
+// Extended functionality (backward compatibility)
+bool Focuser::moveAbsolute(int position, bool synchronous) {
+    bool result = moveToPosition(position);
+    
+    if (result && synchronous) {
+        // Wait for movement to complete
+        while (isMoving()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+    
+    return result;
+}
+
+int Focuser::getMaxPosition() const {
+    return maxPosition_;
 }
 
 bool Focuser::setMaxPosition(int maxPos) {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
     if (maxPos <= 0) {
-      SPDLOG_WARN("Invalid max position: {}", maxPos);
-      return false;
+        return false;
     }
-
-    maxPosition = maxPos;
-    setProperty("maxPosition", maxPosition);
-
-    SPDLOG_INFO("Max position set to {}", maxPosition);
+    
+    maxPosition_ = maxPos;
+    setProperty("maxPosition", maxPos);
     return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in setMaxPosition: {}", e.what());
-    return false;
-  }
 }
 
-bool Focuser::setSpeed(int speedValue) {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    if (speedValue < 1 || speedValue > 10) {
-      SPDLOG_WARN("Invalid speed value: {}", speedValue);
-      return false;
-    }
-
-    speed = speedValue;
-    setProperty("speed", speed);
-
-    SPDLOG_INFO("Speed set to {}", speed);
-    return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in setSpeed: {}", e.what());
-    return false;
-  }
+int Focuser::getBacklash() const {
+    return backlash_;
 }
 
-bool Focuser::setBacklash(int backlashValue) {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    if (backlashValue < 0 || backlashValue > 1000) {
-      SPDLOG_WARN("Invalid backlash value: {}", backlashValue);
-      return false;
+bool Focuser::setBacklash(int backlash) {
+    if (backlash < 0) {
+        return false;
     }
-
-    backlash = backlashValue;
+    
+    backlash_ = backlash;
     setProperty("backlash", backlash);
-
-    SPDLOG_INFO("Backlash set to {}", backlash);
     return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in setBacklash: {}", e.what());
-    return false;
-  }
 }
 
-bool Focuser::setStepMode(StepMode mode) {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
+double Focuser::getTempCompCoefficient() const {
+    return tempCompCoefficient_;
+}
 
-    // Validate step mode
-    int modeValue = static_cast<int>(mode);
-    bool validMode = (modeValue == 1 || modeValue == 2 || modeValue == 4 ||
-                      modeValue == 8 || modeValue == 16 || modeValue == 32);
-
-    if (!validMode) {
-      SPDLOG_WARN("Invalid step mode: {}", modeValue);
-      return false;
-    }
-
-    stepMode = mode;
-    setProperty("stepMode", static_cast<int>(stepMode));
-
-    SPDLOG_INFO("Step mode set to 1/{}", modeValue);
+bool Focuser::setTempCompCoefficient(double coefficient) {
+    tempCompCoefficient_ = coefficient;
+    setProperty("tempCompCoefficient", coefficient);
     return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in setStepMode: {}", e.what());
-    return false;
-  }
 }
 
-bool Focuser::setTemperatureCompensation(bool enabled, double coefficient) {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    tempCompEnabled = enabled;
-
-    if (coefficient != 0.0) {
-      tempCompCoefficient = coefficient;
+// Hardware abstraction methods (simulation)
+bool Focuser::executeMovement(int targetPosition) {
+    if (!validatePosition(targetPosition)) {
+        SPDLOG_ERROR("Focuser {} invalid target position: {}", getDeviceId(), targetPosition);
+        return false;
     }
 
-    setProperty("temperatureCompensation", tempCompEnabled);
-    setProperty("tempCompCoefficient", tempCompCoefficient);
+    SPDLOG_DEBUG("Focuser {} executing movement to position {}", getDeviceId(), targetPosition);
 
-    SPDLOG_INFO("Temperature compensation {}, coefficient: {}",
-                enabled ? "enabled" : "disabled", tempCompCoefficient);
+    // Enhanced movement simulation from modern_focuser
+    std::thread([this, targetPosition]() {
+        int currentPos = getCurrentPosition();
+        int distance = std::abs(targetPosition - currentPos);
+        int movementTime = calculateMovementTime(distance);
 
-    return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in setTemperatureCompensation: {}", e.what());
-    return false;
-  }
-}
+        // Simulate gradual movement
+        int steps = distance / 10; // Move in 10 increments
+        if (steps < 1) steps = 1;
 
-bool Focuser::saveFocusPoint(const std::string &name,
-                             const std::string &description) {
-  try {
-    if (name.empty()) {
-      SPDLOG_WARN("Cannot save focus point with empty name");
-      return false;
-    }
+        int stepDelay = movementTime / steps;
+        int stepSize = distance / steps;
 
-    std::lock_guard<std::mutex> lockStatus(statusMutex);
-    std::lock_guard<std::mutex> lockPoints(focusPointsMutex);
+        for (int i = 0; i < steps && isMoving(); ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(stepDelay));
 
-    // Save current position
-    savedFocusPoints[name] = std::make_pair(position, description);
-
-    SPDLOG_INFO("Saved focus point '{}' at position {}", name, position);
-
-    // Send notification event
-    EventMessage event("FOCUS_POINT_SAVED");
-    event.setDetails({{"name", name},
-                      {"position", position},
-                      {"description", description},
-                      {"timestamp", getIsoTimestamp()}});
-    sendEvent(event);
-
-    return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in saveFocusPoint: {}", e.what());
-    return false;
-  }
-}
-
-bool Focuser::moveToSavedPoint(const std::string &name, bool synchronous) {
-  try {
-    std::unique_lock<std::mutex> lock(focusPointsMutex);
-
-    auto it = savedFocusPoints.find(name);
-    if (it == savedFocusPoints.end()) {
-      SPDLOG_WARN("Focus point '{}' not found", name);
-      return false;
-    }
-
-    int pointPosition = it->second.first;
-
-    SPDLOG_INFO("Moving to saved focus point '{}' at position {}", name,
-                pointPosition);
-
-    // Release lock before calling moveAbsolute to prevent deadlock
-    lock.unlock();
-    return moveAbsolute(pointPosition, synchronous);
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in moveToSavedPoint: {}", e.what());
-    return false;
-  }
-}
-
-json Focuser::getSavedFocusPoints() const {
-  try {
-    std::lock_guard<std::mutex> lock(focusPointsMutex);
-
-    json points = json::object();
-
-    for (const auto &point : savedFocusPoints) {
-      points[point.first] = {{"position", point.second.first},
-                             {"description", point.second.second}};
-    }
-
-    return points;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in getSavedFocusPoints: {}", e.what());
-    return json::object();
-  }
-}
-
-bool Focuser::startAutoFocus(int startPos, int endPos, int steps,
-                             bool useExistingCurve) {
-  try {
-    // Check parameter validity
-    if (startPos < 0 || startPos > maxPosition || endPos < 0 ||
-        endPos > maxPosition || steps <= 0 || startPos >= endPos) {
-      SPDLOG_WARN("Invalid auto focus parameters");
-      return false;
-    }
-
-    // Check if auto focus is already in progress
-    if (isAutoFocusing) {
-      SPDLOG_WARN("Auto focus already in progress");
-      return false;
-    }
-
-    // If no focus metric callback set, can't perform auto focus
-    if (!focusMetricCallback && !useExistingCurve) {
-      SPDLOG_WARN("No focus metric callback set");
-      return false;
-    }
-
-    // Clear existing curve data (if not using existing curve)
-    if (!useExistingCurve) {
-      std::lock_guard<std::mutex> lock(focusCurveMutex);
-      focusCurve.clear();
-    }
-
-    // Set auto focus flags
-    isAutoFocusing = true;
-    cancelAutoFocus = false;
-    setProperty("isAutoFocusing", true);
-
-    // Start auto focus thread
-    autoFocusThread =
-        std::thread([this, startPos, endPos, steps, useExistingCurve]() {
-          try {
-            SPDLOG_INFO("Starting auto focus from {} to {} with {} steps",
-                        startPos, endPos, steps);
-
-            // Send auto focus start event
-            EventMessage startEvent("AUTO_FOCUS_STARTED");
-            startEvent.setDetails({{"startPosition", startPos},
-                                   {"endPosition", endPos},
-                                   {"steps", steps},
-                                   {"useExistingCurve", useExistingCurve}});
-            sendEvent(startEvent);
-
-            // Perform auto focus
-            performAutoFocus();
-
-            // End processing
-            isAutoFocusing = false;
-            setProperty("isAutoFocusing", false);
-
-            // Send auto focus complete event
-            EventMessage completeEvent("AUTO_FOCUS_COMPLETED");
-
-            {
-              std::lock_guard<std::mutex> lock(statusMutex);
-              json details = json::object();
-              details["finalPosition"] = position;
-              details["cancelled"] = cancelAutoFocus.load();
-              completeEvent.setDetails(details);
+            int newPos = currentPos + (targetPosition > currentPos ? stepSize : -stepSize);
+            if (i == steps - 1) {
+                newPos = targetPosition; // Ensure we reach exact target
             }
 
-            sendEvent(completeEvent);
-
-            SPDLOG_INFO("Auto focus completed");
-          } catch (const std::exception &e) {
-            isAutoFocusing = false;
-            setProperty("isAutoFocusing", false);
-            SPDLOG_ERROR("Error in auto focus thread: {}", e.what());
-
-            // Send error event
-            EventMessage errorEvent("AUTO_FOCUS_ERROR");
-            errorEvent.setDetails({{"error", e.what()}});
-            sendEvent(errorEvent);
-          }
-        });
-
-    // Detach thread to let it run in background
-    autoFocusThread.detach();
-    return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in startAutoFocus: {}", e.what());
-    return false;
-  }
-}
-
-json Focuser::getFocusCurveData() const {
-  try {
-    std::lock_guard<std::mutex> lock(focusCurveMutex);
-
-    json data = json::array();
-
-    for (const auto &point : focusCurve) {
-      data.push_back({{"position", point.position},
-                      {"metric", point.metric},
-                      {"temperature", point.temperature},
-                      {"timestamp", point.timestamp}});
-    }
-
-    return data;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in getFocusCurveData: {}", e.what());
-    return json::array();
-  }
-}
-
-bool Focuser::saveConfiguration(const std::string &filePath) const {
-  try {
-    std::lock_guard<std::mutex> lockStatus(statusMutex);
-    std::lock_guard<std::mutex> lockPoints(focusPointsMutex);
-
-    json config;
-
-    // Device basic information
-    config["deviceId"] = deviceId;
-    config["deviceType"] = "FOCUSER";
-    config["manufacturer"] = manufacturer;
-    config["model"] = model;
-
-    // Parameter settings
-    config["settings"] = {{"maxPosition", maxPosition},
-                          {"speed", speed},
-                          {"backlash", backlash},
-                          {"temperatureCompensation", tempCompEnabled},
-                          {"tempCompCoefficient", tempCompCoefficient},
-                          {"stepMode", static_cast<int>(stepMode)}};
-
-    // Saved focus points
-    json focusPoints = json::object();
-    for (const auto &point : savedFocusPoints) {
-      focusPoints[point.first] = {{"position", point.second.first},
-                                  {"description", point.second.second}};
-    }
-    config["focusPoints"] = focusPoints;
-
-    // Write to file
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-      SPDLOG_ERROR("Failed to open file for writing: {}", filePath);
-      return false;
-    }
-
-    file << config.dump(2);
-    file.close();
-
-    SPDLOG_INFO("Configuration saved to {}", filePath);
-    return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error saving configuration: {}", e.what());
-    return false;
-  }
-}
-
-bool Focuser::loadConfiguration(const std::string &filePath) {
-  try {
-    // Read file
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-      SPDLOG_ERROR("Failed to open configuration file: {}", filePath);
-      return false;
-    }
-
-    json config;
-    file >> config;
-    file.close();
-
-    // Validate device type
-    if (!config.contains("deviceType") || config["deviceType"] != "FOCUSER") {
-      SPDLOG_ERROR("Invalid configuration file: not a focuser configuration");
-      return false;
-    }
-
-    std::lock_guard<std::mutex> lockStatus(statusMutex);
-    std::lock_guard<std::mutex> lockPoints(focusPointsMutex);
-
-    // Load settings
-    if (config.contains("settings")) {
-      const auto &settings = config["settings"];
-
-      if (settings.contains("maxPosition")) {
-        maxPosition = settings["maxPosition"];
-        setProperty("maxPosition", maxPosition);
-      }
-
-      if (settings.contains("speed")) {
-        speed = settings["speed"];
-        setProperty("speed", speed);
-      }
-
-      if (settings.contains("backlash")) {
-        backlash = settings["backlash"];
-        setProperty("backlash", backlash);
-      }
-
-      if (settings.contains("temperatureCompensation")) {
-        tempCompEnabled = settings["temperatureCompensation"];
-        setProperty("temperatureCompensation", tempCompEnabled);
-      }
-
-      if (settings.contains("tempCompCoefficient")) {
-        tempCompCoefficient = settings["tempCompCoefficient"];
-        setProperty("tempCompCoefficient", tempCompCoefficient);
-      }
-
-      if (settings.contains("stepMode")) {
-        stepMode = static_cast<StepMode>(settings["stepMode"].get<int>());
-        setProperty("stepMode", static_cast<int>(stepMode));
-      }
-    }
-
-    // Load saved focus points
-    if (config.contains("focusPoints") && config["focusPoints"].is_object()) {
-      savedFocusPoints.clear();
-
-      for (auto it = config["focusPoints"].begin();
-           it != config["focusPoints"].end(); ++it) {
-        const std::string &name = it.key();
-        int pos = it.value()["position"];
-        std::string desc = it.value().contains("description")
-                               ? it.value()["description"].get<std::string>()
-                               : "";
-
-        savedFocusPoints[name] = std::make_pair(pos, desc);
-      }
-    }
-
-    SPDLOG_INFO("Configuration loaded from {}", filePath);
-    return true;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error loading configuration: {}", e.what());
-    return false;
-  }
-}
-
-void Focuser::setFocusMetricCallback(FocusMetricCallback callback) {
-  focusMetricCallback = callback;
-}
-
-void Focuser::updateLoop() {
-  SPDLOG_INFO("Update loop started");
-
-  try {
-    // Random number generator for simulating temperature changes
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> tempDist(-0.2, 0.2);
-
-    auto lastTime = std::chrono::steady_clock::now();
-
-    while (updateRunning) {
-      // Update approximately every 50ms
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
-      auto currentTime = std::chrono::steady_clock::now();
-      double elapsedSec =
-          std::chrono::duration<double>(currentTime - lastTime).count();
-      lastTime = currentTime;
-
-      // Local scope lock to reduce lock holding time
-      {
-        std::lock_guard<std::mutex> lock(statusMutex);
-
-        // Simulate temperature changes
-        temperatureDrift += tempDist(gen) * elapsedSec;
-        temperatureDrift = std::max(
-            -3.0, std::min(3.0, temperatureDrift)); // Limit drift range
-
-        temperature = ambientTemperature + temperatureDrift;
-
-        // Only update temperature property when change exceeds 0.1 degree
-        static double lastReportedTemp = temperature;
-        if (std::abs(temperature - lastReportedTemp) >= 0.1) {
-          setProperty("temperature", temperature);
-          lastReportedTemp = temperature;
+            if (movableBehavior_) {
+                movableBehavior_->updateCurrentPosition(newPos);
+            }
         }
 
-        // If moving
-        if (isMoving) {
-          // Calculate step size, considering step mode
-          double stepMultiplier =
-              1.0 / static_cast<double>(static_cast<int>(stepMode));
-          int step = std::max(
-              1, static_cast<int>(speed * 20 * elapsedSec * stepMultiplier));
-
-          // Move toward target position
-          if (std::abs(targetPosition - position) <= step) {
-            // Reached target position
-            position = targetPosition;
-            isMoving = false;
-            setProperty("isMoving", false);
-
-            // Notify waiting threads
-            moveCompleteCv.notify_all();
-
-            // Send move complete event
-            if (!currentMoveMessageId.empty()) {
-              sendMoveCompletedEvent(currentMoveMessageId);
-              currentMoveMessageId.clear();
-            }
-
-            SPDLOG_INFO("Move completed at position: {}", position);
-          } else {
-            // Continue moving
-            if (position < targetPosition) {
-              position += step;
-            } else {
-              position -= step;
-            }
-          }
-
-          // Update position property
-          setProperty("position", position);
-        } else if (tempCompEnabled) {
-          // Apply temperature compensation
-          int compensatedPosition = applyTemperatureCompensation(position);
-
-          if (compensatedPosition != position) {
-            // Temperature compensation requires movement
-            int originalPosition = position;
-            position = compensatedPosition;
-            setProperty("position", position);
-
-            SPDLOG_INFO(
-                "Temperature compensation adjusted position from {} to {}",
-                originalPosition, position);
-          }
+        if (movableBehavior_) {
+            movableBehavior_->onMovementComplete(true);
         }
-      }
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in updateLoop: {}", e.what());
-    updateRunning = false;
-  }
 
-  SPDLOG_INFO("Update loop ended");
+        SPDLOG_INFO("Focuser {} movement to position {} completed", getDeviceId(), targetPosition);
+    }).detach();
+
+    return true;
 }
 
-bool Focuser::waitForMoveComplete(int timeoutMs) {
-  try {
-    std::unique_lock<std::mutex> lock(statusMutex);
+bool Focuser::executeStop() {
+    SPDLOG_DEBUG("Focuser {} executing stop", getDeviceId());
+    return true;
+}
 
-    if (!isMoving) {
-      return true; // Already stopped moving
+bool Focuser::executeHome() {
+    SPDLOG_DEBUG("Focuser {} executing home", getDeviceId());
+    return executeMovement(hardwareMinPosition_);
+}
+
+bool Focuser::validatePosition(int position) const {
+    return position >= hardwareMinPosition_ && position <= hardwareMaxPosition_;
+}
+
+int Focuser::calculateMovementTime(int distance) const {
+    // Calculate movement time based on distance and speed
+    // Formula: time = distance / speed + acceleration_time
+
+    double baseTime = static_cast<double>(distance) / maxSpeed_ * 1000; // Convert to ms
+    double accelTime = static_cast<double>(maxSpeed_) / acceleration_ * 1000; // Acceleration time
+
+    return static_cast<int>(baseTime + accelTime);
+}
+
+double Focuser::readTemperature() {
+    if (!hasTemperatureSensor_) {
+        return 20.0; // Default temperature if no sensor
     }
 
-    auto pred = [this]() { return !isMoving; };
+    // Enhanced temperature reading with realistic variation from modern_focuser
+    static double baseTemp = 15.0;
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    static std::uniform_real_distribution<> variation(-0.2, 0.2);
 
-    if (timeoutMs <= 0) {
-      // Wait indefinitely
-      moveCompleteCv.wait(lock, pred);
-      return true;
-    } else {
-      // Wait with timeout
-      return moveCompleteCv.wait_for(lock, std::chrono::milliseconds(timeoutMs),
-                                     pred);
+    double rawTemp = baseTemp + variation(gen);
+    double calibratedTemp = (rawTemp * temperatureScale_) + temperatureOffset_;
+
+    currentTemperature_ = calibratedTemp;
+    setProperty("currentTemperature", calibratedTemp);
+    return calibratedTemp;
+}
+
+double Focuser::readAmbientTemperature() {
+    // Simulate ambient temperature reading
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    static std::uniform_real_distribution<> dis(-1.0, 1.0);
+    
+    return ambientTemperature_ + dis(gen);
+}
+
+bool Focuser::setTemperatureControl(double power) {
+    if (!hasTemperatureControl_) {
+        SPDLOG_WARN("Focuser {} does not support temperature control", getDeviceId());
+        return false;
     }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in waitForMoveComplete: {}", e.what());
+
+    // Clamp power to valid range
+    power = std::clamp(power, 0.0, 100.0);
+
+    SPDLOG_DEBUG("Focuser {} setting temperature control power to {:.1f}%",
+                 getDeviceId(), power);
+
+    // Enhanced temperature control simulation
+    if (power > 0) {
+        double coolingEffect = power * 0.01;
+        double newTemp = currentTemperature_.load() - coolingEffect;
+        currentTemperature_ = newTemp;
+    }
+
+    setProperty("temperatureControlPower", power);
+    return true;
+}
+
+bool Focuser::handleDeviceCommand(const std::string& command, const json& parameters, json& result) {
+    if (command == "MOVE_ABSOLUTE") {
+        int position = parameters.value("position", 0);
+        bool sync = parameters.value("synchronous", false);
+        result["success"] = moveAbsolute(position, sync);
+        return true;
+    }
+    else if (command == "MOVE_RELATIVE") {
+        int steps = parameters.value("steps", 0);
+        bool sync = parameters.value("synchronous", false);
+        result["success"] = moveRelative(steps, sync);
+        return true;
+    }
+    else if (command == "ABORT") {
+        result["success"] = stopMovement();
+        return true;
+    }
+    else if (command == "HOME") {
+        result["success"] = home();
+        return true;
+    }
+    else if (command == "SET_MAX_POSITION") {
+        int maxPos = parameters.value("maxPosition", 10000);
+        result["success"] = setMaxPosition(maxPos);
+        return true;
+    }
+    else if (command == "SET_BACKLASH") {
+        int backlash = parameters.value("backlash", 0);
+        result["success"] = setBacklash(backlash);
+        return true;
+    }
+    else if (command == "SET_TEMPERATURE_COMPENSATION") {
+        bool enabled = parameters.value("enabled", false);
+        result["success"] = setTemperatureCompensation(enabled);
+        return true;
+    }
+    
     return false;
-  }
 }
 
-int Focuser::applyTemperatureCompensation(int currentPosition) {
-  try {
-    // Calculate difference between last temperature and current temperature
-    static double lastTemp = temperature;
-    double tempDiff = temperature - lastTemp;
-    lastTemp = temperature;
-
-    // If temperature difference is too small, don't compensate
-    if (std::abs(tempDiff) < 0.1) {
-      return currentPosition;
+void Focuser::updateDevice() {
+    // Update position and movement status
+    setProperty("currentPosition", getCurrentPosition());
+    setProperty("isMoving", isMoving());
+    
+    // Update temperature readings
+    setProperty("currentTemperature", readTemperature());
+    setProperty("ambientTemperature", readAmbientTemperature());
+    
+    // Apply temperature compensation if enabled
+    if (temperatureCompensation_) {
+        double tempDiff = readTemperature() - 20.0; // Reference temperature
+        int compensation = static_cast<int>(tempDiff * tempCompCoefficient_);
+        
+        if (std::abs(compensation) > 5) { // Only compensate for significant changes
+            moveRelative(compensation);
+            SPDLOG_DEBUG("Focuser {} applied temperature compensation: {} steps", getDeviceId(), compensation);
+        }
     }
-
-    // Calculate steps to move: temperature difference × compensation
-    // coefficient
-    int steps = static_cast<int>(tempDiff * tempCompCoefficient);
-
-    // Return compensated position, ensuring within valid range
-    return std::max(0, std::min(maxPosition, currentPosition + steps));
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in applyTemperatureCompensation: {}", e.what());
-    return currentPosition; // Return original position on error
-  }
 }
 
-double Focuser::calculateFocusMetric(int position) {
-  try {
-    // Default implementation uses callback function (if set)
-    if (focusMetricCallback) {
-      return focusMetricCallback(position);
-    }
-
-    // Otherwise return a simulated focus quality
-    // Generate a Gaussian curve near the ideal position
-    const int idealFocusPos = maxPosition / 2;
-    const double sigma = maxPosition / 10.0;
-
-    double distanceFromIdeal = position - idealFocusPos;
-    double metric = 100.0 * std::exp(-(distanceFromIdeal * distanceFromIdeal) /
-                                     (2 * sigma * sigma));
-
-    // Add some random noise
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> noiseDist(-5.0, 5.0);
-
-    metric += noiseDist(gen);
-    metric = std::max(0.0, std::min(100.0, metric)); // Limit range
-
-    return metric;
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in calculateFocusMetric: {}", e.what());
-    return 0.0; // Return minimum quality on error
-  }
+std::vector<std::string> Focuser::getCapabilities() const {
+    return {
+        "MOVE_ABSOLUTE",
+        "MOVE_RELATIVE", 
+        "ABORT",
+        "HOME",
+        "SET_MAX_POSITION",
+        "SET_BACKLASH",
+        "SET_TEMPERATURE_COMPENSATION",
+        "TEMPERATURE_CONTROL"
+    };
 }
 
-void Focuser::performAutoFocus() {
-  try {
-    std::lock_guard<std::mutex> lockFocusCurve(focusCurveMutex);
-
-    // Check if using existing curve
-    if (focusCurve.empty()) {
-      // Get parameters
-      int startPos, endPos, steps;
-
-      {
-        std::lock_guard<std::mutex> lockStatus(statusMutex);
-        startPos = targetPosition;
-        endPos = maxPosition;
-        steps = 10;
-      }
-
-      // Calculate step size
-      int stepSize = (endPos - startPos) / (steps - 1);
-      if (stepSize < 1)
-        stepSize = 1;
-
-      // Move to start position
-      moveAbsolute(startPos, true);
-
-      if (cancelAutoFocus)
-        return;
-
-      // Measure focus quality at each position
-      for (int i = 0; i < steps; i++) {
-        if (cancelAutoFocus)
-          return;
-
-        int currentPos = startPos + i * stepSize;
-        if (currentPos > endPos)
-          currentPos = endPos;
-
-        // Move to current position
-        moveAbsolute(currentPos, true);
-
-        if (cancelAutoFocus)
-          return;
-
-        // Wait for stability
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-        if (cancelAutoFocus)
-          return;
-
-        // Calculate focus quality
-        double metric = calculateFocusMetric(currentPos);
-
-        // Record data point
-        FocusPoint point;
-        point.position = currentPos;
-        point.metric = metric;
-        point.temperature = temperature;
-        point.timestamp = getIsoTimestamp();
-        focusCurve.push_back(point);
-
-        // Send progress event
-        EventMessage progressEvent("AUTO_FOCUS_PROGRESS");
-        progressEvent.setDetails(
-            {{"step", i + 1},
-             {"totalSteps", steps},
-             {"position", currentPos},
-             {"metric", metric},
-             {"progress", static_cast<double>(i + 1) / steps * 100.0}});
-        sendEvent(progressEvent);
-
-        SPDLOG_INFO("Auto focus step {}/{} - Position: {}, Metric: {}", i + 1,
-                    steps, currentPos, metric);
-      }
-    }
-
-    // Find best position
-    int bestPosition = 0;
-    double bestMetric = -1.0;
-
-    for (const auto &point : focusCurve) {
-      if (point.metric > bestMetric) {
-        bestMetric = point.metric;
-        bestPosition = point.position;
-      }
-    }
-
-    SPDLOG_INFO("Best focus position found: {} with metric {}", bestPosition,
-                bestMetric);
-
-    // Move to best position
-    moveAbsolute(bestPosition, true);
-
-    // Send best position event
-    EventMessage bestPosEvent("AUTO_FOCUS_BEST_POSITION");
-    bestPosEvent.setDetails(
-        {{"position", bestPosition}, {"metric", bestMetric}});
-    sendEvent(bestPosEvent);
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error during auto focus: {}", e.what());
-
-    // Send error event
-    EventMessage errorEvent("AUTO_FOCUS_ERROR");
-    errorEvent.setDetails({{"error", e.what()}});
-    sendEvent(errorEvent);
-
-    // Re-throw to be caught by the thread handler
-    throw;
-  }
+// Factory function for creating focuser instances (merged from modern_focuser)
+std::unique_ptr<Focuser> createModernFocuser(const std::string& deviceId,
+                                             const std::string& manufacturer,
+                                             const std::string& model) {
+    return std::make_unique<Focuser>(deviceId, manufacturer, model);
 }
 
-void Focuser::sendMoveCompletedEvent(const std::string &relatedMessageId) {
-  try {
-    EventMessage event("COMMAND_COMPLETED");
-    event.setRelatedMessageId(relatedMessageId);
-
-    event.setDetails({{"command", "MOVE"},
-                      {"status", "SUCCESS"},
-                      {"finalPosition", position}});
-
-    sendEvent(event);
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error sending move completed event: {}", e.what());
-  }
-}
-
-// Command handler implementations
-void Focuser::handleMoveAbsoluteCommand(const CommandMessage &cmd,
-                                        ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("position")) {
-      response.setStatus("ERROR");
-      response.setDetails(
-          {{"error", "INVALID_PARAMETERS"},
-           {"message", "Missing required parameter 'position'"}});
-      return;
-    }
-
-    int newPosition = params["position"];
-    bool synchronous = params.contains("synchronous")
-                           ? params["synchronous"].get<bool>()
-                           : false;
-
-    // Store message ID for completion event
-    currentMoveMessageId = cmd.getMessageId();
-
-    // Start movement
-    bool success = moveAbsolute(newPosition, synchronous);
-
-    if (!success) {
-      response.setStatus("ERROR");
-      response.setDetails(
-          {{"error", "MOVE_FAILED"}, {"message", "Failed to start movement"}});
-      return;
-    }
-
-    if (synchronous) {
-      // Synchronous mode completed
-      response.setStatus("SUCCESS");
-      response.setDetails({{"finalPosition", position}});
-    } else {
-      // Asynchronous mode - calculate estimated completion time
-      int moveDistance = std::abs(targetPosition - position);
-      int estimatedStepsPerSecond = speed * 20 / static_cast<int>(stepMode);
-      if (estimatedStepsPerSecond < 1)
-        estimatedStepsPerSecond = 1;
-
-      int estimatedSeconds = moveDistance / estimatedStepsPerSecond + 1;
-
-      auto now = std::chrono::system_clock::now();
-      auto completeTime = now + std::chrono::seconds(estimatedSeconds);
-      auto complete_itt = std::chrono::system_clock::to_time_t(completeTime);
-      std::ostringstream est_ss;
-      est_ss << std::put_time(gmtime(&complete_itt), "%FT%T") << "Z";
-
-      double progressPercentage = 0.0;
-      if (moveDistance > 0) {
-        progressPercentage = 0.0; // Just started moving
-      } else {
-        progressPercentage = 100.0; // Already at target position
-      }
-
-      response.setStatus("IN_PROGRESS");
-      response.setDetails({{"estimatedCompletionTime", est_ss.str()},
-                           {"progressPercentage", progressPercentage},
-                           {"targetPosition", targetPosition},
-                           {"currentPosition", position}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleMoveAbsoluteCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleMoveRelativeCommand(const CommandMessage &cmd,
-                                        ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("steps")) {
-      response.setStatus("ERROR");
-      response.setDetails({{"error", "INVALID_PARAMETERS"},
-                           {"message", "Missing required parameter 'steps'"}});
-      return;
-    }
-
-    int steps = params["steps"];
-    bool synchronous = params.contains("synchronous")
-                           ? params["synchronous"].get<bool>()
-                           : false;
-
-    // Store message ID for completion event
-    currentMoveMessageId = cmd.getMessageId();
-
-    // Start relative movement
-    bool success = moveRelative(steps, synchronous);
-
-    if (!success) {
-      response.setStatus("ERROR");
-      response.setDetails(
-          {{"error", "MOVE_FAILED"}, {"message", "Failed to start movement"}});
-      return;
-    }
-
-    if (synchronous) {
-      // Synchronous mode completed
-      response.setStatus("SUCCESS");
-      response.setDetails({{"finalPosition", position}});
-    } else {
-      // Asynchronous mode - calculate estimated completion time
-      int moveDistance = std::abs(targetPosition - position);
-      int estimatedStepsPerSecond = speed * 20 / static_cast<int>(stepMode);
-      if (estimatedStepsPerSecond < 1)
-        estimatedStepsPerSecond = 1;
-
-      int estimatedSeconds = moveDistance / estimatedStepsPerSecond + 1;
-
-      auto now = std::chrono::system_clock::now();
-      auto completeTime = now + std::chrono::seconds(estimatedSeconds);
-      auto complete_itt = std::chrono::system_clock::to_time_t(completeTime);
-      std::ostringstream est_ss;
-      est_ss << std::put_time(gmtime(&complete_itt), "%FT%T") << "Z";
-
-      response.setStatus("IN_PROGRESS");
-      response.setDetails({{"estimatedCompletionTime", est_ss.str()},
-                           {"progressPercentage", 0.0},
-                           {"steps", steps},
-                           {"targetPosition", targetPosition},
-                           {"currentPosition", position}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleMoveRelativeCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleAbortCommand(const CommandMessage &cmd,
-                                 ResponseMessage &response) {
-  try {
-    bool success = abort();
-
-    response.setStatus(success ? "SUCCESS" : "ERROR");
-    response.setDetails(
-        {{"message", success ? "Movement aborted" : "Failed to abort movement"},
-         {"position", position}});
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleAbortCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleSetMaxPositionCommand(const CommandMessage &cmd,
-                                          ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("maxPosition")) {
-      response.setStatus("ERROR");
-      response.setDetails(
-          {{"error", "INVALID_PARAMETERS"},
-           {"message", "Missing required parameter 'maxPosition'"}});
-      return;
-    }
-
-    int maxPos = params["maxPosition"];
-    bool success = setMaxPosition(maxPos);
-
-    response.setStatus(success ? "SUCCESS" : "ERROR");
-    if (success) {
-      response.setDetails({{"maxPosition", maxPosition}});
-    } else {
-      response.setDetails({{"error", "INVALID_VALUE"},
-                           {"message", "Invalid maximum position value"}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleSetMaxPositionCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleSetSpeedCommand(const CommandMessage &cmd,
-                                    ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("speed")) {
-      response.setStatus("ERROR");
-      response.setDetails({{"error", "INVALID_PARAMETERS"},
-                           {"message", "Missing required parameter 'speed'"}});
-      return;
-    }
-
-    int speedValue = params["speed"];
-    bool success = setSpeed(speedValue);
-
-    response.setStatus(success ? "SUCCESS" : "ERROR");
-    if (success) {
-      response.setDetails({{"speed", speed}});
-    } else {
-      response.setDetails({{"error", "INVALID_VALUE"},
-                           {"message", "Speed must be between 1 and 10"}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleSetSpeedCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleSetBacklashCommand(const CommandMessage &cmd,
-                                       ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("backlash")) {
-      response.setStatus("ERROR");
-      response.setDetails(
-          {{"error", "INVALID_PARAMETERS"},
-           {"message", "Missing required parameter 'backlash'"}});
-      return;
-    }
-
-    int backlashValue = params["backlash"];
-    bool success = setBacklash(backlashValue);
-
-    response.setStatus(success ? "SUCCESS" : "ERROR");
-    if (success) {
-      response.setDetails({{"backlash", backlash}});
-    } else {
-      response.setDetails({{"error", "INVALID_VALUE"},
-                           {"message", "Backlash must be between 0 and 1000"}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleSetBacklashCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleSetTempCompCommand(const CommandMessage &cmd,
-                                       ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("enabled")) {
-      response.setStatus("ERROR");
-      response.setDetails(
-          {{"error", "INVALID_PARAMETERS"},
-           {"message", "Missing required parameter 'enabled'"}});
-      return;
-    }
-
-    bool enabled = params["enabled"];
-    double coefficient = tempCompCoefficient;
-
-    if (params.contains("coefficient")) {
-      coefficient = params["coefficient"];
-    }
-
-    bool success = setTemperatureCompensation(enabled, coefficient);
-
-    response.setStatus(success ? "SUCCESS" : "ERROR");
-    if (success) {
-      response.setDetails({{"temperatureCompensation", tempCompEnabled},
-                           {"coefficient", tempCompCoefficient}});
-    } else {
-      response.setDetails(
-          {{"error", "OPERATION_FAILED"},
-           {"message", "Failed to set temperature compensation"}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleSetTempCompCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleSetStepModeCommand(const CommandMessage &cmd,
-                                       ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("mode")) {
-      response.setStatus("ERROR");
-      response.setDetails({{"error", "INVALID_PARAMETERS"},
-                           {"message", "Missing required parameter 'mode'"}});
-      return;
-    }
-
-    int modeValue = params["mode"];
-    bool success = setStepMode(static_cast<StepMode>(modeValue));
-
-    response.setStatus(success ? "SUCCESS" : "ERROR");
-    if (success) {
-      response.setDetails({{"stepMode", static_cast<int>(stepMode)}});
-    } else {
-      response.setDetails(
-          {{"error", "INVALID_VALUE"},
-           {"message", "Invalid step mode. Valid values: 1, 2, 4, 8, 16, 32"}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleSetStepModeCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleSaveFocusPointCommand(const CommandMessage &cmd,
-                                          ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("name")) {
-      response.setStatus("ERROR");
-      response.setDetails({{"error", "INVALID_PARAMETERS"},
-                           {"message", "Missing required parameter 'name'"}});
-      return;
-    }
-
-    std::string name = params["name"];
-    std::string description = params.contains("description")
-                                  ? params["description"].get<std::string>()
-                                  : "";
-
-    bool success = saveFocusPoint(name, description);
-
-    response.setStatus(success ? "SUCCESS" : "ERROR");
-    if (success) {
-      response.setDetails({{"name", name},
-                           {"position", position},
-                           {"description", description}});
-    } else {
-      response.setDetails({{"error", "OPERATION_FAILED"},
-                           {"message", "Failed to save focus point"}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleSaveFocusPointCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleMoveToSavedPointCommand(const CommandMessage &cmd,
-                                            ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("name")) {
-      response.setStatus("ERROR");
-      response.setDetails({{"error", "INVALID_PARAMETERS"},
-                           {"message", "Missing required parameter 'name'"}});
-      return;
-    }
-
-    std::string name = params["name"];
-    bool synchronous = params.contains("synchronous")
-                           ? params["synchronous"].get<bool>()
-                           : false;
-
-    // Store message ID for completion event
-    currentMoveMessageId = cmd.getMessageId();
-
-    bool success = moveToSavedPoint(name, synchronous);
-
-    if (!success) {
-      response.setStatus("ERROR");
-      response.setDetails({{"error", "POINT_NOT_FOUND"},
-                           {"message", "Focus point not found: " + name}});
-      return;
-    }
-
-    if (synchronous) {
-      // Synchronous mode completed
-      response.setStatus("SUCCESS");
-      response.setDetails({{"name", name}, {"finalPosition", position}});
-    } else {
-      // Asynchronous mode
-      response.setStatus("IN_PROGRESS");
-      response.setDetails(
-          {{"name", name}, {"message", "Moving to saved point: " + name}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleMoveToSavedPointCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
-void Focuser::handleAutoFocusCommand(const CommandMessage &cmd,
-                                     ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    int startPos = params.contains("startPosition")
-                       ? params["startPosition"].get<int>()
-                       : position;
-
-    int endPos = params.contains("endPosition")
-                     ? params["endPosition"].get<int>()
-                     : maxPosition;
-
-    int steps = params.contains("steps") ? params["steps"].get<int>() : 10;
-
-    bool useExistingCurve = params.contains("useExistingCurve")
-                                ? params["useExistingCurve"].get<bool>()
-                                : false;
-
-    bool success = startAutoFocus(startPos, endPos, steps, useExistingCurve);
-
-    if (success) {
-      response.setStatus("IN_PROGRESS");
-      response.setDetails({{"startPosition", startPos},
-                           {"endPosition", endPos},
-                           {"steps", steps},
-                           {"useExistingCurve", useExistingCurve}});
-    } else {
-      response.setStatus("ERROR");
-      response.setDetails({{"error", "AUTO_FOCUS_FAILED"},
-                           {"message", "Failed to start auto focus"}});
-    }
-  } catch (const std::exception &e) {
-    SPDLOG_ERROR("Error in handleAutoFocusCommand: {}", e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "INTERNAL_ERROR"}, {"message", e.what()}});
-  }
-}
-
+} // namespace device
 } // namespace astrocomm

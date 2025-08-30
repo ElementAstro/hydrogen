@@ -31,6 +31,18 @@
     {
       "name": "crow",
       "version>=": "1.0.0"
+    },
+    {
+      "name": "grpc",
+      "version>=": "1.50.0"
+    },
+    {
+      "name": "cppzmq",
+      "version>=": "4.8.0"
+    },
+    {
+      "name": "libzmq",
+      "version>=": "4.3.0"
     }
   ],
   "features": {
@@ -76,6 +88,32 @@
         {
           "name": "doxygen",
           "host": true
+        }
+      ]
+    },
+    "mqtt": {
+      "description": "Enable MQTT communication support",
+      "dependencies": [
+        {
+          "name": "mosquitto",
+          "version>=": "2.0.0"
+        }
+      ]
+    },
+    "advanced-protocols": {
+      "description": "Enable advanced communication protocols (gRPC, ZeroMQ)",
+      "dependencies": [
+        {
+          "name": "grpc",
+          "version>=": "1.50.0"
+        },
+        {
+          "name": "cppzmq",
+          "version>=": "4.8.0"
+        },
+        {
+          "name": "libzmq",
+          "version>=": "4.3.0"
         }
       ]
     }

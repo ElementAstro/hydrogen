@@ -28,6 +28,10 @@ enum class CommunicationProtocol {
     BLUETOOTH,          // Bluetooth communication
     HTTP,               // HTTP REST API
     MQTT,               // MQTT messaging
+    GRPC,               // gRPC high-performance RPC
+    ZEROMQ,             // ZeroMQ high-performance messaging
+    COAP,               // Constrained Application Protocol
+    WEBRTC,             // WebRTC peer-to-peer communication
     CUSTOM              // Custom protocol
 };
 
@@ -59,9 +63,94 @@ struct CommunicationResponse {
     json payload;
     std::chrono::system_clock::time_point timestamp;
     std::chrono::milliseconds responseTime{0};
-    
+
     json toJson() const;
     static CommunicationResponse fromJson(const json& j);
+};
+
+/**
+ * @brief Protocol-specific configuration structures
+ */
+struct MqttConfig {
+    std::string brokerHost = "localhost";
+    uint16_t brokerPort = 1883;
+    std::string clientId;
+    std::string username;
+    std::string password;
+    bool useTls = false;
+    std::string caCertPath;
+    std::string clientCertPath;
+    std::string clientKeyPath;
+    int keepAliveInterval = 60;
+    int qosLevel = 1;
+    std::string topicPrefix = "astrocomm";
+};
+
+struct GrpcConfig {
+    std::string serverAddress = "localhost:50051";
+    bool useTls = false;
+    std::string caCertPath;
+    std::string serverCertPath;
+    std::string serverKeyPath;
+    int maxReceiveMessageSize = 4 * 1024 * 1024; // 4MB
+    int maxSendMessageSize = 4 * 1024 * 1024;    // 4MB
+    bool enableReflection = true;
+    std::chrono::milliseconds keepAliveTime{30000};
+    std::chrono::milliseconds keepAliveTimeout{5000};
+};
+
+struct ZmqConfig {
+    std::string bindAddress = "tcp://*:5555";
+    std::string connectAddress = "tcp://localhost:5555";
+    int socketType = 0; // ZMQ_REP, ZMQ_REQ, ZMQ_PUB, ZMQ_SUB, etc.
+    int highWaterMark = 1000;
+    int lingerTime = 1000;
+    bool enableCurve = false;
+    std::string publicKey;
+    std::string secretKey;
+    std::string serverKey;
+};
+
+struct CoapConfig {
+    std::string serverAddress = "localhost";
+    uint16_t serverPort = 5683;
+    bool useDtls = false;
+    std::string pskIdentity;
+    std::string pskKey;
+    int maxRetransmit = 4;
+    std::chrono::milliseconds ackTimeout{2000};
+    double ackRandomFactor = 1.5;
+};
+
+struct TcpConfig {
+    std::string serverAddress = "localhost";
+    uint16_t serverPort = 8001;
+    bool isServer = false;  // true for server mode, false for client mode
+    std::chrono::milliseconds connectTimeout{5000};
+    std::chrono::milliseconds readTimeout{30000};
+    std::chrono::milliseconds writeTimeout{5000};
+    size_t bufferSize = 8192;
+    bool enableKeepAlive = true;
+    std::chrono::seconds keepAliveInterval{30};
+    int keepAliveProbes = 3;
+    std::chrono::seconds keepAliveTimeout{10};
+    bool enableNagle = false;  // Disable Nagle's algorithm for low latency
+    size_t maxConnections = 100;  // For server mode
+    bool reuseAddress = true;
+    std::string bindInterface = "0.0.0.0";  // For server mode
+};
+
+struct StdioConfig {
+    bool enableLineBuffering = true;
+    bool enableBinaryMode = false;
+    std::chrono::milliseconds readTimeout{1000};
+    std::chrono::milliseconds writeTimeout{1000};
+    size_t bufferSize = 4096;
+    std::string lineTerminator = "\n";
+    bool enableEcho = false;
+    bool enableFlush = true;
+    std::string encoding = "utf-8";
+    bool enableErrorRedirection = true;  // Redirect stderr to stdout
 };
 
 /**

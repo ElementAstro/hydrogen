@@ -25,6 +25,9 @@ class HydrogenConan(ConanFile):
         "with_benchmarks": [True, False],
         "with_ssl": [True, False],
         "with_compression": [True, False],
+        "with_grpc": [True, False],
+        "with_zeromq": [True, False],
+        "with_mqtt": [True, False],
     }
     default_options = {
         "shared": False,
@@ -35,6 +38,9 @@ class HydrogenConan(ConanFile):
         "with_benchmarks": False,
         "with_ssl": True,
         "with_compression": True,
+        "with_grpc": True,
+        "with_zeromq": True,
+        "with_mqtt": True,
     }
     
     # Sources are located in the same place as this recipe, copy them to the recipe
@@ -65,6 +71,17 @@ class HydrogenConan(ConanFile):
         
         # Web framework dependency
         self.requires("crow/1.2.0")
+
+        # Protocol dependencies
+        if self.options.get_safe("with_grpc", False):
+            self.requires("grpc/1.60.0")
+
+        if self.options.get_safe("with_zeromq", False):
+            self.requires("zeromq/4.3.5")
+            self.requires("cppzmq/4.10.0")
+
+        if self.options.get_safe("with_mqtt", False):
+            self.requires("mosquitto/2.0.18")
     
     def build_requirements(self):
         self.tool_requires("cmake/3.28.1")

@@ -1,6 +1,8 @@
 #pragma once
 
-#include "device/device_base.h"
+#include "core/modern_device_base.h"
+#include "interfaces/device_interface.h"
+#include "behaviors/temperature_control_behavior.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -11,10 +13,12 @@
 #include <string>
 #include <thread>
 #include <vector>
-
-#undef ERROR
+#include <nlohmann/json.hpp>
 
 namespace astrocomm {
+namespace device {
+
+using json = nlohmann::json;
 
 /**
  * @brief Camera parameters structure
@@ -48,411 +52,269 @@ enum class CameraState {
   DOWNLOADING,     // Downloading data
   PROCESSING,      // Processing data
   ERROR,           // Error state
-  WAITING_TRIGGER, // Waiting for trigger
-  COOLING,         // Currently cooling
-  WARMING_UP       // Currently warming up
+  COOLING,         // Cooling
+  WARMING_UP       // Warming up
 };
 
 /**
- * @brief Image type enumeration
- */
-enum class ImageType {
-  LIGHT, // Light frame
-  DARK,  // Dark frame
-  BIAS,  // Bias frame
-  FLAT,  // Flat field
-  TEST   // Test image
-};
-
-/**
- * @brief Base camera class that provides common functionality and interfaces for all cameras
+ * @brief 相机设备实现
  *
- * This feature-rich base class allows subclasses to implement camera-specific functionality.
- * It supports exposure control, cooling, ROI settings, gain control, and various camera configurations.
+ * 基于新架构的相机实现，使用行为组件提供温度控制功能。
+ * 支持多种制造商的相机设备，提供统一的控制接口。
  */
-class Camera : public DeviceBase {
+class Camera : public core::ModernDeviceBase, 
+               public interfaces::ICamera,
+               public interfaces::ITemperatureControlled {
 public:
   /**
    * @brief Constructor
-   * @param deviceId Device ID
-   * @param manufacturer Manufacturer
-   * @param model Model
-   * @param params Camera parameters
+   * @param deviceId Device identifier
+   * @param manufacturer Manufacturer name
+   * @param model Model name
    */
-  Camera(const std::string &deviceId, const std::string &manufacturer = "ZWO",
-         const std::string &model = "ASI294MM Pro",
-         const CameraParameters &params = CameraParameters());
+  Camera(const std::string &deviceId, 
+         const std::string &manufacturer = "ZWO",
+         const std::string &model = "ASI294MC");
 
   /**
-   * @brief Destructor
+   * @brief Virtual destructor
    */
   virtual ~Camera();
 
   /**
-   * @brief Override start method
-   * @return true if successful, false otherwise
+   * @brief 获取设备类型名称
    */
-  virtual bool start() override;
+  static std::string getDeviceTypeName() { return "CAMERA"; }
 
   /**
-   * @brief Override stop method
+   * @brief 获取支持的制造商列表
    */
-  virtual void stop() override;
-
-  // ---- Exposure Control Methods ----
-  /**
-   * @brief Start exposure
-   * @param duration Exposure time (seconds)
-   * @param type Image type
-   * @param autoSave Whether to auto-save
-   * @return true if exposure started successfully, false otherwise
-   */
-  virtual bool startExposure(double duration, ImageType type = ImageType::LIGHT,
-                             bool autoSave = false);
+  static std::vector<std::string> getSupportedManufacturers() {
+    return {"ZWO", "QHY", "SBIG", "Atik", "Canon", "Nikon", "Generic"};
+  }
 
   /**
-   * @brief Abort current exposure
-   * @return true if abortion successful, false otherwise
+   * @brief 获取支持的型号列表
    */
-  virtual bool abortExposure();
+  static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
+    if (manufacturer == "ZWO") return {"ASI294MC", "ASI183MC", "ASI1600MM", "ASI533MC"};
+    if (manufacturer == "QHY") return {"QHY268C", "QHY183C", "QHY294C", "QHY600M"};
+    if (manufacturer == "SBIG") return {"STF-8300M", "STX-16803", "STXL-6303E"};
+    if (manufacturer == "Atik") return {"460EX", "383L+", "One 6.0"};
+    if (manufacturer == "Canon") return {"EOS R5", "EOS 6D Mark II"};
+    if (manufacturer == "Nikon") return {"D850", "Z7 II"};
+    return {"Generic Camera"};
+  }
+
+  // 实现ICamera接口
+  bool startExposure(double duration) override;
+  bool stopExposure() override;
+  bool isExposing() const override;
+  std::vector<uint8_t> getImageData() const override;
+  bool setGain(int gain) override;
+  int getGain() const override;
+  bool setROI(int x, int y, int width, int height) override;
+
+  // 实现ITemperatureControlled接口
+  bool setTargetTemperature(double temperature) override;
+  double getCurrentTemperature() const override;
+  double getTargetTemperature() const override;
+  bool stopTemperatureControl() override;
+  bool isTemperatureStable() const override;
+
+  // ==== 扩展功能接口 ====
 
   /**
-   * @brief Get image data
-   * @return Image data byte array
+   * @brief Start exposure (向后兼容)
    */
-  virtual std::vector<uint8_t> getImageData() const;
+  virtual bool expose(double duration, bool synchronous = false);
 
   /**
-   * @brief Save current image to file
-   * @param filename Filename, uses auto-generated name if empty
-   * @param format Image format (e.g., "FITS", "JPEG", "PNG", "RAW")
-   * @return true if saved successfully, false otherwise
+   * @brief Abort current exposure (向后兼容)
    */
-  virtual bool saveImage(const std::string &filename = "",
-                         const std::string &format = "FITS");
-
-  // ---- Camera Parameter Controls ----
-  /**
-   * @brief Set gain
-   * @param gain Gain value
-   * @return true if successful, false otherwise
-   */
-  virtual bool setGain(int gain);
+  virtual bool abort();
 
   /**
-   * @brief Set offset/bias
-   * @param offset Offset value
-   * @return true if successful, false otherwise
+   * @brief Set camera parameters
+   */
+  virtual bool setCameraParameters(const CameraParameters& params);
+
+  /**
+   * @brief Get camera parameters
+   */
+  virtual CameraParameters getCameraParameters() const;
+
+  /**
+   * @brief Set binning
+   */
+  virtual bool setBinning(int binX, int binY);
+
+  /**
+   * @brief Get current binning
+   */
+  virtual void getBinning(int& binX, int& binY) const;
+
+  /**
+   * @brief Set offset
    */
   virtual bool setOffset(int offset);
 
   /**
-   * @brief Set ROI (region of interest)
-   * @param x Starting X coordinate
-   * @param y Starting Y coordinate
-   * @param width Width
-   * @param height Height
-   * @return true if successful, false otherwise
+   * @brief Get offset
    */
-  virtual bool setROI(int x, int y, int width, int height);
+  virtual int getOffset() const;
 
-  /**
-   * @brief Set pixel binning
-   * @param binX X-direction binning
-   * @param binY Y-direction binning
-   * @return true if successful, false otherwise
-   */
-  virtual bool setBinning(int binX, int binY);
-
-  // ---- Cooling Controls ----
-  /**
-   * @brief Set target cooling temperature
-   * @param temperature Target temperature (Celsius)
-   * @return true if successful, false otherwise
-   */
-  virtual bool setCoolerTemperature(double temperature);
-
-  /**
-   * @brief Enable or disable cooler
-   * @param enabled true to enable, false to disable
-   * @return true if successful, false otherwise
-   */
-  virtual bool setCoolerEnabled(bool enabled);
-
-  /**
-   * @brief Get current temperature
-   * @return Sensor's current temperature (Celsius)
-   */
-  virtual double getCurrentTemperature() const;
-
-  /**
-   * @brief Get cooler power
-   * @return Cooler power (percentage, 0-100)
-   */
-  virtual int getCoolerPower() const;
-
-  // ---- Filter Wheel Controls ----
-  /**
-   * @brief Set filter position
-   * @param position Filter position (starting from 0)
-   * @return true if successful, false otherwise
-   */
-  virtual bool setFilterPosition(int position);
-
-  /**
-   * @brief Get current filter position
-   * @return Current filter position
-   */
-  virtual int getFilterPosition() const;
-
-  /**
-   * @brief Set filter name
-   * @param position Filter position
-   * @param name Filter name
-   * @return true if successful, false otherwise
-   */
-  virtual bool setFilterName(int position, const std::string &name);
-
-  /**
-   * @brief Get filter name
-   * @param position Filter position
-   * @return Filter name
-   */
-  virtual std::string getFilterName(int position) const;
-
-  // ---- Status Queries ----
   /**
    * @brief Get current camera state
-   * @return Camera state enum value
    */
-  virtual CameraState getState() const;
+  virtual CameraState getCameraState() const;
 
   /**
-   * @brief Get exposure progress
-   * @return Exposure progress (0.0-1.0)
+   * @brief Get exposure progress (0.0 to 1.0)
    */
   virtual double getExposureProgress() const;
 
   /**
-   * @brief Get camera parameters
-   * @return Camera parameters struct
+   * @brief Get remaining exposure time
    */
-  virtual const CameraParameters &getCameraParameters() const;
+  virtual double getRemainingExposureTime() const;
 
   /**
-   * @brief Check if camera is currently exposing
-   * @return true if exposing, false otherwise
+   * @brief Enable/disable cooler
    */
-  virtual bool isExposing() const;
-
-  // ---- Advanced Features ----
-  /**
-   * @brief Set auto exposure parameters
-   * @param targetBrightness Target brightness (0-255)
-   * @param tolerance Tolerance
-   * @return true if successful, false otherwise
-   */
-  virtual bool setAutoExposure(int targetBrightness, int tolerance = 5);
+  virtual bool setCoolerEnabled(bool enabled);
 
   /**
-   * @brief Set exposure delay (for delayed start of long exposures)
-   * @param delaySeconds Delay in seconds
-   * @return true if successful, false otherwise
+   * @brief Check if cooler is enabled
    */
-  virtual bool setExposureDelay(double delaySeconds);
+  virtual bool isCoolerEnabled() const;
 
   /**
-   * @brief Set exposure completion callback function
-   * @param callback Callback function
+   * @brief Get cooler power percentage
    */
-  virtual void setExposureCallback(
-      std::function<void(bool success, const std::string &message)> callback);
+  virtual double getCoolerPower() const;
 
   /**
-   * @brief Indicates if this device is inheritable base class
-   * Derived classes should set this to support derived control
+   * @brief Set image format
    */
-  virtual bool isBaseImplementation() const;
+  virtual bool setImageFormat(const std::string& format);
+
+  /**
+   * @brief Get supported image formats
+   */
+  virtual std::vector<std::string> getSupportedImageFormats() const;
+
+  /**
+   * @brief Save image to file
+   */
+  virtual bool saveImage(const std::string& filename, const std::string& format = "FITS");
+
+  /**
+   * @brief Get image statistics
+   */
+  virtual json getImageStatistics() const;
+
+  /**
+   * @brief Wait for exposure to complete
+   */
+  bool waitForExposureComplete(int timeoutMs = 0);
 
 protected:
-  // ---- Simulator Implementation ----
-  /**
-   * @brief Camera state update thread
-   * Derived classes can override this to provide their own implementation
-   */
-  virtual void updateLoop();
+  // 重写基类方法
+  bool initializeDevice() override;
+  bool startDevice() override;
+  void stopDevice() override;
+  bool handleDeviceCommand(const std::string& command,
+                          const json& parameters,
+                          json& result) override;
+  void updateDevice() override;
 
+private:
   /**
-   * @brief Generate simulated image data
-   * Derived classes should override this to provide their specific image types
+   * @brief 初始化相机行为组件
    */
-  virtual void generateImageData();
-
-  /**
-   * @brief Apply image effects (like noise, hot spots, etc.)
-   * @param imageData Image data
-   */
-  virtual void applyImageEffects(std::vector<uint8_t> &imageData);
-
-  // ---- Command Handlers ----
-  /**
-   * @brief Handle start exposure command
-   * @param cmd Command message
-   * @param response Response message
-   */
-  virtual void handleStartExposureCommand(const CommandMessage &cmd,
-                                          ResponseMessage &response);
+  void initializeCameraBehaviors();
 
   /**
-   * @brief Handle abort exposure command
-   * @param cmd Command message
-   * @param response Response message
+   * @brief 相机温度控制行为实现
    */
-  virtual void handleAbortExposureCommand(const CommandMessage &cmd,
-                                          ResponseMessage &response);
+  class CameraTemperatureBehavior : public behaviors::TemperatureControlBehavior {
+  public:
+    explicit CameraTemperatureBehavior(Camera* camera);
 
-  /**
-   * @brief Handle get image command
-   * @param cmd Command message
-   * @param response Response message
-   */
-  virtual void handleGetImageCommand(const CommandMessage &cmd,
-                                     ResponseMessage &response);
+  protected:
+    double readCurrentTemperature() override;
+    double readAmbientTemperature() override;
+    bool setControlPower(double power) override;
 
-  /**
-   * @brief Handle set cooler command
-   * @param cmd Command message
-   * @param response Response message
-   */
-  virtual void handleSetCoolerCommand(const CommandMessage &cmd,
-                                      ResponseMessage &response);
+  private:
+    Camera* camera_;
+  };
 
-  /**
-   * @brief Handle set ROI command
-   * @param cmd Command message
-   * @param response Response message
-   */
-  virtual void handleSetROICommand(const CommandMessage &cmd,
-                                   ResponseMessage &response);
+  // 硬件抽象接口
+  virtual bool executeExposure(double duration);
+  virtual bool executeStopExposure();
+  virtual std::vector<uint8_t> executeImageDownload();
+  virtual double readTemperature();
+  virtual bool setTemperatureControl(double power);
 
-  /**
-   * @brief Handle set gain/offset command
-   * @param cmd Command message
-   * @param response Response message
-   */
-  virtual void handleSetGainOffsetCommand(const CommandMessage &cmd,
-                                          ResponseMessage &response);
+  // 曝光线程函数
+  void exposureThreadFunction();
 
-  /**
-   * @brief Handle set filter wheel command
-   * @param cmd Command message
-   * @param response Response message
-   */
-  virtual void handleSetFilterCommand(const CommandMessage &cmd,
-                                      ResponseMessage &response);
+private:
+  // 行为组件指针
+  CameraTemperatureBehavior* temperatureBehavior_;
 
-  // ---- Helper Methods ----
-  /**
-   * @brief Send exposure progress event
-   * @param progress Progress value (0.0-1.0)
-   */
-  virtual void sendExposureProgressEvent(double progress);
+  // 相机参数
+  CameraParameters cameraParams_;
 
-  /**
-   * @brief Send exposure completion event
-   * @param relatedMessageId Related message ID
-   * @param success Whether successful
-   * @param errorMessage Error message (if failed)
-   */
-  virtual void sendExposureCompleteEvent(const std::string &relatedMessageId,
-                                         bool success = true,
-                                         const std::string &errorMessage = "");
+  // 曝光状态
+  std::atomic<CameraState> cameraState_;
+  std::atomic<double> exposureDuration_;
+  std::atomic<double> exposureStartTime_;
+  std::atomic<bool> exposureInProgress_;
 
-  /**
-   * @brief Convert string to ImageType enum
-   * @param typeStr Type string
-   * @return Image type enum
-   */
-  virtual ImageType stringToImageType(const std::string &typeStr);
+  // 图像参数
+  std::atomic<int> currentGain_;
+  std::atomic<int> currentOffset_;
+  std::atomic<int> binningX_;
+  std::atomic<int> binningY_;
+  
+  // ROI设置
+  std::atomic<int> roiX_;
+  std::atomic<int> roiY_;
+  std::atomic<int> roiWidth_;
+  std::atomic<int> roiHeight_;
 
-  /**
-   * @brief Convert ImageType enum to string
-   * @param type Image type enum
-   * @return Type string
-   */
-  virtual std::string imageTypeToString(ImageType type);
+  // 制冷参数
+  std::atomic<bool> coolerEnabled_;
+  std::atomic<double> coolerPower_;
 
-  /**
-   * @brief Convert string to CameraState enum
-   * @param stateStr State string
-   * @return Camera state enum
-   */
-  virtual CameraState stringToCameraState(const std::string &stateStr);
+  // 图像数据
+  mutable std::mutex imageDataMutex_;
+  std::vector<uint8_t> imageData_;
 
-  /**
-   * @brief Convert CameraState enum to string
-   * @param state Camera state enum
-   * @return State string
-   */
-  virtual std::string cameraStateToString(CameraState state);
+  // 曝光线程
+  std::thread exposureThread_;
+  std::atomic<bool> exposureThreadRunning_;
 
-  // ---- Simulated Camera State ----
-  std::atomic<CameraState> cameraState;    // Camera state
-  CameraParameters cameraParams;           // Camera parameters
-  std::atomic<double> exposureDuration;    // Exposure duration (seconds)
-  std::atomic<double> exposureProgress;    // Exposure progress (0-1)
-  std::atomic<ImageType> currentImageType; // Current image type
-  std::atomic<bool> autoSave;              // Auto-save image
-  std::atomic<int> gain;                   // Gain
-  std::atomic<int> offset;                 // Offset
-  std::atomic<double> sensorTemperature;   // Sensor temperature
-  std::atomic<double> targetTemperature;   // Target temperature
-  std::atomic<bool> coolerEnabled;         // Cooler enabled
-  std::atomic<int> coolerPower;            // Cooler power
-  std::atomic<int> currentFilterPosition;  // Current filter position
+  // 曝光完成条件变量
+  mutable std::mutex exposureCompleteMutex_;
+  std::condition_variable exposureCompleteCV_;
 
-  // ROI and binning settings
-  struct {
-    int x = 0;
-    int y = 0;
-    int width = 0;
-    int height = 0;
-    int binX = 1;
-    int binY = 1;
-  } roi;
-
-  // Auto exposure parameters
-  struct {
-    bool enabled = false;
-    int targetBrightness = 128;
-    int tolerance = 5;
-  } autoExposure;
-
-  // Image data
-  mutable std::mutex imageDataMutex;
-  std::vector<uint8_t> imageData;
-
-  // Filter name mapping
-  mutable std::mutex filterMutex;
-  std::map<int, std::string> filterNames;
-
-  // Exposure control
-  std::string currentExposureMessageId;
-  std::atomic<double> exposureDelay;
-  std::mutex callbackMutex;
-  std::function<void(bool, const std::string &)> exposureCallback;
-
-  // Update thread
-  std::thread updateThread;
-  std::atomic<bool> updateRunning;
-  std::mutex stateMutex;
-  std::condition_variable exposureCV; // For waiting for exposure completion
-
-  // Noise simulation
-  std::mt19937 rng; // Random number generator
-
-  // Base class flag
-  bool baseImplementation;
+  // 随机数生成器（用于模拟）
+  mutable std::mt19937 randomGenerator_;
 };
 
+/**
+ * @brief 相机工厂
+ */
+class CameraFactory : public core::TypedDeviceFactory<Camera> {
+public:
+  CameraFactory(const std::string& manufacturer = "Generic", 
+                const std::string& model = "Camera")
+      : TypedDeviceFactory<Camera>(manufacturer, model) {}
+};
+
+} // namespace device
 } // namespace astrocomm

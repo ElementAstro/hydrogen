@@ -13,6 +13,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/HydrogenCompiler.cmake)
 add_library(astrocomm_client STATIC
     src/client.cpp
     src/device_client.cpp
+    # Refactored component files
+    ../client/connection_manager.cpp
+    ../client/message_processor.cpp
+    ../client/device_manager.cpp
+    ../client/command_executor.cpp
+    ../client/subscription_manager.cpp
+    ../client/message_queue_manager.cpp
+    ../client/device_client_refactored.cpp
 )
 
 # =============================================================================
@@ -41,6 +49,7 @@ hydrogen_link_system_dependencies(astrocomm_client)
 # Core dependencies
 target_link_libraries(astrocomm_client
     PUBLIC
+        AstroComm::Common
         AstroComm::Core
     PRIVATE
         Threads::Threads

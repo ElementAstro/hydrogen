@@ -1,0 +1,307 @@
+syntax = "proto3";
+
+package astrocomm.proto;
+
+option csharp_namespace = "AstroComm.Proto";
+option java_package = "com.astrocomm.proto";
+option java_outer_classname = "HealthProto";
+
+// Health monitoring service for system components
+service HealthService {
+  // Get overall system health status
+  rpc GetOverallHealth(HealthRequest) returns (HealthResponse);
+  
+  // Get health status of a specific component
+  rpc GetComponentHealth(ComponentHealthRequest) returns (ComponentHealthResponse);
+  
+  // Get all health checks
+  rpc GetAllHealthChecks(AllHealthChecksRequest) returns (AllHealthChecksResponse);
+  
+  // Register a new health check
+  rpc RegisterHealthCheck(RegisterHealthCheckRequest) returns (RegisterHealthCheckResponse);
+  
+  // Unregister a health check
+  rpc UnregisterHealthCheck(UnregisterHealthCheckRequest) returns (UnregisterHealthCheckResponse);
+  
+  // Perform health check on demand
+  rpc PerformHealthCheck(PerformHealthCheckRequest) returns (PerformHealthCheckResponse);
+  
+  // Get system metrics
+  rpc GetSystemMetrics(SystemMetricsRequest) returns (SystemMetricsResponse);
+  
+  // Get health alerts
+  rpc GetHealthAlerts(HealthAlertsRequest) returns (HealthAlertsResponse);
+  
+  // Acknowledge a health alert
+  rpc AcknowledgeAlert(AcknowledgeAlertRequest) returns (AcknowledgeAlertResponse);
+  
+  // Stream health events in real-time
+  rpc StreamHealthEvents(StreamHealthEventsRequest) returns (stream HealthEvent);
+}
+
+// Health status levels
+enum HealthStatus {
+  UNKNOWN = 0;
+  HEALTHY = 1;
+  WARNING = 2;
+  UNHEALTHY = 3;
+  CRITICAL = 4;
+}
+
+// Alert severity levels
+enum AlertSeverity {
+  INFO = 0;
+  WARNING = 1;
+  ERROR = 2;
+  CRITICAL = 3;
+}
+
+// Health check types
+enum HealthCheckType {
+  BASIC = 0;
+  DETAILED = 1;
+  PERFORMANCE = 2;
+  CONNECTIVITY = 3;
+  RESOURCE = 4;
+}
+
+// Core health check structure
+message HealthCheck {
+  string component_id = 1;
+  string name = 2;
+  HealthStatus status = 3;
+  string message = 4;
+  int64 last_checked = 5;
+  int64 check_duration_ms = 6;
+  HealthCheckType type = 7;
+  map<string, string> details = 8;
+  repeated string tags = 9;
+}
+
+// System metrics
+message SystemMetrics {
+  double cpu_usage_percent = 1;
+  int64 memory_usage_bytes = 2;
+  int64 memory_total_bytes = 3;
+  double memory_usage_percent = 4;
+  int64 disk_usage_bytes = 5;
+  int64 disk_total_bytes = 6;
+  double disk_usage_percent = 7;
+  int64 network_bytes_in = 8;
+  int64 network_bytes_out = 9;
+  int64 uptime_seconds = 10;
+  int32 active_connections = 11;
+  double load_average_1m = 12;
+  double load_average_5m = 13;
+  double load_average_15m = 14;
+  int64 timestamp = 15;
+  map<string, double> custom_metrics = 16;
+}
+
+// Health alert
+message HealthAlert {
+  string id = 1;
+  string component_id = 2;
+  AlertSeverity severity = 3;
+  string title = 4;
+  string message = 5;
+  int64 created_at = 6;
+  int64 acknowledged_at = 7;
+  bool acknowledged = 8;
+  string acknowledged_by = 9;
+  map<string, string> context = 10;
+  repeated string tags = 11;
+}
+
+// Basic health request
+message HealthRequest {
+  bool include_details = 1;
+  repeated string component_filter = 2;
+  HealthStatus min_status = 3;
+}
+
+// Health response
+message HealthResponse {
+  HealthStatus overall_status = 1;
+  string message = 2;
+  repeated HealthCheck checks = 3;
+  SystemMetrics metrics = 4;
+  int64 timestamp = 5;
+  int32 total_components = 6;
+  int32 healthy_components = 7;
+  int32 warning_components = 8;
+  int32 unhealthy_components = 9;
+}
+
+// Component health request
+message ComponentHealthRequest {
+  string component_id = 1;
+  bool include_details = 2;
+  bool include_history = 3;
+  int32 history_limit = 4;
+}
+
+// Component health response
+message ComponentHealthResponse {
+  bool success = 1;
+  HealthCheck health_check = 2;
+  repeated HealthCheck history = 3;
+  string error_message = 4;
+  SystemMetrics component_metrics = 5;
+}
+
+// All health checks request
+message AllHealthChecksRequest {
+  HealthStatus status_filter = 1;
+  HealthCheckType type_filter = 2;
+  repeated string component_filter = 3;
+  repeated string tag_filter = 4;
+  bool include_details = 5;
+}
+
+// All health checks response
+message AllHealthChecksResponse {
+  bool success = 1;
+  repeated HealthCheck checks = 2;
+  string error_message = 3;
+  int32 total_count = 4;
+  map<string, int32> status_counts = 5;
+}
+
+// Register health check request
+message RegisterHealthCheckRequest {
+  string component_id = 1;
+  string name = 2;
+  HealthCheckType type = 3;
+  int32 check_interval_seconds = 4;
+  int32 timeout_seconds = 5;
+  repeated string tags = 6;
+  map<string, string> configuration = 7;
+}
+
+// Register health check response
+message RegisterHealthCheckResponse {
+  bool success = 1;
+  string error_message = 2;
+  string check_id = 3;
+}
+
+// Unregister health check request
+message UnregisterHealthCheckRequest {
+  string component_id = 1;
+  string check_id = 2;
+}
+
+// Unregister health check response
+message UnregisterHealthCheckResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// Perform health check request
+message PerformHealthCheckRequest {
+  string component_id = 1;
+  string check_id = 2;
+  bool force_check = 3;
+  int32 timeout_seconds = 4;
+}
+
+// Perform health check response
+message PerformHealthCheckResponse {
+  bool success = 1;
+  HealthCheck result = 2;
+  string error_message = 3;
+}
+
+// System metrics request
+message SystemMetricsRequest {
+  bool include_custom_metrics = 1;
+  repeated string metric_filter = 2;
+  int64 since_timestamp = 3;
+}
+
+// System metrics response
+message SystemMetricsResponse {
+  bool success = 1;
+  SystemMetrics current_metrics = 2;
+  repeated SystemMetrics historical_metrics = 3;
+  string error_message = 4;
+}
+
+// Health alerts request
+message HealthAlertsRequest {
+  AlertSeverity min_severity = 1;
+  bool include_acknowledged = 2;
+  repeated string component_filter = 3;
+  int64 since_timestamp = 4;
+  int32 limit = 5;
+}
+
+// Health alerts response
+message HealthAlertsResponse {
+  bool success = 1;
+  repeated HealthAlert alerts = 2;
+  string error_message = 3;
+  int32 total_count = 4;
+  int32 unacknowledged_count = 5;
+}
+
+// Acknowledge alert request
+message AcknowledgeAlertRequest {
+  string alert_id = 1;
+  string acknowledged_by = 2;
+  string acknowledgment_note = 3;
+}
+
+// Acknowledge alert response
+message AcknowledgeAlertResponse {
+  bool success = 1;
+  string error_message = 2;
+  int64 acknowledged_at = 3;
+}
+
+// Stream health events request
+message StreamHealthEventsRequest {
+  repeated string component_filter = 1;
+  HealthStatus min_status = 2;
+  AlertSeverity min_alert_severity = 3;
+  bool include_metrics = 4;
+}
+
+// Health event for streaming
+message HealthEvent {
+  string event_type = 1; // "health_check", "alert", "metrics", "status_change"
+  string component_id = 2;
+  HealthCheck health_check = 3;
+  HealthAlert alert = 4;
+  SystemMetrics metrics = 5;
+  int64 timestamp = 6;
+  map<string, string> event_metadata = 7;
+}
+
+// Health statistics
+message HealthStatistics {
+  int32 total_components = 1;
+  int32 healthy_components = 2;
+  int32 warning_components = 3;
+  int32 unhealthy_components = 4;
+  int32 critical_components = 5;
+  int32 total_checks_performed = 6;
+  int32 failed_checks = 7;
+  double average_check_duration_ms = 8;
+  int32 active_alerts = 9;
+  int32 critical_alerts = 10;
+  int64 uptime_seconds = 11;
+  double system_load = 12;
+}
+
+// Health configuration
+message HealthConfiguration {
+  int32 default_check_interval_seconds = 1;
+  int32 default_timeout_seconds = 2;
+  int32 max_history_entries = 3;
+  bool enable_auto_recovery = 4;
+  int32 alert_cooldown_seconds = 5;
+  repeated string notification_channels = 6;
+  map<string, string> global_settings = 7;
+}

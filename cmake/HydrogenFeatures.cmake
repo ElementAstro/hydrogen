@@ -197,6 +197,29 @@ function(hydrogen_define_all_features)
         ENABLES SSL WEBSOCKETS
         ENABLED_BY_DEFAULT
     )
+
+    hydrogen_define_feature(MQTT_SUPPORT
+        DESCRIPTION "Enable MQTT broker/client support"
+        CATEGORY "Networking"
+        REQUIRED_PACKAGES Mongoose
+        ENABLES SSL
+        ENABLED_BY_DEFAULT
+    )
+
+    hydrogen_define_feature(GRPC_SUPPORT
+        DESCRIPTION "Enable gRPC communication support"
+        CATEGORY "Networking"
+        REQUIRED_PACKAGES gRPC
+        ENABLES SSL
+        ENABLED_BY_DEFAULT
+    )
+
+    hydrogen_define_feature(ZEROMQ_SUPPORT
+        DESCRIPTION "Enable ZeroMQ communication support"
+        CATEGORY "Networking"
+        REQUIRED_PACKAGES cppzmq libzmq
+        ENABLED_BY_DEFAULT
+    )
     
     # Device-specific features
     hydrogen_define_feature(TELESCOPE_SUPPORT

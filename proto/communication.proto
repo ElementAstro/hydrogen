@@ -1,0 +1,253 @@
+syntax = "proto3";
+
+package astrocomm.proto;
+
+option csharp_namespace = "AstroComm.Proto";
+option java_package = "com.astrocomm.proto";
+option java_outer_classname = "CommunicationProto";
+
+// Communication service for device and client messaging
+service CommunicationService {
+  // Send a message to a specific recipient
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  
+  // Broadcast a message to multiple recipients
+  rpc BroadcastMessage(BroadcastMessageRequest) returns (BroadcastMessageResponse);
+  
+  // Subscribe to a topic for receiving messages
+  rpc SubscribeToTopic(SubscribeRequest) returns (SubscribeResponse);
+  
+  // Unsubscribe from a topic
+  rpc UnsubscribeFromTopic(UnsubscribeRequest) returns (UnsubscribeResponse);
+  
+  // Get messages for a specific recipient
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+  
+  // Mark a message as read
+  rpc MarkMessageAsRead(MarkMessageRequest) returns (MarkMessageResponse);
+  
+  // Get delivery status of a message
+  rpc GetDeliveryStatus(DeliveryStatusRequest) returns (DeliveryStatusResponse);
+  
+  // Stream messages in real-time
+  rpc StreamMessages(StreamMessagesRequest) returns (stream MessageEvent);
+}
+
+// Message priority levels
+enum MessagePriority {
+  LOW = 0;
+  NORMAL = 1;
+  HIGH = 2;
+  URGENT = 3;
+}
+
+// Message types
+enum MessageType {
+  TEXT = 0;
+  COMMAND = 1;
+  STATUS = 2;
+  ALERT = 3;
+  DATA = 4;
+}
+
+// Message status
+enum MessageStatus {
+  PENDING = 0;
+  SENT = 1;
+  DELIVERED = 2;
+  READ = 3;
+  FAILED = 4;
+}
+
+// Communication protocol types
+enum CommunicationProtocol {
+  HTTP = 0;
+  WEBSOCKET = 1;
+  GRPC = 2;
+  MQTT = 3;
+  ZEROMQ = 4;
+}
+
+// Core message structure
+message Message {
+  string id = 1;
+  string sender_id = 2;
+  string recipient_id = 3;
+  string content = 4;
+  MessageType type = 5;
+  MessagePriority priority = 6;
+  MessageStatus status = 7;
+  int64 timestamp = 8;
+  int64 sent_at = 9;
+  int64 delivered_at = 10;
+  int64 read_at = 11;
+  map<string, string> metadata = 12;
+}
+
+// Send message request
+message SendMessageRequest {
+  string sender_id = 1;
+  string recipient_id = 2;
+  string content = 3;
+  MessageType type = 4;
+  MessagePriority priority = 5;
+  map<string, string> metadata = 6;
+  bool request_delivery_receipt = 7;
+}
+
+// Send message response
+message SendMessageResponse {
+  bool success = 1;
+  string message_id = 2;
+  string error_message = 3;
+  int64 timestamp = 4;
+}
+
+// Broadcast message request
+message BroadcastMessageRequest {
+  string sender_id = 1;
+  repeated string recipient_ids = 2;
+  string content = 3;
+  MessageType type = 4;
+  MessagePriority priority = 5;
+  map<string, string> metadata = 6;
+}
+
+// Broadcast message response
+message BroadcastMessageResponse {
+  bool success = 1;
+  repeated string message_ids = 2;
+  string error_message = 3;
+  int32 successful_sends = 4;
+  int32 failed_sends = 5;
+}
+
+// Subscribe to topic request
+message SubscribeRequest {
+  string client_id = 1;
+  string topic = 2;
+  CommunicationProtocol protocol = 3;
+  map<string, string> options = 4;
+}
+
+// Subscribe response
+message SubscribeResponse {
+  bool success = 1;
+  string error_message = 2;
+  string subscription_id = 3;
+}
+
+// Unsubscribe request
+message UnsubscribeRequest {
+  string client_id = 1;
+  string topic = 2;
+  string subscription_id = 3;
+}
+
+// Unsubscribe response
+message UnsubscribeResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// Get messages request
+message GetMessagesRequest {
+  string recipient_id = 1;
+  MessageStatus status_filter = 2;
+  int32 limit = 3;
+  int64 since_timestamp = 4;
+  bool include_metadata = 5;
+}
+
+// Get messages response
+message GetMessagesResponse {
+  bool success = 1;
+  repeated Message messages = 2;
+  string error_message = 3;
+  int32 total_count = 4;
+  bool has_more = 5;
+}
+
+// Mark message as read request
+message MarkMessageRequest {
+  string message_id = 1;
+  string recipient_id = 2;
+  int64 read_timestamp = 3;
+}
+
+// Mark message response
+message MarkMessageResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// Delivery status request
+message DeliveryStatusRequest {
+  string message_id = 1;
+  string sender_id = 2;
+}
+
+// Delivery status response
+message DeliveryStatusResponse {
+  bool success = 1;
+  MessageStatus status = 2;
+  string error_message = 3;
+  int64 last_updated = 4;
+  repeated DeliveryReceipt receipts = 5;
+}
+
+// Delivery receipt
+message DeliveryReceipt {
+  string message_id = 1;
+  string recipient_id = 2;
+  MessageStatus status = 3;
+  int64 timestamp = 4;
+  string details = 5;
+}
+
+// Stream messages request
+message StreamMessagesRequest {
+  string client_id = 1;
+  repeated string topics = 2;
+  MessageType type_filter = 3;
+  MessagePriority min_priority = 4;
+}
+
+// Message event for streaming
+message MessageEvent {
+  string event_type = 1; // "message", "status_update", "error"
+  Message message = 2;
+  string topic = 3;
+  int64 timestamp = 4;
+  map<string, string> event_metadata = 5;
+}
+
+// Topic subscription info
+message TopicSubscription {
+  string client_id = 1;
+  string topic = 2;
+  CommunicationProtocol protocol = 3;
+  int64 subscribed_at = 4;
+  map<string, string> options = 5;
+}
+
+// Communication statistics
+message CommunicationStatistics {
+  int64 total_messages_sent = 1;
+  int64 total_messages_received = 2;
+  int64 total_broadcasts = 3;
+  int64 total_subscriptions = 4;
+  int64 active_connections = 5;
+  double messages_per_second = 6;
+  int64 total_errors = 7;
+  map<string, int64> protocol_stats = 8;
+}
+
+// Error information
+message ErrorInfo {
+  string code = 1;
+  string message = 2;
+  string details = 3;
+  int64 timestamp = 4;
+  map<string, string> context = 5;
+}

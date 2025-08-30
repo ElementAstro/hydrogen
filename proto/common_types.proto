@@ -1,0 +1,331 @@
+syntax = "proto3";
+
+package astrocomm.grpc;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+// Device information and status
+message DeviceInfo {
+  string device_id = 1;
+  string device_type = 2;
+  string device_name = 3;
+  string description = 4;
+  string manufacturer = 5;
+  string model = 6;
+  string firmware_version = 7;
+  string hardware_version = 8;
+  repeated string capabilities = 9;
+  map<string, string> properties = 10;
+  DeviceConfiguration config = 11;
+  google.protobuf.Timestamp registered_at = 12;
+  google.protobuf.Timestamp last_seen = 13;
+}
+
+message DeviceStatus {
+  string device_id = 1;
+  DeviceState state = 2;
+  HealthStatus health = 3;
+  string status_message = 4;
+  double cpu_usage_percent = 5;
+  double memory_usage_percent = 6;
+  double temperature_celsius = 7;
+  int64 uptime_seconds = 8;
+  repeated string active_tasks = 9;
+  repeated string errors = 10;
+  repeated string warnings = 11;
+  google.protobuf.Timestamp last_updated = 12;
+}
+
+message DeviceConfiguration {
+  map<string, ConfigValue> settings = 1;
+  repeated string enabled_features = 2;
+  CommunicationConfig communication = 3;
+  SecurityConfig security = 4;
+  LoggingConfig logging = 5;
+  google.protobuf.Timestamp last_updated = 6;
+}
+
+message ConfigValue {
+  oneof value {
+    string string_value = 1;
+    int64 int_value = 2;
+    double double_value = 3;
+    bool bool_value = 4;
+    bytes bytes_value = 5;
+  }
+  string description = 6;
+  bool is_sensitive = 7;
+}
+
+message CommunicationConfig {
+  repeated ProtocolConfig protocols = 1;
+  int32 heartbeat_interval_seconds = 2;
+  int32 timeout_seconds = 3;
+  int32 retry_attempts = 4;
+  bool enable_compression = 5;
+  bool enable_encryption = 6;
+}
+
+message ProtocolConfig {
+  string protocol_type = 1;
+  bool enabled = 2;
+  map<string, string> settings = 3;
+  int32 port = 4;
+  string bind_address = 5;
+}
+
+message SecurityConfig {
+  bool authentication_required = 1;
+  repeated string allowed_users = 2;
+  repeated string allowed_roles = 3;
+  CertificateConfig certificates = 4;
+  EncryptionConfig encryption = 5;
+}
+
+message CertificateConfig {
+  string ca_cert_path = 1;
+  string server_cert_path = 2;
+  string server_key_path = 3;
+  string client_cert_path = 4;
+  string client_key_path = 5;
+  bool verify_client_cert = 6;
+}
+
+message EncryptionConfig {
+  string algorithm = 1;
+  int32 key_size = 2;
+  string key_exchange_method = 3;
+  bool perfect_forward_secrecy = 4;
+}
+
+message LoggingConfig {
+  string log_level = 1;
+  string log_format = 2;
+  repeated string log_outputs = 3;
+  bool enable_structured_logging = 4;
+  int32 max_log_file_size_mb = 5;
+  int32 max_log_files = 6;
+}
+
+// Device metrics and monitoring
+message DeviceMetrics {
+  string device_id = 1;
+  repeated MetricSeries metrics = 2;
+  google.protobuf.Timestamp collected_at = 3;
+}
+
+message MetricSeries {
+  string name = 1;
+  string unit = 2;
+  MetricType type = 3;
+  repeated MetricPoint points = 4;
+  map<string, string> labels = 5;
+}
+
+message MetricPoint {
+  google.protobuf.Timestamp timestamp = 1;
+  double value = 2;
+  map<string, string> tags = 3;
+}
+
+// Command history and execution
+message CommandHistoryEntry {
+  string command_id = 1;
+  string device_id = 2;
+  string command = 3;
+  google.protobuf.Any parameters = 4;
+  CommandStatus status = 5;
+  google.protobuf.Any result = 6;
+  string error_message = 7;
+  google.protobuf.Timestamp issued_at = 8;
+  google.protobuf.Timestamp started_at = 9;
+  google.protobuf.Timestamp completed_at = 10;
+  int64 execution_time_ms = 11;
+  string issued_by = 12;
+}
+
+// System health and status
+message SystemHealth {
+  HealthStatus overall_status = 1;
+  repeated ComponentHealth components = 2;
+  repeated string issues = 3;
+  double cpu_usage_percent = 4;
+  double memory_usage_percent = 5;
+  double disk_usage_percent = 6;
+  int32 active_connections = 7;
+  google.protobuf.Timestamp last_checked = 8;
+}
+
+message ComponentHealth {
+  string component_name = 1;
+  HealthStatus status = 2;
+  string status_message = 3;
+  double response_time_ms = 4;
+  google.protobuf.Timestamp last_checked = 5;
+}
+
+message ProtocolStatus {
+  string protocol_name = 1;
+  bool enabled = 2;
+  bool running = 3;
+  string bind_address = 4;
+  int32 port = 5;
+  int32 active_connections = 6;
+  int64 messages_sent = 7;
+  int64 messages_received = 8;
+  repeated string errors = 9;
+  google.protobuf.Timestamp last_activity = 10;
+}
+
+message SystemMetrics {
+  double cpu_usage_percent = 1;
+  double memory_usage_percent = 2;
+  double disk_usage_percent = 3;
+  double network_in_mbps = 4;
+  double network_out_mbps = 5;
+  int32 active_connections = 6;
+  int32 total_devices = 7;
+  int32 online_devices = 8;
+  int64 messages_per_second = 9;
+  double average_response_time_ms = 10;
+}
+
+// Presence and discovery
+message PresenceStatus {
+  PresenceState state = 1;
+  string status_message = 2;
+  google.protobuf.Timestamp last_seen = 3;
+  map<string, string> metadata = 4;
+}
+
+// Error handling
+message ErrorInfo {
+  string error_code = 1;
+  string error_message = 2;
+  string error_details = 3;
+  google.protobuf.Timestamp occurred_at = 4;
+  string component = 5;
+  string operation = 6;
+}
+
+// Enumerations
+enum DeviceState {
+  DEVICE_STATE_UNKNOWN = 0;
+  DEVICE_STATE_OFFLINE = 1;
+  DEVICE_STATE_ONLINE = 2;
+  DEVICE_STATE_CONNECTING = 3;
+  DEVICE_STATE_DISCONNECTING = 4;
+  DEVICE_STATE_ERROR = 5;
+  DEVICE_STATE_MAINTENANCE = 6;
+  DEVICE_STATE_UPDATING = 7;
+}
+
+enum HealthStatus {
+  HEALTH_UNKNOWN = 0;
+  HEALTH_HEALTHY = 1;
+  HEALTH_WARNING = 2;
+  HEALTH_CRITICAL = 3;
+  HEALTH_DEGRADED = 4;
+}
+
+enum CommandStatus {
+  COMMAND_STATUS_UNKNOWN = 0;
+  COMMAND_STATUS_PENDING = 1;
+  COMMAND_STATUS_RUNNING = 2;
+  COMMAND_STATUS_COMPLETED = 3;
+  COMMAND_STATUS_FAILED = 4;
+  COMMAND_STATUS_CANCELLED = 5;
+  COMMAND_STATUS_TIMEOUT = 6;
+}
+
+enum MetricType {
+  METRIC_TYPE_UNKNOWN = 0;
+  METRIC_TYPE_COUNTER = 1;
+  METRIC_TYPE_GAUGE = 2;
+  METRIC_TYPE_HISTOGRAM = 3;
+  METRIC_TYPE_SUMMARY = 4;
+}
+
+enum PresenceState {
+  PRESENCE_UNKNOWN = 0;
+  PRESENCE_ONLINE = 1;
+  PRESENCE_OFFLINE = 2;
+  PRESENCE_AWAY = 3;
+  PRESENCE_BUSY = 4;
+  PRESENCE_IDLE = 5;
+}
+
+// Authentication and authorization
+message AuthenticationInfo {
+  string user_id = 1;
+  string username = 2;
+  repeated string roles = 3;
+  repeated string permissions = 4;
+  google.protobuf.Timestamp authenticated_at = 5;
+  google.protobuf.Timestamp expires_at = 6;
+  string session_id = 7;
+}
+
+message AuthorizationContext {
+  AuthenticationInfo auth_info = 1;
+  string requested_resource = 2;
+  string requested_action = 3;
+  map<string, string> context = 4;
+}
+
+// Pagination and filtering
+message PaginationInfo {
+  int32 page_size = 1;
+  string page_token = 2;
+  int32 total_count = 3;
+  string next_page_token = 4;
+  string previous_page_token = 5;
+}
+
+message FilterCriteria {
+  repeated FilterCondition conditions = 1;
+  string logical_operator = 2; // AND, OR
+}
+
+message FilterCondition {
+  string field = 1;
+  string operator = 2; // EQ, NE, GT, LT, GE, LE, IN, NOT_IN, CONTAINS, STARTS_WITH, ENDS_WITH
+  google.protobuf.Any value = 3;
+}
+
+message SortCriteria {
+  repeated SortField fields = 1;
+}
+
+message SortField {
+  string field = 1;
+  SortDirection direction = 2;
+}
+
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  SORT_DIRECTION_ASC = 1;
+  SORT_DIRECTION_DESC = 2;
+}
+
+// Batch operations
+message BatchRequest {
+  repeated google.protobuf.Any requests = 1;
+  bool fail_on_first_error = 2;
+  int32 max_parallel_operations = 3;
+}
+
+message BatchResponse {
+  repeated BatchOperationResult results = 1;
+  bool all_succeeded = 2;
+  int32 successful_count = 3;
+  int32 failed_count = 4;
+}
+
+message BatchOperationResult {
+  bool success = 1;
+  google.protobuf.Any response = 2;
+  ErrorInfo error = 3;
+  int32 operation_index = 4;
+}

@@ -1,690 +1,611 @@
-#include "device/filter_wheel.h"
-
-#include <spdlog/spdlog.h> // Use spdlog for logging
-
+#include "filter_wheel.h"
+#include "behaviors/movable_behavior.h"
+#include <spdlog/spdlog.h>
+#include <fstream>
 #include <algorithm>
-#include <chrono>
-#include <iomanip>
-#include <sstream>
 
 namespace astrocomm {
+namespace device {
 
-FilterWheel::FilterWheel(const std::string &deviceId,
-                         const std::string &manufacturer,
-                         const std::string &model)
-    : DeviceBase(deviceId, "FILTER_WHEEL", manufacturer, model), position(0),
-      targetPosition(0), filterCount(5), isMoving(false), moveDirection(1),
-      updateRunning(false) {
+// FilterWheelMovableBehavior implementation
+FilterWheel::FilterWheelMovableBehavior::FilterWheelMovableBehavior(FilterWheel* filterWheel)
+    : MovableBehavior("filter_wheel_movable"), filterWheel_(filterWheel) {
+}
 
-  try {
-    // Initialize filter names and offsets
-    filterNames = {"Red", "Green", "Blue", "Luminance", "H-Alpha"};
-    filterOffsets = {0, 0, 0, 0, 0}; // Default: no offsets
+bool FilterWheel::FilterWheelMovableBehavior::executeMovement(int targetPosition) {
+    return filterWheel_->executeFilterChange(targetPosition);
+}
 
-    // Initialize properties
-    setProperty("position", position);
-    setProperty("filterCount", filterCount);
-    setProperty("filterNames", filterNames);
-    setProperty("filterOffsets", filterOffsets);
-    setProperty("isMoving", false);
-    setProperty("connected", false);
-    setProperty("currentFilter", getCurrentFilterName());
+bool FilterWheel::FilterWheelMovableBehavior::executeStop() {
+    return filterWheel_->executeStop();
+}
 
-    // Set capabilities
-    capabilities = {"NAMED_FILTERS", "FILTER_OFFSETS"};
+bool FilterWheel::FilterWheelMovableBehavior::executeHome() {
+    return filterWheel_->executeHome();
+}
 
-    // Register command handlers
-    registerCommandHandler("SET_POSITION", [this](const CommandMessage &cmd,
-                                                  ResponseMessage &response) {
-      handleSetPositionCommand(cmd, response);
-    });
-
-    registerCommandHandler(
-        "SET_FILTER_NAMES",
-        [this](const CommandMessage &cmd, ResponseMessage &response) {
-          handleSetFilterNamesCommand(cmd, response);
-        });
-
-    registerCommandHandler(
-        "SET_FILTER_OFFSETS",
-        [this](const CommandMessage &cmd, ResponseMessage &response) {
-          handleSetFilterOffsetsCommand(cmd, response);
-        });
-
-    registerCommandHandler(
-        "ABORT", [this](const CommandMessage &cmd, ResponseMessage &response) {
-          handleAbortCommand(cmd, response);
-        });
-
-    spdlog::info("FilterWheel device {} initialized with {} filters", deviceId,
-                 filterCount);
-  } catch (const std::exception &e) {
-    spdlog::error("Error initializing FilterWheel {}: {}", deviceId, e.what());
-    throw FilterWheelException("Failed to initialize filter wheel: " +
-                               std::string(e.what()));
-  }
+// FilterWheel implementation
+FilterWheel::FilterWheel(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
+    : ModernDeviceBase(deviceId, "FILTER_WHEEL", manufacturer, model)
+    , movableBehavior_(nullptr)
+    , filterCount_(5) // Default to 5 filters
+    , wheelDiameter_(50.0) // Default 50mm diameter
+{
+    // Set default filter count based on manufacturer
+    if (manufacturer == "ZWO") {
+        filterCount_ = 7; // EFW typically has 7 positions
+        wheelDiameter_ = 36.0;
+    } else if (manufacturer == "QHY") {
+        filterCount_ = 5; // CFW typically has 5 positions
+        wheelDiameter_ = 31.0;
+    } else if (manufacturer == "SBIG") {
+        filterCount_ = 5;
+        wheelDiameter_ = 50.0;
+    }
+    
+    initializeDefaultFilters();
+    
+    SPDLOG_INFO("FilterWheel {} created with manufacturer: {}, model: {}, {} filters", 
+                deviceId, manufacturer, model, filterCount_.load());
 }
 
 FilterWheel::~FilterWheel() {
-  try {
     stop();
-  } catch (const std::exception &e) {
-    // Log error but don't rethrow in destructor
-    spdlog::error("Error in FilterWheel {} destructor: {}", deviceId, e.what());
-  }
 }
 
-bool FilterWheel::start() {
-  try {
-    if (!DeviceBase::start()) {
-      return false;
-    }
-
-    // Start update thread
-    updateRunning = true;
-    updateThread = std::thread(&FilterWheel::updateLoop, this);
-
-    setProperty("connected", true);
-    spdlog::info("FilterWheel {} started", deviceId);
+bool FilterWheel::initializeDevice() {
+    initializeFilterWheelBehaviors();
+    
+    // Initialize filter wheel properties
+    setProperty("filterCount", filterCount_.load());
+    setProperty("wheelDiameter", wheelDiameter_.load());
+    setProperty("currentFilter", getCurrentPosition());
+    
     return true;
-  } catch (const std::exception &e) {
-    spdlog::error("Failed to start FilterWheel {}: {}", deviceId, e.what());
-    setProperty("connected", false);
-    updateRunning = false;
+}
+
+bool FilterWheel::startDevice() {
+    return true; // MovableBehavior handles the movement thread
+}
+
+void FilterWheel::stopDevice() {
+    // Stop any ongoing filter change
+    if (isMoving()) {
+        stopMovement();
+    }
+}
+
+void FilterWheel::initializeFilterWheelBehaviors() {
+    // Add movable behavior for filter positioning
+    movableBehavior_ = new FilterWheelMovableBehavior(this);
+    addBehavior(std::unique_ptr<behaviors::DeviceBehavior>(movableBehavior_));
+}
+
+// IMovable interface implementation (delegated to MovableBehavior)
+bool FilterWheel::moveToPosition(int position) {
+    if (!validateFilterPosition(position)) {
+        SPDLOG_ERROR("FilterWheel {} invalid filter position: {}", getDeviceId(), position);
+        return false;
+    }
+    
+    if (movableBehavior_) {
+        return movableBehavior_->moveToPosition(position);
+    }
     return false;
-  }
 }
 
-void FilterWheel::stop() {
-  try {
-    // Stop update thread
-    updateRunning = false;
-    if (updateThread.joinable()) {
-      updateThread.join();
+bool FilterWheel::moveRelative(int steps) {
+    if (movableBehavior_) {
+        return movableBehavior_->moveRelative(steps);
     }
-
-    setProperty("connected", false);
-    DeviceBase::stop();
-    spdlog::info("FilterWheel {} stopped", deviceId);
-  } catch (const std::exception &e) {
-    spdlog::error("Error stopping FilterWheel {}: {}", deviceId, e.what());
-    throw FilterWheelException("Failed to stop filter wheel: " +
-                               std::string(e.what()));
-  }
+    return false;
 }
 
-void FilterWheel::setPosition(int newPosition) {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    // Validate position
-    validatePosition(newPosition);
-
-    // If already at the target position and not moving, do nothing
-    if (newPosition == position && !isMoving) {
-      spdlog::info("FilterWheel {} already at position {} ({})", deviceId,
-                   position, getCurrentFilterName());
-      return;
+bool FilterWheel::stopMovement() {
+    if (movableBehavior_) {
+        return movableBehavior_->stopMovement();
     }
-
-    // Determine shortest path direction
-    moveDirection = determineShortestPath(position, newPosition);
-
-    targetPosition = newPosition;
-    isMoving = true;
-    setProperty("isMoving", true);
-
-    spdlog::info("FilterWheel {} starting move to position {} ({})", deviceId,
-                 targetPosition, filterNames[targetPosition]);
-  } catch (const FilterWheelException &e) {
-    spdlog::warn("FilterWheel {}: {}", deviceId, e.what());
-    throw;
-  } catch (const std::exception &e) {
-    std::string errorMsg = "Error setting position: " + std::string(e.what());
-    spdlog::error("FilterWheel {}: {}", deviceId, errorMsg);
-    throw FilterWheelException(errorMsg);
-  }
+    return false;
 }
 
-void FilterWheel::validatePosition(int posToValidate) const {
-  if (posToValidate < 0 || posToValidate >= filterCount) {
-    throw FilterWheelException(
-        "Invalid position: " + std::to_string(posToValidate) +
-        ", must be between 0 and " + std::to_string(filterCount - 1));
-  }
-}
-
-void FilterWheel::setFilterNames(const std::vector<std::string> &names) {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    // Ensure name count matches filter count
-    if (names.size() != static_cast<size_t>(filterCount)) {
-      throw FilterWheelException(
-          "Filter names count (" + std::to_string(names.size()) +
-          ") doesn't match filter count (" + std::to_string(filterCount) + ")");
+bool FilterWheel::home() {
+    if (movableBehavior_) {
+        return movableBehavior_->home();
     }
-
-    filterNames = names;
-    setProperty("filterNames", filterNames);
-    setProperty("currentFilter", getCurrentFilterName());
-
-    spdlog::info("FilterWheel {} filter names updated", deviceId);
-  } catch (const FilterWheelException &e) {
-    spdlog::warn("FilterWheel {}: {}", deviceId, e.what());
-    throw;
-  } catch (const std::exception &e) {
-    std::string errorMsg =
-        "Error setting filter names: " + std::string(e.what());
-    spdlog::error("FilterWheel {}: {}", deviceId, errorMsg);
-    throw FilterWheelException(errorMsg);
-  }
+    return false;
 }
 
-void FilterWheel::setFilterOffsets(const std::vector<int> &offsets) {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    // Ensure offset count matches filter count
-    if (offsets.size() != static_cast<size_t>(filterCount)) {
-      throw FilterWheelException(
-          "Filter offsets count (" + std::to_string(offsets.size()) +
-          ") doesn't match filter count (" + std::to_string(filterCount) + ")");
+int FilterWheel::getCurrentPosition() const {
+    if (movableBehavior_) {
+        return movableBehavior_->getCurrentPosition();
     }
-
-    filterOffsets = offsets;
-    setProperty("filterOffsets", filterOffsets);
-
-    spdlog::info("FilterWheel {} filter offsets updated", deviceId);
-  } catch (const FilterWheelException &e) {
-    spdlog::warn("FilterWheel {}: {}", deviceId, e.what());
-    throw;
-  } catch (const std::exception &e) {
-    std::string errorMsg =
-        "Error setting filter offsets: " + std::string(e.what());
-    spdlog::error("FilterWheel {}: {}", deviceId, errorMsg);
-    throw FilterWheelException(errorMsg);
-  }
+    return 0;
 }
 
-void FilterWheel::abort() {
-  try {
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    if (!isMoving) {
-      spdlog::info("FilterWheel {}: No movement to abort", deviceId);
-      return;
+bool FilterWheel::isMoving() const {
+    if (movableBehavior_) {
+        return movableBehavior_->isMoving();
     }
-
-    isMoving = false;
-    targetPosition = position; // Stay at current position
-    currentMoveMessageId.clear();
-    setProperty("isMoving", false);
-
-    spdlog::info("FilterWheel {} movement aborted at position {}", deviceId,
-                 position);
-
-    // Send abort event
-    EventMessage event("ABORTED");
-    event.setDetails(
-        {{"position", position}, {"filter", getCurrentFilterName()}});
-    sendEvent(event);
-  } catch (const std::exception &e) {
-    std::string errorMsg = "Error aborting movement: " + std::string(e.what());
-    spdlog::error("FilterWheel {}: {}", deviceId, errorMsg);
-    throw FilterWheelException(errorMsg);
-  }
+    return false;
 }
 
-bool FilterWheel::isMovementComplete() const {
-  std::lock_guard<std::mutex> lock(statusMutex);
-  return !isMoving;
+// IFilterWheel interface implementation
+int FilterWheel::getFilterCount() const {
+    return filterCount_;
 }
 
-int FilterWheel::getMaxFilterCount() const {
-  // Default max filter count - can be overridden by subclasses
-  return 10;
+int FilterWheel::getCurrentFilter() const {
+    return getCurrentPosition();
 }
 
-void FilterWheel::setFilterCount(int count) {
-  try {
-    if (count <= 0 || count > getMaxFilterCount()) {
-      throw FilterWheelException(
-          "Invalid filter count: " + std::to_string(count) +
-          ", must be between 1 and " + std::to_string(getMaxFilterCount()));
-    }
-
-    std::lock_guard<std::mutex> lock(statusMutex);
-
-    // Only allow changing filter count when not moving
-    if (isMoving) {
-      throw FilterWheelException("Cannot change filter count while moving");
-    }
-
-    filterCount = count;
-
-    // Resize and initialize filter names and offsets
-    filterNames.resize(count);
-    filterOffsets.resize(count);
-
-    // Fill in default names for new entries
-    for (int i = 0; i < count; i++) {
-      if (filterNames[i].empty()) {
-        filterNames[i] = "Filter " + std::to_string(i + 1);
-      }
-      filterOffsets[i] = 0;
-    }
-
-    setProperty("filterCount", filterCount);
-    setProperty("filterNames", filterNames);
-    setProperty("filterOffsets", filterOffsets);
-
-    // Reset position if current position would be out of range
-    if (position >= count) {
-      position = 0;
-      targetPosition = 0;
-      setProperty("position", position);
-    }
-
-    spdlog::info("FilterWheel {} filter count updated to {}", deviceId, count);
-  } catch (const FilterWheelException &e) {
-    spdlog::warn("FilterWheel {}: {}", deviceId, e.what());
-    throw;
-  } catch (const std::exception &e) {
-    std::string errorMsg =
-        "Error setting filter count: " + std::string(e.what());
-    spdlog::error("FilterWheel {}: {}", deviceId, errorMsg);
-    throw FilterWheelException(errorMsg);
-  }
+bool FilterWheel::setFilter(int position) {
+    return moveToPosition(position);
 }
 
-std::string FilterWheel::getCurrentFilterName() const {
-  try {
-    // No lock needed here as position and filterNames are read atomically
-    // or filterNames size is checked first.
-    if (position >= 0 && static_cast<size_t>(position) < filterNames.size()) {
-      return filterNames[position];
+std::string FilterWheel::getFilterName(int position) const {
+    std::lock_guard<std::mutex> lock(filterInfoMutex_);
+    
+    auto it = filterInfo_.find(position);
+    if (it != filterInfo_.end()) {
+        return it->second.name;
     }
-    return "Unknown";
-  } catch (const std::exception &e) {
-    // This catch might be overly broad, consider if specific exceptions are
-    // expected
-    spdlog::error("FilterWheel {}: Error getting filter name: {}", deviceId,
-                  e.what());
-    return "Error";
-  }
+    
+    return "Filter " + std::to_string(position);
 }
 
-int FilterWheel::getCurrentFilterOffset() const {
-  try {
-    // No lock needed here for similar reasons as getCurrentFilterName
-    if (position >= 0 && static_cast<size_t>(position) < filterOffsets.size()) {
-      return filterOffsets[position];
+bool FilterWheel::setFilterName(int position, const std::string& name) {
+    if (!validateFilterPosition(position)) {
+        return false;
     }
-    return 0; // Default offset
-  } catch (const std::exception &e) {
-    spdlog::error("FilterWheel {}: Error getting filter offset: {}", deviceId,
-                  e.what());
-    return 0; // Return default offset on error
-  }
+    
+    std::lock_guard<std::mutex> lock(filterInfoMutex_);
+    
+    if (filterInfo_.find(position) == filterInfo_.end()) {
+        filterInfo_[position] = FilterInfo{};
+        filterInfo_[position].position = position;
+    }
+    
+    filterInfo_[position].name = name;
+    
+    SPDLOG_DEBUG("FilterWheel {} filter {} name set to '{}'", getDeviceId(), position, name);
+    return true;
 }
 
-int FilterWheel::determineShortestPath(int from, int to) const {
-  try {
-    // No lock needed, filterCount is read atomically
-    // Calculate clockwise and counter-clockwise distances
-    int clockwise = (to >= from) ? (to - from) : (filterCount - from + to);
-    int counterClockwise =
-        (from >= to) ? (from - to) : (from + filterCount - to);
-
-    // Return the direction of the shortest path
-    return (clockwise <= counterClockwise) ? 1 : -1;
-  } catch (const std::exception &e) {
-    // This catch might be overly broad
-    spdlog::error("FilterWheel {}: Error determining path: {}", deviceId,
-                  e.what());
-    return 1; // Default to clockwise if error
-  }
+// Backward compatibility methods
+int FilterWheel::getNumFilters() const {
+    return getFilterCount();
 }
 
-void FilterWheel::updateLoop() {
-  spdlog::info("FilterWheel {} update loop started", deviceId);
-
-  try {
-    auto lastTime = std::chrono::steady_clock::now();
-
-    while (updateRunning) {
-      // Update approximately every 100ms
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-      auto currentTime = std::chrono::steady_clock::now();
-      double elapsedSec =
-          std::chrono::duration<double>(currentTime - lastTime).count();
-      lastTime = currentTime;
-
-      simulateMovement(elapsedSec);
-    }
-  } catch (const std::exception &e) {
-    spdlog::error("FilterWheel {}: Error in update loop: {}", deviceId,
-                  e.what());
-    // Consider how to handle this error, maybe set an error state
-    updateRunning = false; // Stop the loop on error
-  }
-
-  spdlog::info("FilterWheel {} update loop ended", deviceId);
+void FilterWheel::setFilterPosition(int position) {
+    setFilter(position);
 }
 
-void FilterWheel::simulateMovement(double elapsedSec) {
-  // Thread-safe state update
-  std::lock_guard<std::mutex> lock(statusMutex);
-
-  // If currently moving
-  if (isMoving) {
-    // Filter wheel rotation speed - 1 position per second (can be adjusted)
-    // Using a static variable here might cause issues if multiple FilterWheel
-    // instances exist. Consider making it a member variable if needed.
-    static double progressFraction = 0.0;
-    progressFraction += elapsedSec;
-
-    // Define movement speed (positions per second)
-    const double positionsPerSecond = 1.0;
-    const double timePerPosition = 1.0 / positionsPerSecond;
-
-    if (progressFraction >= timePerPosition) {
-      // Enough time has passed to move to next position
-      progressFraction -=
-          timePerPosition; // Subtract time used, don't reset to 0
-
-      // Update position
-      updatePositionInternal(); // Renamed to avoid confusion with public
-                                // setPosition
-    }
-  }
+int FilterWheel::getFilterPosition() const {
+    return getCurrentFilter();
 }
 
-// Internal helper, assumes lock is held
-void FilterWheel::updatePositionInternal() {
-  // Update position in the movement direction
-  position = (position + moveDirection + filterCount) % filterCount;
-  setProperty("position", position);
-  setProperty("currentFilter",
-              getCurrentFilterName()); // Update filter name property
-
-  // Check if target position reached
-  if (position == targetPosition) {
-    isMoving = false;
-    setProperty("isMoving", false);
-
-    // Send movement complete event
-    if (!currentMoveMessageId.empty()) {
-      sendPositionChangeCompletedEvent(currentMoveMessageId);
-      currentMoveMessageId.clear(); // Clear message ID after sending event
+// Extended functionality
+bool FilterWheel::setFilterCount(int count) {
+    if (count < 1 || count > 12) { // Reasonable limits
+        SPDLOG_ERROR("FilterWheel {} invalid filter count: {}", getDeviceId(), count);
+        return false;
     }
-
-    spdlog::info("FilterWheel {} move completed at position {} ({})", deviceId,
-                 position, getCurrentFilterName());
-  }
-}
-
-void FilterWheel::sendPositionChangeCompletedEvent(
-    const std::string &relatedMessageId) {
-  try {
-    EventMessage event("COMMAND_COMPLETED");
-    event.setRelatedMessageId(relatedMessageId);
-
-    event.setDetails({{"command", "SET_POSITION"},
-                      {"status", "SUCCESS"},
-                      {"position", position},
-                      {"filter", getCurrentFilterName()},
-                      {"offset", getCurrentFilterOffset()}});
-
-    sendEvent(event);
-  } catch (const std::exception &e) {
-    spdlog::error("FilterWheel {}: Error sending event: {}", deviceId,
-                  e.what());
-  }
-}
-
-// Command handler implementations
-void FilterWheel::handleSetPositionCommand(const CommandMessage &cmd,
-                                           ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("position") && !params.contains("filter")) {
-      response.setStatus("ERROR");
-      response.setDetails(
-          {{"error", "INVALID_PARAMETERS"},
-           {"message", "Missing required parameter 'position' or 'filter'"}});
-      return;
-    }
-
-    int newPosition = -1;
-    std::string targetFilterName = ""; // Store target name for response
-
-    // Position can be set by position number or filter name
-    if (params.contains("position")) {
-      newPosition = params["position"];
-      // Validate position early
-      try {
-        validatePosition(newPosition);
-        targetFilterName =
-            filterNames[newPosition]; // Get name after validation
-      } catch (const FilterWheelException &e) {
-        response.setStatus("ERROR");
-        response.setDetails(
-            {{"error", "INVALID_POSITION"}, {"message", e.what()}});
-        return;
-      }
-    } else if (params.contains("filter")) {
-      std::string filterNameParam = params["filter"];
-      targetFilterName = filterNameParam; // Use provided name for response
-      // Find position for the filter name (requires lock)
-      std::lock_guard<std::mutex> lock(
-          statusMutex); // Lock needed to access filterNames safely
-      auto it =
-          std::find(filterNames.begin(), filterNames.end(), filterNameParam);
-      if (it != filterNames.end()) {
-        newPosition = static_cast<int>(std::distance(filterNames.begin(), it));
-      } else {
-        response.setStatus("ERROR");
-        response.setDetails(
-            {{"error", "INVALID_FILTER"},
-             {"message", "Filter name not found: " + filterNameParam}});
-        return;
-      }
-    }
-
-    // Store message ID for completion event *before* calling setPosition
-    // which might complete immediately if already at position.
-    currentMoveMessageId = cmd.getMessageId();
-
-    // Start moving (or log if already there)
-    setPosition(newPosition); // This handles locking internally
-
-    // Calculate estimated completion time (requires lock for current state)
-    int estimatedSeconds = 0;
-    double progressPercentage = 0.0;
-    {
-      std::lock_guard<std::mutex> lock(
-          statusMutex); // Lock to read current state
-
-      if (isMoving) { // Check if setPosition actually started a move
-        int currentPos = position;      // Use locked position
-        int targetPos = targetPosition; // Use locked target position
-        int moveSteps = 0;
-
-        // Calculate shortest path steps
-        int clockwise = (targetPos >= currentPos)
-                            ? (targetPos - currentPos)
-                            : (filterCount - currentPos + targetPos);
-
-        int counterClockwise = (currentPos >= targetPos)
-                                   ? (currentPos - targetPos)
-                                   : (currentPos + filterCount - targetPos);
-
-        moveSteps = std::min(clockwise, counterClockwise);
-
-        // Estimate time based on 1 second per step (adjust if speed changes)
-        estimatedSeconds = moveSteps;
-        if (estimatedSeconds == 0 && newPosition != currentPos) {
-          // Should not happen if isMoving is true, but as a fallback
-          estimatedSeconds = 1;
+    
+    filterCount_ = count;
+    setProperty("filterCount", count);
+    
+    // Remove filter info for positions beyond the new count
+    std::lock_guard<std::mutex> lock(filterInfoMutex_);
+    auto it = filterInfo_.begin();
+    while (it != filterInfo_.end()) {
+        if (it->first >= count) {
+            it = filterInfo_.erase(it);
+        } else {
+            ++it;
         }
-        progressPercentage = 0.0; // Just started moving
-      } else {
-        // Already at target position or move completed instantly
-        estimatedSeconds = 0; // No time needed
-        progressPercentage = 100.0;
-      }
-    } // Unlock statusMutex
-
-    // Format estimated completion time
-    std::string est_completion_str = "N/A";
-    if (estimatedSeconds > 0) {
-      auto now = std::chrono::system_clock::now();
-      auto completeTime = now + std::chrono::seconds(estimatedSeconds);
-      auto complete_itt = std::chrono::system_clock::to_time_t(completeTime);
-      // Using gmtime might not be thread-safe on all platforms, consider
-      // alternatives if needed
-      std::tm gmt_buf;
-#ifdef _WIN32
-      gmtime_s(&gmt_buf, &complete_itt);
-#else
-      gmtime_r(&complete_itt, &gmt_buf); // POSIX version
-#endif
-      std::ostringstream est_ss;
-      est_ss << std::put_time(&gmt_buf, "%FT%T") << "Z";
-      est_completion_str = est_ss.str();
     }
-
-    response.setStatus(
-        "IN_PROGRESS"); // Even if complete, indicates command accepted
-    response.setDetails(
-        {{"estimatedCompletionTime", est_completion_str},
-         {"progressPercentage", progressPercentage},
-         {"targetPosition", newPosition},    // Use the validated target
-         {"targetFilter", targetFilterName}, // Use the target name
-         {"currentPosition",
-          position}, // Use current (possibly updated) position
-         {"currentFilter", getCurrentFilterName()}, // Use current filter name
-         {"offset", getCurrentFilterOffset()}});    // Use current offset
-  } catch (const std::exception &e) {
-    spdlog::error("FilterWheel {}: Error handling set position command: {}",
-                  deviceId, e.what());
-    response.setStatus("ERROR");
-    response.setDetails(
-        {{"error", "COMMAND_FAILED"},
-         {"message", "Failed to set position: " + std::string(e.what())}});
-    currentMoveMessageId.clear(); // Clear message ID on error
-  }
+    
+    SPDLOG_INFO("FilterWheel {} filter count set to {}", getDeviceId(), count);
+    return true;
 }
 
-void FilterWheel::handleSetFilterNamesCommand(const CommandMessage &cmd,
-                                              ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("names") || !params["names"].is_array()) {
-      response.setStatus("ERROR");
-      response.setDetails({{"error", "INVALID_PARAMETERS"},
-                           {"message", "Missing or invalid 'names' parameter "
-                                       "(must be an array of strings)"}});
-      return;
+FilterInfo FilterWheel::getFilterInfo(int position) const {
+    std::lock_guard<std::mutex> lock(filterInfoMutex_);
+    
+    auto it = filterInfo_.find(position);
+    if (it != filterInfo_.end()) {
+        return it->second;
     }
-
-    std::vector<std::string> names =
-        params["names"].get<std::vector<std::string>>();
-
-    // Call setFilterNames which handles locking and validation
-    setFilterNames(names);
-
-    response.setStatus("SUCCESS");
-    response.setDetails(
-        {{"filterNames", filterNames}}); // Return the updated names
-  } catch (const FilterWheelException &e) {
-    // Catch specific exception from setFilterNames for better error reporting
-    spdlog::warn("FilterWheel {}: Failed to set filter names: {}", deviceId,
-                 e.what());
-    response.setStatus("ERROR");
-    response.setDetails(
-        {{"error", "INVALID_DATA"}, // Or more specific error code if available
-         {"message", e.what()}});
-  } catch (const std::exception &e) {
-    spdlog::error("FilterWheel {}: Error handling set filter names command: {}",
-                  deviceId, e.what());
-    response.setStatus("ERROR");
-    response.setDetails(
-        {{"error", "COMMAND_FAILED"},
-         {"message", "Failed to set filter names: " + std::string(e.what())}});
-  }
+    
+    // Return default filter info
+    FilterInfo info;
+    info.position = position;
+    info.name = "Filter " + std::to_string(position);
+    info.type = "Unknown";
+    info.wavelength = 550.0; // Default to green
+    info.bandwidth = 100.0;
+    info.exposureFactor = 1.0;
+    info.description = "Default filter";
+    
+    return info;
 }
 
-void FilterWheel::handleSetFilterOffsetsCommand(const CommandMessage &cmd,
-                                                ResponseMessage &response) {
-  try {
-    json params = cmd.getParameters();
-
-    if (!params.contains("offsets") || !params["offsets"].is_array()) {
-      response.setStatus("ERROR");
-      response.setDetails({{"error", "INVALID_PARAMETERS"},
-                           {"message", "Missing or invalid 'offsets' parameter "
-                                       "(must be an array of integers)"}});
-      return;
+bool FilterWheel::setFilterInfo(int position, const FilterInfo& info) {
+    if (!validateFilterPosition(position)) {
+        return false;
     }
-
-    std::vector<int> offsets = params["offsets"].get<std::vector<int>>();
-
-    // Call setFilterOffsets which handles locking and validation
-    setFilterOffsets(offsets);
-
-    response.setStatus("SUCCESS");
-    response.setDetails(
-        {{"filterOffsets", filterOffsets}}); // Return updated offsets
-  } catch (const FilterWheelException &e) {
-    // Catch specific exception from setFilterOffsets
-    spdlog::warn("FilterWheel {}: Failed to set filter offsets: {}", deviceId,
-                 e.what());
-    response.setStatus("ERROR");
-    response.setDetails(
-        {{"error", "INVALID_DATA"}, // Or more specific error code
-         {"message", e.what()}});
-  } catch (const std::exception &e) {
-    spdlog::error(
-        "FilterWheel {}: Error handling set filter offsets command: {}",
-        deviceId, e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "COMMAND_FAILED"},
-                         {"message", "Failed to set filter offsets: " +
-                                         std::string(e.what())}});
-  }
+    
+    std::lock_guard<std::mutex> lock(filterInfoMutex_);
+    filterInfo_[position] = info;
+    filterInfo_[position].position = position; // Ensure position matches
+    
+    SPDLOG_DEBUG("FilterWheel {} filter {} info updated", getDeviceId(), position);
+    return true;
 }
 
-void FilterWheel::handleAbortCommand(const CommandMessage &cmd,
-                                     ResponseMessage &response) {
-  try {
-    // Call abort which handles locking
-    abort();
-
-    response.setStatus("SUCCESS");
-    response.setDetails(
-        {{"message", "Movement aborted"},
-         {"position", position}, // Return current position after abort
-         {"filter", getCurrentFilterName()}});
-  } catch (const FilterWheelException &e) {
-    // Catch specific exception from abort
-    spdlog::error("FilterWheel {}: Failed to abort movement: {}", deviceId,
-                  e.what());
-    response.setStatus("ERROR");
-    response.setDetails({{"error", "ABORT_FAILED"}, {"message", e.what()}});
-  } catch (const std::exception &e) {
-    spdlog::error("FilterWheel {}: Error handling abort command: {}", deviceId,
-                  e.what());
-    response.setStatus("ERROR");
-    response.setDetails(
-        {{"error", "COMMAND_FAILED"},
-         {"message", "Failed to abort: " + std::string(e.what())}});
-  }
+std::vector<FilterInfo> FilterWheel::getAllFilterInfo() const {
+    std::lock_guard<std::mutex> lock(filterInfoMutex_);
+    
+    std::vector<FilterInfo> allInfo;
+    for (int i = 0; i < filterCount_; ++i) {
+        allInfo.push_back(getFilterInfo(i));
+    }
+    
+    return allInfo;
 }
 
+int FilterWheel::getFilterByName(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(filterInfoMutex_);
+    
+    for (const auto& [position, info] : filterInfo_) {
+        if (info.name == name) {
+            return position;
+        }
+    }
+    
+    return -1; // Not found
+}
+
+bool FilterWheel::setFilterByName(const std::string& name) {
+    int position = getFilterByName(name);
+    if (position >= 0) {
+        return setFilter(position);
+    }
+    
+    SPDLOG_ERROR("FilterWheel {} filter '{}' not found", getDeviceId(), name);
+    return false;
+}
+
+std::vector<std::string> FilterWheel::getFilterNames() const {
+    std::vector<std::string> names;
+    
+    for (int i = 0; i < filterCount_; ++i) {
+        names.push_back(getFilterName(i));
+    }
+    
+    return names;
+}
+
+bool FilterWheel::setDefaultFilterConfiguration() {
+    initializeDefaultFilters();
+    return true;
+}
+
+double FilterWheel::getWheelDiameter() const {
+    return wheelDiameter_;
+}
+
+bool FilterWheel::setWheelDiameter(double diameter) {
+    if (diameter <= 0) {
+        return false;
+    }
+    
+    wheelDiameter_ = diameter;
+    setProperty("wheelDiameter", diameter);
+    return true;
+}
+
+bool FilterWheel::waitForFilterChange(int timeoutMs) {
+    if (!isMoving()) {
+        return true;
+    }
+    
+    std::unique_lock<std::mutex> lock(filterChangeMutex_);
+    
+    if (timeoutMs > 0) {
+        return filterChangeCV_.wait_for(lock, std::chrono::milliseconds(timeoutMs), 
+                                       [this] { return !isMoving(); });
+    } else {
+        filterChangeCV_.wait(lock, [this] { return !isMoving(); });
+        return true;
+    }
+}
+
+// Hardware abstraction methods (simulation)
+bool FilterWheel::executeFilterChange(int position) {
+    SPDLOG_DEBUG("FilterWheel {} executing filter change to position {}", getDeviceId(), position);
+    
+    // Simulate filter change delay
+    std::thread([this, position]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000 + position * 200)); // Simulate movement time
+        
+        if (movableBehavior_) {
+            movableBehavior_->updateCurrentPosition(position);
+            movableBehavior_->onMovementComplete(true);
+        }
+        
+        setProperty("currentFilter", position);
+        filterChangeCV_.notify_all();
+        
+        SPDLOG_INFO("FilterWheel {} filter change to position {} completed", getDeviceId(), position);
+    }).detach();
+    
+    return true;
+}
+
+bool FilterWheel::executeStop() {
+    SPDLOG_DEBUG("FilterWheel {} executing stop", getDeviceId());
+    return true;
+}
+
+bool FilterWheel::executeHome() {
+    SPDLOG_DEBUG("FilterWheel {} executing home", getDeviceId());
+    return executeFilterChange(0);
+}
+
+int FilterWheel::readCurrentPosition() {
+    // In a real implementation, this would read from hardware
+    return getCurrentPosition();
+}
+
+void FilterWheel::initializeDefaultFilters() {
+    std::lock_guard<std::mutex> lock(filterInfoMutex_);
+    
+    // Clear existing filters
+    filterInfo_.clear();
+    
+    // Set up default LRGB + Ha filters
+    std::vector<FilterInfo> defaultFilters = {
+        {0, "Luminance", "Luminance", 550.0, 200.0, 1.0, "Clear luminance filter"},
+        {1, "Red", "Red", 650.0, 100.0, 2.0, "Red color filter"},
+        {2, "Green", "Green", 530.0, 100.0, 1.5, "Green color filter"},
+        {3, "Blue", "Blue", 470.0, 100.0, 3.0, "Blue color filter"},
+        {4, "Ha", "Narrowband", 656.3, 7.0, 10.0, "Hydrogen-alpha narrowband filter"}
+    };
+    
+    for (int i = 0; i < std::min(static_cast<int>(defaultFilters.size()), filterCount_.load()); ++i) {
+        filterInfo_[i] = defaultFilters[i];
+    }
+    
+    // Fill remaining positions with generic filters
+    for (int i = defaultFilters.size(); i < filterCount_; ++i) {
+        FilterInfo info;
+        info.position = i;
+        info.name = "Filter " + std::to_string(i);
+        info.type = "Generic";
+        info.wavelength = 550.0;
+        info.bandwidth = 100.0;
+        info.exposureFactor = 1.0;
+        info.description = "Generic filter";
+        filterInfo_[i] = info;
+    }
+}
+
+bool FilterWheel::validateFilterPosition(int position) const {
+    return position >= 0 && position < filterCount_;
+}
+
+bool FilterWheel::handleDeviceCommand(const std::string& command, const json& parameters, json& result) {
+    if (command == "SET_FILTER") {
+        int position = parameters.value("position", 0);
+        result["success"] = setFilter(position);
+        return true;
+    }
+    else if (command == "GET_FILTER_COUNT") {
+        result["count"] = getFilterCount();
+        result["success"] = true;
+        return true;
+    }
+    else if (command == "GET_CURRENT_FILTER") {
+        result["position"] = getCurrentFilter();
+        result["success"] = true;
+        return true;
+    }
+    else if (command == "SET_FILTER_NAME") {
+        int position = parameters.value("position", 0);
+        std::string name = parameters.value("name", "");
+        result["success"] = setFilterName(position, name);
+        return true;
+    }
+    else if (command == "GET_FILTER_NAME") {
+        int position = parameters.value("position", 0);
+        result["name"] = getFilterName(position);
+        result["success"] = true;
+        return true;
+    }
+    else if (command == "GET_FILTER_INFO") {
+        int position = parameters.value("position", 0);
+        FilterInfo info = getFilterInfo(position);
+        result["info"] = json{
+            {"position", info.position},
+            {"name", info.name},
+            {"type", info.type},
+            {"wavelength", info.wavelength},
+            {"bandwidth", info.bandwidth},
+            {"exposureFactor", info.exposureFactor},
+            {"description", info.description}
+        };
+        result["success"] = true;
+        return true;
+    }
+    else if (command == "SET_FILTER_BY_NAME") {
+        std::string name = parameters.value("name", "");
+        result["success"] = setFilterByName(name);
+        return true;
+    }
+    else if (command == "HOME") {
+        result["success"] = home();
+        return true;
+    }
+    
+    return false;
+}
+
+void FilterWheel::updateDevice() {
+    // Update current filter position
+    setProperty("currentFilter", getCurrentFilter());
+    setProperty("isMoving", isMoving());
+    
+    // Update filter names for easy access
+    json filterNames = json::array();
+    for (int i = 0; i < filterCount_; ++i) {
+        filterNames.push_back(getFilterName(i));
+    }
+    setProperty("filterNames", filterNames);
+}
+
+std::vector<std::string> FilterWheel::getCapabilities() const {
+    return {
+        "SET_FILTER",
+        "GET_FILTER_COUNT",
+        "GET_CURRENT_FILTER", 
+        "SET_FILTER_NAME",
+        "GET_FILTER_NAME",
+        "GET_FILTER_INFO",
+        "SET_FILTER_BY_NAME",
+        "HOME",
+        "MOVE_TO_POSITION",
+        "MOVE_RELATIVE",
+        "STOP_MOVEMENT"
+    };
+}
+
+bool FilterWheel::loadFilterConfiguration(const std::string& filename) {
+    try {
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            SPDLOG_ERROR("FilterWheel {} cannot open config file: {}", getDeviceId(), filename);
+            return false;
+        }
+        
+        json config;
+        file >> config;
+        
+        if (config.contains("filters") && config["filters"].is_array()) {
+            std::lock_guard<std::mutex> lock(filterInfoMutex_);
+            filterInfo_.clear();
+            
+            for (const auto& filterJson : config["filters"]) {
+                FilterInfo info;
+                info.position = filterJson.value("position", 0);
+                info.name = filterJson.value("name", "");
+                info.type = filterJson.value("type", "Generic");
+                info.wavelength = filterJson.value("wavelength", 550.0);
+                info.bandwidth = filterJson.value("bandwidth", 100.0);
+                info.exposureFactor = filterJson.value("exposureFactor", 1.0);
+                info.description = filterJson.value("description", "");
+                
+                if (validateFilterPosition(info.position)) {
+                    filterInfo_[info.position] = info;
+                }
+            }
+        }
+        
+        if (config.contains("filterCount")) {
+            setFilterCount(config["filterCount"]);
+        }
+        
+        if (config.contains("wheelDiameter")) {
+            setWheelDiameter(config["wheelDiameter"]);
+        }
+        
+        SPDLOG_INFO("FilterWheel {} loaded configuration from {}", getDeviceId(), filename);
+        return true;
+        
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("FilterWheel {} failed to load config: {}", getDeviceId(), e.what());
+        return false;
+    }
+}
+
+bool FilterWheel::saveFilterConfiguration(const std::string& filename) const {
+    try {
+        json config;
+        config["filterCount"] = filterCount_.load();
+        config["wheelDiameter"] = wheelDiameter_.load();
+        
+        json filtersArray = json::array();
+        {
+            std::lock_guard<std::mutex> lock(filterInfoMutex_);
+            for (const auto& [position, info] : filterInfo_) {
+                json filterJson = {
+                    {"position", info.position},
+                    {"name", info.name},
+                    {"type", info.type},
+                    {"wavelength", info.wavelength},
+                    {"bandwidth", info.bandwidth},
+                    {"exposureFactor", info.exposureFactor},
+                    {"description", info.description}
+                };
+                filtersArray.push_back(filterJson);
+            }
+        }
+        config["filters"] = filtersArray;
+        
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            SPDLOG_ERROR("FilterWheel {} cannot create config file: {}", getDeviceId(), filename);
+            return false;
+        }
+        
+        file << config.dump(2);
+        
+        SPDLOG_INFO("FilterWheel {} saved configuration to {}", getDeviceId(), filename);
+        return true;
+        
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("FilterWheel {} failed to save config: {}", getDeviceId(), e.what());
+        return false;
+    }
+}
+
+double FilterWheel::getFilterThickness(int position) const {
+    std::lock_guard<std::mutex> lock(thicknessMutex_);
+    
+    auto it = filterThickness_.find(position);
+    if (it != filterThickness_.end()) {
+        return it->second;
+    }
+    
+    return 3.0; // Default 3mm thickness
+}
+
+bool FilterWheel::setFilterThickness(int position, double thickness) {
+    if (!validateFilterPosition(position) || thickness < 0) {
+        return false;
+    }
+    
+    std::lock_guard<std::mutex> lock(thicknessMutex_);
+    filterThickness_[position] = thickness;
+    
+    return true;
+}
+
+double FilterWheel::calculateFocusOffset(int fromFilter, int toFilter) const {
+    if (!validateFilterPosition(fromFilter) || !validateFilterPosition(toFilter)) {
+        return 0.0;
+    }
+    
+    double fromThickness = getFilterThickness(fromFilter);
+    double toThickness = getFilterThickness(toFilter);
+    
+    // Simple focus offset calculation based on thickness difference
+    // Real implementation would use more sophisticated optics calculations
+    double thicknessDiff = toThickness - fromThickness;
+    double focusOffset = thicknessDiff * 0.3; // Approximate factor
+    
+    return focusOffset;
+}
+
+} // namespace device
 } // namespace astrocomm

@@ -41,20 +41,20 @@ add_subdirectory(core)
 # Server component tests (TODO: implement)
 # add_subdirectory(server)
 
-# Client component tests (TODO: implement)
-# add_subdirectory(client)
+# Client component tests
+add_subdirectory(client)
 
-# Integration tests (TODO: implement)
-# add_subdirectory(integration)
+# Integration tests
+add_subdirectory(integration)
 
 # Create a target to run all tests
 add_custom_target(run_all_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --verbose
     DEPENDS
         core_tests
+        client_tests
+        integration_tests
         # device_tests
         # server_tests
-        # client_tests
-        # integration_tests
     COMMENT "Running all AstroComm tests"
 )

@@ -1,230 +1,291 @@
 #pragma once
-#include "device/device_base.h"
+
+#include "core/modern_device_base.h"
+#include "interfaces/device_interface.h"
+#include "behaviors/movable_behavior.h"
+
 #include <atomic>
-#include <chrono>
+#include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <vector>
+#include <nlohmann/json.hpp>
 
 namespace astrocomm {
+namespace device {
+
+using json = nlohmann::json;
 
 /**
- * @class Rotator
- * @brief Base class for rotator devices
- * 
- * This class provides the basic functionality for a rotator device,
- * including position control, movement, synchronization and reversal.
- * It is designed to be inherited by specific rotator implementations.
+ * @brief Rotation direction enumeration
  */
-class Rotator : public DeviceBase {
+enum class RotationDirection {
+  CLOCKWISE,        // Clockwise rotation
+  COUNTERCLOCKWISE  // Counter-clockwise rotation
+};
+
+/**
+ * @brief 旋转器设备实现
+ *
+ * 基于新架构的旋转器实现，使用MovableBehavior提供移动控制功能。
+ * 支持多种制造商的旋转器设备，提供统一的控制接口。
+ */
+class Rotator : public core::ModernDeviceBase, 
+                public interfaces::IRotator {
 public:
   /**
-   * @brief Constructor for Rotator class
-   * @param deviceId Unique identifier for the device
+   * @brief Constructor
+   * @param deviceId Device identifier
    * @param manufacturer Manufacturer name
    * @param model Model name
    */
-  Rotator(const std::string &deviceId,
-          const std::string &manufacturer = "Generic",
-          const std::string &model = "Field Rotator");
-  
+  Rotator(const std::string &deviceId, 
+          const std::string &manufacturer = "Pegasus",
+          const std::string &model = "FocusCube");
+
   /**
    * @brief Virtual destructor
    */
   virtual ~Rotator();
 
-  // Device lifecycle methods
-  virtual bool start() override;
-  virtual void stop() override;
+  /**
+   * @brief 获取设备类型名称
+   */
+  static std::string getDeviceTypeName() { return "ROTATOR"; }
 
-  // Core rotator methods - all virtual to allow overriding by derived classes
   /**
-   * @brief Move to an absolute position
-   * @param position Target position in degrees
-   * @throws std::runtime_error If the device is not connected or the position is invalid
+   * @brief 获取支持的制造商列表
    */
-  virtual void moveTo(double position);
-  
-  /**
-   * @brief Move by a relative offset
-   * @param offset Position offset in degrees
-   * @throws std::runtime_error If the device is not connected
-   */
-  virtual void moveBy(double offset);
-  
-  /**
-   * @brief Halt the current movement immediately
-   * @throws std::runtime_error If the device is not connected
-   */
-  virtual void halt();
-  
-  /**
-   * @brief Set reverse direction
-   * @param reversed True to reverse direction, false for normal direction
-   * @throws std::runtime_error If the device is not connected
-   */
-  virtual void setReverse(bool reversed);
-  
-  /**
-   * @brief Synchronize the rotator position
-   * @param position Position to sync to in degrees
-   * @throws std::runtime_error If the device is not connected
-   */
-  virtual void sync(double position);
-  
-  /**
-   * @brief Set the step size for movements
-   * @param stepSize Step size in degrees
-   * @throws std::invalid_argument If step size is less than or equal to zero
-   */
-  virtual void setStepSize(double stepSize);
-  
-  /**
-   * @brief Set the rotator speed
-   * @param speed Speed in degrees per second
-   * @throws std::invalid_argument If speed is less than or equal to zero or greater than max speed
-   */
-  virtual void setSpeed(double speed);
+  static std::vector<std::string> getSupportedManufacturers() {
+    return {"Pegasus", "Optec", "Moonlite", "Lakeside", "Generic"};
+  }
 
-  // State query methods
   /**
-   * @brief Get the current position
-   * @return Current position in degrees (0-359.99)
+   * @brief 获取支持的型号列表
+   */
+  static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
+    if (manufacturer == "Pegasus") return {"FocusCube", "Falcon Rotator"};
+    if (manufacturer == "Optec") return {"Gemini", "IFW"};
+    if (manufacturer == "Moonlite") return {"NightCrawler Rotator"};
+    if (manufacturer == "Lakeside") return {"Rotator"};
+    return {"Generic Rotator"};
+  }
+
+  // 实现IMovable接口（委托给MovableBehavior）
+  bool moveToPosition(int position) override;
+  bool moveRelative(int steps) override;
+  bool stopMovement() override;
+  bool home() override;
+  int getCurrentPosition() const override;
+  bool isMoving() const override;
+
+  // 实现IRotator特定接口
+  double getCurrentAngle() const override;
+  bool rotateToAngle(double angle) override;
+  bool rotateRelative(double angle) override;
+  bool supportsReverse() const override;
+  bool setReverse(bool reversed) override;
+
+  // ==== 向后兼容接口 ====
+
+  /**
+   * @brief Move to position (向后兼容)
+   */
+  virtual void moveToPosition(double position);
+
+  /**
+   * @brief Get position (向后兼容)
    */
   virtual double getPosition() const;
-  
+
   /**
-   * @brief Get the target position
-   * @return Target position in degrees (0-359.99)
+   * @brief Set position (向后兼容)
    */
-  virtual double getTargetPosition() const;
-  
+  virtual void setPosition(double position);
+
   /**
-   * @brief Check if the rotator is moving
-   * @return True if the rotator is moving
+   * @brief Sync position (向后兼容)
    */
-  virtual bool isMoving() const;
-  
+  virtual void syncPosition(double position);
+
   /**
-   * @brief Check if the rotator direction is reversed
-   * @return True if the rotator direction is reversed
+   * @brief Halt movement (向后兼容)
    */
-  virtual bool isReversed() const;
-  
+  virtual void halt();
+
   /**
-   * @brief Get the current speed
-   * @return Current speed in degrees per second
+   * @brief Set reverse (向后兼容)
    */
-  virtual double getSpeed() const;
-  
+  virtual void setReverse(bool reverse);
+
   /**
-   * @brief Get the maximum speed
-   * @return Maximum speed in degrees per second
+   * @brief Get reverse (向后兼容)
    */
-  virtual double getMaxSpeed() const;
+  virtual bool getReverse() const;
+
+  // ==== 扩展功能接口 ====
+
+  /**
+   * @brief Set rotation speed
+   */
+  virtual bool setRotationSpeed(double speed);
+
+  /**
+   * @brief Get rotation speed
+   */
+  virtual double getRotationSpeed() const;
+
+  /**
+   * @brief Set step size (degrees per step)
+   */
+  virtual bool setStepSize(double stepSize);
+
+  /**
+   * @brief Get step size
+   */
+  virtual double getStepSize() const;
+
+  /**
+   * @brief Set rotation limits
+   */
+  virtual bool setRotationLimits(double minAngle, double maxAngle);
+
+  /**
+   * @brief Get rotation limits
+   */
+  virtual void getRotationLimits(double& minAngle, double& maxAngle) const;
+
+  /**
+   * @brief Enable/disable rotation limits
+   */
+  virtual bool setLimitsEnabled(bool enabled);
+
+  /**
+   * @brief Check if rotation limits are enabled
+   */
+  virtual bool areLimitsEnabled() const;
+
+  /**
+   * @brief Calibrate rotator
+   */
+  virtual bool calibrate();
+
+  /**
+   * @brief Set zero position
+   */
+  virtual bool setZeroPosition();
+
+  /**
+   * @brief Get mechanical angle (raw position)
+   */
+  virtual double getMechanicalAngle() const;
+
+  /**
+   * @brief Set mechanical angle offset
+   */
+  virtual bool setMechanicalOffset(double offset);
+
+  /**
+   * @brief Get mechanical angle offset
+   */
+  virtual double getMechanicalOffset() const;
+
+  /**
+   * @brief Convert position to angle
+   */
+  virtual double positionToAngle(int position) const;
+
+  /**
+   * @brief Convert angle to position
+   */
+  virtual int angleToPosition(double angle) const;
+
+  /**
+   * @brief Get rotation direction for angle change
+   */
+  virtual RotationDirection getRotationDirection(double fromAngle, double toAngle) const;
+
+  /**
+   * @brief Wait for rotation to complete
+   */
+  bool waitForRotationComplete(int timeoutMs = 0);
 
 protected:
-  // Extension points for derived classes
-  /**
-   * @brief Hook called before movement starts
-   * @param targetPos Target position in degrees
-   * @return True if movement can proceed, false to cancel
-   */
-  virtual bool onBeforeMove(double targetPos);
-  
-  /**
-   * @brief Hook called after movement completes
-   * @param finalPos Final position in degrees
-   */
-  virtual void onAfterMove(double finalPos);
-  
-  /**
-   * @brief Hook called when position is updated
-   * @param newPos New position in degrees
-   */
-  virtual void onPositionUpdate(double newPos);
-  
-  /**
-   * @brief Hook called when halt is requested
-   */
-  virtual void onHalt();
-  
-  /**
-   * @brief Hook called when reverse is changed
-   * @param reversed New reversed state
-   */
-  virtual void onReverseChanged(bool reversed);
-
-  // Update thread implementation
-  /**
-   * @brief Update loop running in a separate thread
-   */
-  virtual void updateLoop();
-  
-  /**
-   * @brief Calculate the actual position change for one update cycle
-   * @param currentPos Current position
-   * @param targetPos Target position
-   * @param elapsed Time elapsed since last update
-   * @return New position
-   */
-  virtual double calculateNewPosition(double currentPos, double targetPos, 
-                                     std::chrono::duration<double> elapsed);
-
-  // Command handlers
-  void handleMoveToCommand(const CommandMessage &cmd, ResponseMessage &response);
-  void handleMoveByCommand(const CommandMessage &cmd, ResponseMessage &response);
-  void handleHaltCommand(const CommandMessage &cmd, ResponseMessage &response);
-  void handleReverseCommand(const CommandMessage &cmd, ResponseMessage &response);
-  void handleSyncCommand(const CommandMessage &cmd, ResponseMessage &response);
-  void handleSetSpeedCommand(const CommandMessage &cmd, ResponseMessage &response);
-
-  // Utility methods
-  void sendMoveCompletedEvent(const std::string &relatedMessageId);
-  
-  /**
-   * @brief Normalize angle to 0-360 degrees range
-   * @param angle Angle to normalize
-   * @return Normalized angle
-   */
-  double normalizeAngle(double angle) const;
-  
-  /**
-   * @brief Calculate rotation path
-   * @param current Current position
-   * @param target Target position
-   * @return Pair of (distance, clockwise)
-   */
-  std::pair<double, bool> calculateRotationPath(double current, double target) const;
-  
-  /**
-   * @brief Validate that device is connected before operations
-   * @throws std::runtime_error If device is not connected
-   */
-  void validateConnected() const;
-
-  // Protected member variables that derived classes might need to access
-  std::atomic<double> position;       // Current position (degrees, 0-359.99)
-  std::atomic<double> targetPosition; // Target position (degrees)
-  double stepSize;                    // Step size (degrees)
-  double maxSpeed;                    // Maximum rotation speed (degrees/sec)
-  std::atomic<double> currentSpeed;   // Current rotation speed (degrees/sec)
-
-  std::atomic<bool> isMovingFlag;     // Whether movement is in progress
-  std::atomic<bool> isReversedFlag;   // Whether reversed direction is active
-
-  // Mutex for thread safety in derived classes
-  mutable std::mutex stateMutex;
+  // 重写基类方法
+  bool initializeDevice() override;
+  bool startDevice() override;
+  void stopDevice() override;
+  bool handleDeviceCommand(const std::string& command,
+                          const json& parameters,
+                          json& result) override;
+  void updateDevice() override;
 
 private:
-  // Update thread
-  std::thread update_thread;
-  std::atomic<bool> update_running;
+  /**
+   * @brief 初始化旋转器行为组件
+   */
+  void initializeRotatorBehaviors();
 
-  // Current command message ID (for completion events)
-  std::string current_move_message_id;
+  /**
+   * @brief 旋转器移动行为实现
+   */
+  class RotatorMovableBehavior : public behaviors::MovableBehavior {
+  public:
+    explicit RotatorMovableBehavior(Rotator* rotator);
+
+  protected:
+    bool executeMovement(int targetPosition) override;
+    bool executeStop() override;
+    bool executeHome() override;
+
+  private:
+    Rotator* rotator_;
+  };
+
+  // 硬件抽象接口
+  virtual bool executeRotation(double targetAngle);
+  virtual bool executeStop();
+  virtual bool executeHome();
+  virtual double readCurrentAngle();
+
+  // 角度处理函数
+  double normalizeAngle(double angle) const;
+  bool validateAngle(double angle) const;
+  double calculateShortestPath(double fromAngle, double toAngle) const;
+
+private:
+  // 行为组件指针
+  RotatorMovableBehavior* movableBehavior_;
+
+  // 旋转器参数
+  std::atomic<double> rotationSpeed_;      // 旋转速度 (degrees/second)
+  std::atomic<double> stepSize_;           // 步长 (degrees/step)
+  std::atomic<double> mechanicalOffset_;   // 机械偏移角度
+  std::atomic<bool> reversed_;             // 是否反向
   
-  // Performance optimization - cached update interval
-  std::chrono::milliseconds updateInterval;
+  // 角度限制
+  std::atomic<bool> limitsEnabled_;
+  std::atomic<double> minAngle_;
+  std::atomic<double> maxAngle_;
+  
+  // 当前状态
+  std::atomic<double> currentAngle_;
+  std::atomic<double> targetAngle_;
+  
+  // 旋转完成条件变量
+  mutable std::mutex rotationCompleteMutex_;
+  std::condition_variable rotationCompleteCV_;
 };
 
+/**
+ * @brief 旋转器工厂
+ */
+class RotatorFactory : public core::TypedDeviceFactory<Rotator> {
+public:
+  RotatorFactory(const std::string& manufacturer = "Generic", 
+                 const std::string& model = "Rotator")
+      : TypedDeviceFactory<Rotator>(manufacturer, model) {}
+};
+
+} // namespace device
 } // namespace astrocomm

@@ -1,14 +1,22 @@
 #pragma once
 
-#include "device/device_base.h"
+#include "core/modern_device_base.h"
+#include "interfaces/device_interface.h"
+#include "behaviors/movable_behavior.h"
+#include "behaviors/temperature_control_behavior.h"
 
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <unordered_map>
+#include <nlohmann/json.hpp>
 
 namespace astrocomm {
+namespace device {
+
+using json = nlohmann::json;
 
 /**
  * @brief Stepping mode enumeration for motor control
@@ -33,12 +41,14 @@ struct FocusPoint {
 };
 
 /**
- * @brief Focuser base class - provides core functionality for focuser devices
+ * @brief 调焦器设备实现
  *
- * This is an inheritable base class that implements core focuser functionality
- * which can be extended by derived classes for specific devices.
+ * 基于新架构的调焦器实现，使用行为组件提供移动控制和温度管理功能。
+ * 支持多种制造商的调焦器设备，提供统一的控制接口。
  */
-class Focuser : public DeviceBase {
+class Focuser : public core::ModernDeviceBase,
+                public interfaces::IFocuser,
+                public interfaces::ITemperatureControlled {
 public:
   /**
    * @brief Constructor
@@ -46,43 +56,71 @@ public:
    * @param manufacturer Manufacturer name
    * @param model Model name
    */
-  Focuser(const std::string &deviceId, const std::string &manufacturer = "ZWO",
+  Focuser(const std::string &deviceId,
+          const std::string &manufacturer = "ZWO",
           const std::string &model = "EAF");
 
   /**
-   * @brief Virtual destructor to ensure proper destruction of derived classes
+   * @brief Virtual destructor
    */
   virtual ~Focuser();
 
-  // Override start and stop methods
-  virtual bool start() override;
-  virtual void stop() override;
-
-  // ==== Basic Focuser Operations ====
+  /**
+   * @brief 获取设备类型名称
+   */
+  static std::string getDeviceTypeName() { return "FOCUSER"; }
 
   /**
-   * @brief Move to absolute position
-   * @param position Target position
-   * @param synchronous If true, wait for movement to complete
-   * @return True if operation started successfully
+   * @brief 获取支持的制造商列表
+   */
+  static std::vector<std::string> getSupportedManufacturers() {
+    return {"ZWO", "Celestron", "QHY", "Moonlite", "Generic"};
+  }
+
+  /**
+   * @brief 获取支持的型号列表
+   */
+  static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
+    if (manufacturer == "ZWO") return {"EAF", "EAF-S"};
+    if (manufacturer == "Celestron") return {"Focus Motor"};
+    if (manufacturer == "QHY") return {"CFW3-US"};
+    if (manufacturer == "Moonlite") return {"CSL", "DRO"};
+    return {"Generic Focuser"};
+  }
+
+  // 实现IMovable接口
+  bool moveToPosition(int position) override;
+  bool moveRelative(int steps) override;
+  bool stopMovement() override;
+  bool home() override;
+  int getCurrentPosition() const override;
+  bool isMoving() const override;
+
+  // 实现IFocuser特定接口
+  double getTemperature() const override;
+  bool supportsTemperatureCompensation() const override;
+  bool setTemperatureCompensation(bool enabled) override;
+
+  // 实现ITemperatureControlled接口
+  bool setTargetTemperature(double temperature) override;
+  double getCurrentTemperature() const override;
+  double getTargetTemperature() const override;
+  bool stopTemperatureControl() override;
+  bool isTemperatureStable() const override;
+
+  // ==== 扩展功能接口 ====
+
+  /**
+   * @brief Move to absolute position (向后兼容)
    */
   virtual bool moveAbsolute(int position, bool synchronous = false);
 
   /**
-   * @brief Move relative number of steps
-   * @param steps Steps to move (positive outward, negative inward)
-   * @param synchronous If true, wait for movement to complete
-   * @return True if operation started successfully
-   */
-  virtual bool moveRelative(int steps, bool synchronous = false);
-
-  /**
-   * @brief Abort current movement
-   * @return True if successful
+   * @brief Abort current movement (向后兼容)
    */
   virtual bool abort();
 
-  // ==== Focuser Parameter Settings ====
+  // ==== 扩展功能方法 ====
 
   /**
    * @brief Set maximum position
@@ -111,17 +149,6 @@ public:
    * @return True if successful
    */
   virtual bool setStepMode(StepMode mode);
-
-  /**
-   * @brief Set temperature compensation
-   * @param enabled Whether enabled
-   * @param coefficient Compensation coefficient
-   * @return True if successful
-   */
-  virtual bool setTemperatureCompensation(bool enabled,
-                                          double coefficient = 0.0);
-
-  // ==== Advanced Features ====
 
   /**
    * @brief Save current position as a named focus point
@@ -235,71 +262,78 @@ protected:
    */
   bool waitForMoveComplete(int timeoutMs = 0);
 
-  // ==== Command Handlers ====
-  virtual void handleMoveAbsoluteCommand(const CommandMessage &cmd,
-                                         ResponseMessage &response);
-  virtual void handleMoveRelativeCommand(const CommandMessage &cmd,
-                                         ResponseMessage &response);
-  virtual void handleAbortCommand(const CommandMessage &cmd,
-                                  ResponseMessage &response);
-  virtual void handleSetMaxPositionCommand(const CommandMessage &cmd,
-                                           ResponseMessage &response);
-  virtual void handleSetSpeedCommand(const CommandMessage &cmd,
-                                     ResponseMessage &response);
-  virtual void handleSetBacklashCommand(const CommandMessage &cmd,
-                                        ResponseMessage &response);
-  virtual void handleSetTempCompCommand(const CommandMessage &cmd,
-                                        ResponseMessage &response);
-  virtual void handleSetStepModeCommand(const CommandMessage &cmd,
-                                        ResponseMessage &response);
-  virtual void handleSaveFocusPointCommand(const CommandMessage &cmd,
-                                           ResponseMessage &response);
-  virtual void handleMoveToSavedPointCommand(const CommandMessage &cmd,
-                                             ResponseMessage &response);
-  virtual void handleAutoFocusCommand(const CommandMessage &cmd,
-                                      ResponseMessage &response);
+  // Hardware abstraction methods (to be implemented by derived classes or simulation)
+  virtual bool executeMovement(int targetPosition);
+  virtual bool executeStop();
+  virtual bool executeHome();
+  virtual double readTemperature();
+  virtual double readAmbientTemperature();
+  virtual bool setTemperatureControl(double power);
 
-  // ==== Protected State Variables ====
-  int position;                     // Current position
-  int targetPosition;               // Target position
-  int maxPosition;                  // Maximum position
-  int speed;                        // Movement speed (1-10)
-  int backlash;                     // Backlash compensation
-  bool tempCompEnabled;             // Temperature compensation enabled
-  double tempCompCoefficient;       // Temperature compensation coefficient
-  double temperature;               // Current temperature
-  StepMode stepMode;                // Step mode
-  std::atomic<bool> isMoving;       // Whether currently moving
-  std::atomic<bool> isAutoFocusing; // Whether auto focusing
-  std::string currentMoveMessageId; // Current move command message ID
-  bool movingDirection;             // true = outward, false = inward
-  std::condition_variable
-      moveCompleteCv; // Movement completion condition variable
+  // Enhanced methods from modern_focuser
+  void initializeHardware();
+  bool validatePosition(int position) const;
+  int calculateMovementTime(int distance) const;
 
-  // Temperature simulation parameters
-  double ambientTemperature; // Ambient temperature
-  double temperatureDrift;   // Temperature drift trend
+private:
+  // Behavior components
+  behaviors::MovableBehavior* movableBehavior_;
+  behaviors::TemperatureControlBehavior* temperatureBehavior_;
 
-  // Auto focus parameters
-  std::vector<FocusPoint> focusCurve;      // Focus curve data
-  std::atomic<bool> cancelAutoFocus;       // Cancel auto focus flag
-  FocusMetricCallback focusMetricCallback; // Focus quality evaluation callback
+  // Hardware-specific parameters
+  std::atomic<int> maxPosition_;
+  std::atomic<int> stepSize_;
+  std::atomic<int> backlash_;
+  std::atomic<bool> temperatureCompensation_;
+  std::atomic<double> tempCompCoefficient_;
+  std::atomic<double> currentTemperature_;
+  std::atomic<double> ambientTemperature_;
+
+  // Enhanced hardware parameters from modern_focuser
+  int hardwareMaxPosition_;
+  int hardwareMinPosition_;
+  double hardwareStepSize_;
+  bool hasTemperatureSensor_;
+  bool hasTemperatureControl_;
+
+  // Communication parameters
+  std::string serialPort_;
+  int baudRate_;
+
+  // Movement parameters
+  int maxSpeed_;
+  int acceleration_;
+
+  // Temperature parameters
+  double temperatureOffset_;
+  double temperatureScale_;
+
+  // Auto focus parameters (preserved from original)
+  std::vector<FocusPoint> focusCurve_;
+  std::atomic<bool> cancelAutoFocus_;
+  FocusMetricCallback focusMetricCallback_;
 
   // Saved focus points
-  std::unordered_map<std::string, std::pair<int, std::string>>
-      savedFocusPoints; // name -> (position,description)
-
-  // Update thread
-  std::thread updateThread;
-  std::atomic<bool> updateRunning;
-
-  // Auto focus thread
-  std::thread autoFocusThread;
+  std::unordered_map<std::string, std::pair<int, std::string>> savedFocusPoints_;
 
   // Thread-safe state access
-  mutable std::mutex statusMutex;
-  mutable std::mutex focusCurveMutex;
-  mutable std::mutex focusPointsMutex;
+  mutable std::mutex focusCurveMutex_;
+  mutable std::mutex focusPointsMutex_;
+
+  // Initialize focuser behaviors
+  void initializeFocuserBehaviors();
 };
 
+/**
+ * @brief Factory function for creating focuser instances
+ * @param deviceId Device identifier
+ * @param manufacturer Manufacturer name
+ * @param model Model name
+ * @return Unique pointer to focuser instance
+ */
+std::unique_ptr<Focuser> createModernFocuser(const std::string& deviceId,
+                                             const std::string& manufacturer = "ZWO",
+                                             const std::string& model = "EAF");
+
+} // namespace device
 } // namespace astrocomm

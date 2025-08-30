@@ -7,6 +7,7 @@
 #include <vector>
 #include <mutex>
 #include <atomic>
+#include <thread>
 #include <functional>
 #include <nlohmann/json.hpp>
 
