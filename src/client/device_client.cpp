@@ -25,7 +25,7 @@ using tcp = boost::asio::ip::tcp;
 #undef ERROR
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 
 DeviceClient::DeviceClient()
     : ioc(), connected(false), running(false),
@@ -53,7 +53,7 @@ DeviceClient::~DeviceClient() {
   // 停止消息处理
   stopMessageProcessing();
 
-  // 停止消息队列管理器
+  // 停止消息队列管理�?
   if (messageQueueManager) {
     messageQueueManager->stop();
   }
@@ -74,7 +74,7 @@ bool DeviceClient::connect(const std::string &host, uint16_t port) {
     lastHost = host;
     lastPort = port;
 
-    // 如果ioc停止了，需要重启
+    // 如果ioc停止了，需要重�?
     if (ioc.stopped()) {
       ioc.restart();
     }
@@ -98,7 +98,7 @@ bool DeviceClient::connect(const std::string &host, uint16_t port) {
 
     ws->handshake(host_port, "/ws");
 
-    // 更新连接状态
+    // 更新连接状�?
     bool wasConnected = connected;
     connected = true;
 
@@ -106,7 +106,7 @@ bool DeviceClient::connect(const std::string &host, uint16_t port) {
     reconnectCount = 0;
     reconnecting.store(false);
 
-    // 通知连接状态变更
+    // 通知连接状态变�?
     if (!wasConnected) {
       handleConnectionStateChange(true);
     }
@@ -119,11 +119,11 @@ bool DeviceClient::connect(const std::string &host, uint16_t port) {
   } catch (const std::exception &e) {
     spdlog::error("Connection error: {}", e.what());
 
-    // 更新连接状态
+    // 更新连接状�?
     bool wasConnected = connected;
     connected = false;
 
-    // 通知连接状态变更
+    // 通知连接状态变�?
     if (wasConnected) {
       handleConnectionStateChange(false);
     }
@@ -148,7 +148,7 @@ void DeviceClient::disconnect() {
       connected = false;
       spdlog::info("Disconnected from server");
     } catch (const beast::system_error &e) {
-      // 修复: 使用正确的错误代码 - boost::beast::error::timeout 改为
+      // 修复: 使用正确的错误代�?- boost::beast::error::timeout 改为
       // boost::asio::error::eof 或其他更合适的错误代码, 例如
       // boost::asio::error::connection_reset
       if (e.code() != boost::asio::error::eof &&
@@ -182,7 +182,7 @@ json DeviceClient::discoverDevices(
   // 发送请求并等待响应
   json response = sendAndWaitForResponse(msg);
 
-  // 保存设备信息到本地缓存
+  // 保存设备信息到本地缓�?
   if (response.contains("payload") && response["payload"].contains("devices")) {
     std::lock_guard<std::mutex> lock(devicesMutex);
     devices = response["payload"]["devices"];
@@ -209,7 +209,7 @@ json DeviceClient::getDeviceProperties(
   CommandMessage msg("GET_PROPERTY");
   msg.setDeviceId(deviceId);
 
-  // 构建属性列表
+  // 构建属性列�?
   json props = json::array();
   for (const auto &prop : properties) {
     props.push_back(prop);
@@ -252,14 +252,14 @@ json DeviceClient::executeCommand(const std::string &deviceId,
     msg.setParameters(parameters);
   }
 
-  // 对于高QoS级别的消息，使用消息队列管理器发送
+  // 对于高QoS级别的消息，使用消息队列管理器发�?
   if (qosLevel != Message::QoSLevel::AT_MOST_ONCE) {
     std::promise<json> responsePromise;
     std::future<json> responseFuture = responsePromise.get_future();
 
     std::string messageId = msg.getMessageId();
 
-    // 设置回调函数，当收到响应时触发
+    // 设置回调函数，当收到响应时触�?
     messageQueueManager->sendMessage(msg, [this, messageId,
                                            promise = std::move(responsePromise),
                                            &msg](const std::string &id,
@@ -292,7 +292,7 @@ json DeviceClient::executeCommand(const std::string &deviceId,
       }
     });
 
-    // 等待响应或超时
+    // 等待响应或超�?
     spdlog::debug("Waiting for response for command {} (ID: {})", command,
                   messageId);
     if (responseFuture.wait_for(std::chrono::seconds(30)) ==
@@ -348,7 +348,7 @@ void DeviceClient::executeCommandAsync(
     asyncCallbacks[messageId] = callback;
   }
 
-  // 使用消息队列发送消息
+  // 使用消息队列发送消�?
   messageQueueManager->sendMessage(
       msg, [this, messageId, command, callback](const std::string &id,
                                                 bool success) {
@@ -404,10 +404,10 @@ json DeviceClient::executeBatchCommands(
 void DeviceClient::subscribeToProperty(const std::string &deviceId,
                                        const std::string &property,
                                        PropertyCallback callback) {
-  // 修复: 确保subscriptionsMutex是类的成员变量
+  // 修复: 确保subscriptionsMutex是类的成员变�?
   std::lock_guard<std::mutex> lock(subscriptionsMutex);
 
-  // 生成键
+  // 生成�?
   std::string key = makePropertyKey(deviceId, property);
   propertySubscriptions.emplace(key, std::move(callback));
 
@@ -437,7 +437,7 @@ void DeviceClient::subscribeToEvent(const std::string &deviceId,
                                     EventCallback callback) {
   std::lock_guard<std::mutex> lock(subscriptionsMutex);
 
-  // 生成键
+  // 生成�?
   std::string key = makeEventKey(deviceId, event);
   eventSubscriptions.emplace(key, std::move(callback));
 
@@ -475,7 +475,7 @@ bool DeviceClient::authenticate(const std::string &method,
   // 发送请求并等待响应
   json response = sendAndWaitForResponse(msg);
 
-  // 检查认证是否成功
+  // 检查认证是否成�?
   if (response.contains("payload") && response["payload"].contains("status")) {
     bool success = response["payload"]["status"] == "SUCCESS";
     spdlog::info("Authentication {} using method {}",
@@ -1077,4 +1077,4 @@ json DeviceClient::getStatusInfo() const {
   return status;
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

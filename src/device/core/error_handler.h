@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
@@ -52,9 +52,7 @@ struct ErrorInfo {
     std::string message;                    // 错误消息
     std::string details;                    // 详细信息
     std::string source;                     // 错误源（设备ID、组件名等）
-    std::chrono::system_clock::time_point timestamp; // 时间戳
-    json context;                          // 上下文信息
-    std::string stackTrace;                // 堆栈跟踪（可选）
+    std::chrono::system_clock::time_point timestamp; // 时间�?    json context;                          // 上下文信�?    std::string stackTrace;                // 堆栈跟踪（可选）
     
     /**
      * @brief 转换为JSON
@@ -68,8 +66,7 @@ struct ErrorInfo {
 };
 
 /**
- * @brief 错误处理器回调函数类型
- */
+ * @brief 错误处理器回调函数类�? */
 using ErrorHandler = std::function<void(const ErrorInfo& error)>;
 
 /**
@@ -78,8 +75,7 @@ using ErrorHandler = std::function<void(const ErrorInfo& error)>;
 using RecoveryStrategy = std::function<bool(const ErrorInfo& error)>;
 
 /**
- * @brief 统一错误处理器
- * 
+ * @brief 统一错误处理�? * 
  * 提供统一的错误处理、记录、报告和恢复机制
  */
 class ErrorManager {
@@ -99,10 +95,8 @@ public:
      * @param level 错误级别
      * @param category 错误类别
      * @param message 错误消息
-     * @param source 错误源
-     * @param details 详细信息
-     * @param context 上下文信息
-     * @return 错误ID
+     * @param source 错误�?     * @param details 详细信息
+     * @param context 上下文信�?     * @return 错误ID
      */
     std::string reportError(ErrorLevel level,
                            ErrorCategory category,
@@ -112,22 +106,18 @@ public:
                            const json& context = json());
 
     /**
-     * @brief 报告错误（使用ErrorInfo）
-     * @param error 错误信息
+     * @brief 报告错误（使用ErrorInfo�?     * @param error 错误信息
      * @return 错误ID
      */
     std::string reportError(const ErrorInfo& error);
 
     /**
-     * @brief 添加错误处理器
-     * @param handler 错误处理器
-     * @return 处理器ID
+     * @brief 添加错误处理�?     * @param handler 错误处理�?     * @return 处理器ID
      */
     size_t addErrorHandler(ErrorHandler handler);
 
     /**
-     * @brief 移除错误处理器
-     * @param handlerId 处理器ID
+     * @brief 移除错误处理�?     * @param handlerId 处理器ID
      */
     void removeErrorHandler(size_t handlerId);
 
@@ -146,30 +136,24 @@ public:
 
     /**
      * @brief 设置错误级别过滤
-     * @param minLevel 最小错误级别
-     */
+     * @param minLevel 最小错误级�?     */
     void setErrorLevelFilter(ErrorLevel minLevel);
 
     /**
      * @brief 获取错误历史
-     * @param maxCount 最大数量（0表示全部）
-     * @return 错误历史列表
+     * @param maxCount 最大数量（0表示全部�?     * @return 错误历史列表
      */
     std::vector<ErrorInfo> getErrorHistory(size_t maxCount = 0) const;
 
     /**
-     * @brief 获取指定类别的错误
-     * @param category 错误类别
-     * @param maxCount 最大数量
-     * @return 错误列表
+     * @brief 获取指定类别的错�?     * @param category 错误类别
+     * @param maxCount 最大数�?     * @return 错误列表
      */
     std::vector<ErrorInfo> getErrorsByCategory(ErrorCategory category, size_t maxCount = 0) const;
 
     /**
      * @brief 获取指定源的错误
-     * @param source 错误源
-     * @param maxCount 最大数量
-     * @return 错误列表
+     * @param source 错误�?     * @param maxCount 最大数�?     * @return 错误列表
      */
     std::vector<ErrorInfo> getErrorsBySource(const std::string& source, size_t maxCount = 0) const;
 
@@ -185,9 +169,7 @@ public:
     json getErrorStatistics() const;
 
     /**
-     * @brief 设置最大错误历史数量
-     * @param maxCount 最大数量
-     */
+     * @brief 设置最大错误历史数�?     * @param maxCount 最大数�?     */
     void setMaxErrorHistory(size_t maxCount);
 
     /**
@@ -203,22 +185,19 @@ public:
 
     /**
      * @brief 导出错误日志
-     * @param filename 文件名
-     * @return 导出是否成功
+     * @param filename 文件�?     * @return 导出是否成功
      */
     bool exportErrorLog(const std::string& filename) const;
 
     /**
      * @brief 导入错误日志
-     * @param filename 文件名
-     * @return 导入是否成功
+     * @param filename 文件�?     * @return 导入是否成功
      */
     bool importErrorLog(const std::string& filename);
 
 private:
     /**
-     * @brief 私有构造函数（单例模式）
-     */
+     * @brief 私有构造函数（单例模式�?     */
     ErrorManager();
 
     /**
@@ -241,8 +220,7 @@ private:
     bool attemptRecovery(const ErrorInfo& error);
 
     /**
-     * @brief 添加到错误历史
-     * @param error 错误信息
+     * @brief 添加到错误历�?     * @param error 错误信息
      */
     void addToHistory(const ErrorInfo& error);
 
@@ -253,8 +231,7 @@ private:
     void updateStatistics(const ErrorInfo& error);
 
 private:
-    // 错误处理器管理
-    struct HandlerInfo {
+    // 错误处理器管�?    struct HandlerInfo {
         size_t id;
         ErrorHandler handler;
     };
@@ -285,8 +262,7 @@ private:
 };
 
 /**
- * @brief 错误处理宏定义
- */
+ * @brief 错误处理宏定�? */
 #define REPORT_ERROR(level, category, message, source) \
     ErrorManager::getInstance().reportError(level, category, message, source, "", json())
 
@@ -296,8 +272,7 @@ private:
 #define REPORT_ERROR_WITH_CONTEXT(level, category, message, source, details, context) \
     ErrorManager::getInstance().reportError(level, category, message, source, details, context)
 
-// 便捷宏
-#define REPORT_DEBUG(message, source) \
+// 便捷�?#define REPORT_DEBUG(message, source) \
     REPORT_ERROR(ErrorLevel::DEBUG, ErrorCategory::SOFTWARE, message, source)
 
 #define REPORT_INFO(message, source) \
@@ -312,18 +287,15 @@ private:
 #define REPORT_CRITICAL(message, source) \
     REPORT_ERROR(ErrorLevel::CRITICAL, ErrorCategory::SOFTWARE, message, source)
 
-// 硬件错误宏
-#define REPORT_HARDWARE_ERROR(message, source) \
+// 硬件错误�?#define REPORT_HARDWARE_ERROR(message, source) \
     REPORT_ERROR(ErrorLevel::ERROR, ErrorCategory::HARDWARE, message, source)
 
-// 通信错误宏
-#define REPORT_COMMUNICATION_ERROR(message, source) \
+// 通信错误�?#define REPORT_COMMUNICATION_ERROR(message, source) \
     REPORT_ERROR(ErrorLevel::ERROR, ErrorCategory::COMMUNICATION, message, source)
 
-// 配置错误宏
-#define REPORT_CONFIG_ERROR(message, source) \
+// 配置错误�?#define REPORT_CONFIG_ERROR(message, source) \
     REPORT_ERROR(ErrorLevel::ERROR, ErrorCategory::CONFIGURATION, message, source)
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

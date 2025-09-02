@@ -15,7 +15,12 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+// Fix Windows header pollution
+#ifdef ERROR
+#undef ERROR
+#endif
+
+namespace hydrogen {
 namespace device {
 
 using json = nlohmann::json;
@@ -26,15 +31,22 @@ using json = nlohmann::json;
 struct CameraParameters {
   int width = 1920;                // Image width (pixels)
   int height = 1080;               // Image height (pixels)
+  int maxWidth = 1920;             // Maximum image width (pixels)
+  int maxHeight = 1080;            // Maximum image height (pixels)
   int bitDepth = 16;               // Pixel bit depth
   bool hasColorSensor = true;      // Whether it's a color sensor
   bool hasCooler = true;           // Whether it has cooling capability
   bool hasFilterWheel = false;     // Whether it has a filter wheel
   int maxBinningX = 4;             // Maximum X-direction pixel binning
   int maxBinningY = 4;             // Maximum Y-direction pixel binning
+  int maxBinX = 4;                 // Maximum X-direction pixel binning (alias)
+  int maxBinY = 4;                 // Maximum Y-direction pixel binning (alias)
+  bool canAsymmetricBin = true;    // Whether asymmetric binning is supported
   double pixelSizeX = 3.76;        // X-direction pixel size (microns)
   double pixelSizeY = 3.76;        // Y-direction pixel size (microns)
+  int minGain = 0;                 // Minimum gain value
   int maxGain = 100;               // Maximum gain value
+  int minOffset = 0;               // Minimum offset value
   int maxOffset = 100;             // Maximum offset value
   double minExposureTime = 0.001;  // Minimum exposure time (seconds)
   double maxExposureTime = 3600.0; // Maximum exposure time (seconds)
@@ -59,10 +71,8 @@ enum class CameraState {
 /**
  * @brief 相机设备实现
  *
- * 基于新架构的相机实现，使用行为组件提供温度控制功能。
- * 支持多种制造商的相机设备，提供统一的控制接口。
- */
-class Camera : public core::ModernDeviceBase, 
+ * 基于新架构的相机实现，使用行为组件提供温度控制功能�? * 支持多种制造商的相机设备，提供统一的控制接口�? */
+class Camera : public core::ModernDeviceBase,
                public interfaces::ICamera,
                public interfaces::ITemperatureControlled {
 public:
@@ -94,7 +104,7 @@ public:
   }
 
   /**
-   * @brief 获取支持的型号列表
+   * @brief Get supported model list
    */
   static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
     if (manufacturer == "ZWO") return {"ASI294MC", "ASI183MC", "ASI1600MM", "ASI533MC"};
@@ -106,12 +116,12 @@ public:
     return {"Generic Camera"};
   }
 
-  // 实现ICamera接口
-  bool startExposure(double duration) override;
-  bool stopExposure() override;
+  // Implement ICamera interface
+  void startExposure(double duration, bool light = true) override;
+  void stopExposure() override;
   bool isExposing() const override;
   std::vector<uint8_t> getImageData() const override;
-  bool setGain(int gain) override;
+  void setGain(int gain) override;
   int getGain() const override;
   bool setROI(int x, int y, int width, int height) override;
 
@@ -157,17 +167,17 @@ public:
   /**
    * @brief Set offset
    */
-  virtual bool setOffset(int offset);
+  virtual void setOffset(int offset) override;
 
   /**
    * @brief Get offset
    */
-  virtual int getOffset() const;
+  virtual int getOffset() const override;
 
   /**
    * @brief Get current camera state
    */
-  virtual CameraState getCameraState() const;
+  virtual interfaces::CameraState getCameraState() const override;
 
   /**
    * @brief Get exposure progress (0.0 to 1.0)
@@ -219,6 +229,86 @@ public:
    */
   bool waitForExposureComplete(int timeoutMs = 0);
 
+  // Missing ICamera interface methods
+  void abortExposure() override;
+  bool getImageReady() const override;
+  double getLastExposureDuration() const override;
+  std::chrono::system_clock::time_point getLastExposureStartTime() const override;
+  double getPercentCompleted() const override;
+  int getCameraXSize() const override;
+  int getCameraYSize() const override;
+  double getPixelSizeX() const override;
+  double getPixelSizeY() const override;
+
+  // Additional missing ICamera interface methods
+  int getMaxBinX() const override;
+  int getMaxBinY() const override;
+  bool getCanAsymmetricBin() const override;
+  int getBinX() const override;
+  void setBinX(int binX) override;
+  int getBinY() const override;
+  void setBinY(int binY) override;
+  int getStartX() const override;
+  void setStartX(int startX) override;
+  int getStartY() const override;
+  void setStartY(int startY) override;
+  int getNumX() const override;
+  void setNumX(int numX) override;
+  int getNumY() const override;
+  void setNumY(int numY) override;
+  int getGainMin() const override;
+  int getGainMax() const override;
+  std::vector<std::string> getGains() const override;
+  int getOffsetMin() const override;
+  int getOffsetMax() const override;
+  std::vector<std::string> getOffsets() const override;
+  int getReadoutMode() const override;
+  void setReadoutMode(int mode) override;
+
+  // Final missing ICamera interface methods
+  std::vector<std::string> getReadoutModes() const override;
+  bool getFastReadout() const override;
+  void setFastReadout(bool fast) override;
+  bool getCanFastReadout() const override;
+  std::vector<std::vector<int>> getImageArray() const override;
+  interfaces::json getImageArrayVariant() const override;
+  interfaces::SensorType getSensorType() const override;
+  std::string getSensorName() const override;
+  int getBayerOffsetX() const override;
+  int getBayerOffsetY() const override;
+  double getMaxADU() const override;
+  double getElectronsPerADU() const override;
+  double getFullWellCapacity() const override;
+  double getExposureMin() const override;
+  double getExposureMax() const override;
+  double getExposureResolution() const override;
+  bool getHasShutter() const override;
+  bool getCanAbortExposure() const override;
+  bool getCanStopExposure() const override;
+  bool getCanPulseGuide() const override;
+  void pulseGuide(interfaces::GuideDirection direction, int duration) override;
+  bool getIsPulseGuiding() const override;
+  double getSubExposureDuration() const override;
+  void setSubExposureDuration(double duration) override;
+
+  // Missing IDevice interface methods
+  std::string getName() const override;
+  std::string getDescription() const override;
+  std::string getDriverInfo() const override;
+  std::string getDriverVersion() const override;
+  int getInterfaceVersion() const override;
+  std::vector<std::string> getSupportedActions() const override;
+  bool isConnecting() const override;
+  interfaces::DeviceState getDeviceState() const override;
+  std::string action(const std::string& actionName, const std::string& actionParameters) override;
+  void commandBlind(const std::string& command, bool raw) override;
+  bool commandBool(const std::string& command, bool raw) override;
+  std::string commandString(const std::string& command, bool raw) override;
+  void setupDialog() override;
+
+  // Device lifecycle methods
+  virtual void run();  // Main device loop
+
 protected:
   // 重写基类方法
   bool initializeDevice() override;
@@ -231,8 +321,7 @@ protected:
 
 private:
   /**
-   * @brief 初始化相机行为组件
-   */
+   * @brief 初始化相机行为组�?   */
   void initializeCameraBehaviors();
 
   /**
@@ -268,8 +357,8 @@ private:
   // 相机参数
   CameraParameters cameraParams_;
 
-  // 曝光状态
-  std::atomic<CameraState> cameraState_;
+  // Camera state
+  std::atomic<interfaces::CameraState> cameraState_;
   std::atomic<double> exposureDuration_;
   std::atomic<double> exposureStartTime_;
   std::atomic<bool> exposureInProgress_;
@@ -285,6 +374,13 @@ private:
   std::atomic<int> roiY_;
   std::atomic<int> roiWidth_;
   std::atomic<int> roiHeight_;
+
+  // Image frame settings (for ICamera interface)
+  std::atomic<int> startX_;
+  std::atomic<int> startY_;
+  std::atomic<int> numX_;
+  std::atomic<int> numY_;
+  std::atomic<int> readoutMode_;
 
   // 制冷参数
   std::atomic<bool> coolerEnabled_;
@@ -317,4 +413,4 @@ public:
 };
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

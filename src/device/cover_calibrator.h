@@ -9,7 +9,7 @@
 #include <condition_variable>
 #include <memory>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 /**
@@ -200,4 +200,4 @@ std::unique_ptr<CoverCalibrator> createModernCoverCalibrator(const std::string& 
                                                              const std::string& model = "CoverCalibrator");
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

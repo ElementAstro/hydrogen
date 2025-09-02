@@ -67,19 +67,30 @@ function(hydrogen_export_target target_name)
         SOVERSION ${PROJECT_VERSION_MAJOR}
     )
     
-    # Install the target
-    install(TARGETS ${target_name}
-        EXPORT ${HYDROGEN_EXPORT_NAME}Targets
-        COMPONENT ${ARG_COMPONENT}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    # Install the target (handle INTERFACE libraries differently)
+    get_target_property(target_type ${target_name} TYPE)
+    if(target_type STREQUAL "INTERFACE_LIBRARY")
+        # INTERFACE libraries need special handling
+        install(TARGETS ${target_name}
+            EXPORT ${HYDROGEN_EXPORT_NAME}Targets
             COMPONENT ${ARG_COMPONENT}
-            NAMELINK_COMPONENT Development
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            COMPONENT Development
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        )
+    else()
+        # Regular libraries
+        install(TARGETS ${target_name}
+            EXPORT ${HYDROGEN_EXPORT_NAME}Targets
             COMPONENT ${ARG_COMPONENT}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    )
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+                COMPONENT ${ARG_COMPONENT}
+                NAMELINK_COMPONENT Development
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+                COMPONENT Development
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+                COMPONENT ${ARG_COMPONENT}
+            INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        )
+    endif()
     
     # Install public headers if specified
     if(ARG_PUBLIC_HEADERS)
@@ -272,13 +283,23 @@ endfunction()
 
 # Install all export files
 function(hydrogen_install_exports)
-    # Install the targets export file
-    install(EXPORT ${HYDROGEN_EXPORT_NAME}Targets
-        FILE ${HYDROGEN_EXPORT_NAME}Targets.cmake
-        NAMESPACE ${HYDROGEN_NAMESPACE}
-        DESTINATION ${HYDROGEN_CONFIG_INSTALL_DIR}
-        COMPONENT Development
-    )
+    # Check if we have any exported targets
+    get_property(exported_targets GLOBAL PROPERTY HYDROGEN_EXPORTED_TARGETS)
+
+    message(STATUS "Hydrogen: Debug - exported_targets = '${exported_targets}'")
+
+    # Install the targets export file only if we have targets
+    if(exported_targets)
+        message(STATUS "Hydrogen: Installing export ${HYDROGEN_EXPORT_NAME}Targets")
+        install(EXPORT ${HYDROGEN_EXPORT_NAME}Targets
+            FILE ${HYDROGEN_EXPORT_NAME}Targets.cmake
+            NAMESPACE ${HYDROGEN_NAMESPACE}
+            DESTINATION ${HYDROGEN_CONFIG_INSTALL_DIR}
+            COMPONENT Development
+        )
+    else()
+        message(STATUS "Hydrogen: No exported targets found, skipping export installation")
+    endif()
     
     # Install config files
     install(FILES

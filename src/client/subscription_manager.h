@@ -9,7 +9,7 @@
 #include <string>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 
 using json = nlohmann::json;
 
@@ -225,4 +225,4 @@ private:
                               const std::string& name, const json& data);
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

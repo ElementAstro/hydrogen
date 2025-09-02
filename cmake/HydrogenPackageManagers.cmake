@@ -80,15 +80,19 @@ function(hydrogen_detect_vcpkg)
     # Set global variables
     if(vcpkg_found)
         set(HYDROGEN_VCPKG_AVAILABLE TRUE PARENT_SCOPE)
+        set(HYDROGEN_VCPKG_AVAILABLE TRUE CACHE BOOL "vcpkg is available" FORCE)
         set(HYDROGEN_VCPKG_ROOT "${vcpkg_root}" PARENT_SCOPE)
+        set(HYDROGEN_VCPKG_ROOT "${vcpkg_root}" CACHE PATH "vcpkg root directory" FORCE)
         set(HYDROGEN_VCPKG_TOOLCHAIN "${vcpkg_toolchain}" PARENT_SCOPE)
-        
+
         # Check for manifest mode
         if(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg.json")
             set(HYDROGEN_VCPKG_MANIFEST_MODE TRUE PARENT_SCOPE)
+            set(HYDROGEN_VCPKG_MANIFEST_MODE TRUE CACHE BOOL "vcpkg manifest mode" FORCE)
             message(STATUS "Hydrogen: vcpkg manifest mode detected")
         else()
             set(HYDROGEN_VCPKG_MANIFEST_MODE FALSE PARENT_SCOPE)
+            set(HYDROGEN_VCPKG_MANIFEST_MODE FALSE CACHE BOOL "vcpkg manifest mode" FORCE)
         endif()
         
         # Detect triplet
@@ -214,9 +218,13 @@ endfunction()
 
 function(hydrogen_select_primary_package_manager)
     set(primary_manager "none")
-    
+
+    # Check for HYDROGEN_DISABLE_VCPKG environment variable or CMake option
+    if(DEFINED ENV{HYDROGEN_DISABLE_VCPKG} OR HYDROGEN_DISABLE_VCPKG)
+        message(STATUS "Hydrogen: vcpkg disabled by user configuration")
+        set(primary_manager "none")
     # Priority order: vcpkg (if manifest mode) > conan > vcpkg (classic) > none
-    if(HYDROGEN_VCPKG_AVAILABLE AND HYDROGEN_VCPKG_MANIFEST_MODE)
+    elseif(HYDROGEN_VCPKG_AVAILABLE AND HYDROGEN_VCPKG_MANIFEST_MODE)
         set(primary_manager "vcpkg")
         message(STATUS "Hydrogen: Selected vcpkg as primary package manager (manifest mode)")
     elseif(HYDROGEN_CONAN_AVAILABLE)
@@ -228,8 +236,9 @@ function(hydrogen_select_primary_package_manager)
     else()
         message(STATUS "Hydrogen: No package manager detected, using FetchContent fallback")
     endif()
-    
+
     set(HYDROGEN_PRIMARY_PACKAGE_MANAGER "${primary_manager}" PARENT_SCOPE)
+    set(HYDROGEN_PRIMARY_PACKAGE_MANAGER "${primary_manager}" CACHE STRING "Primary package manager" FORCE)
 endfunction()
 
 # =============================================================================

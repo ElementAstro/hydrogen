@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace astrocomm {
+namespace hydrogen {
 
 using json = nlohmann::json;
 
@@ -158,4 +158,4 @@ private:
     void processDiscoveryResponse(const json& response);
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

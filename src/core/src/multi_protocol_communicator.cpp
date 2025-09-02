@@ -1,8 +1,8 @@
-#include <astrocomm/core/protocol_communicators.h>
-#include <astrocomm/core/utils.h>
+#include <hydrogen/core/protocol_communicators.h>
+#include <hydrogen/core/utils.h>
 #include <spdlog/spdlog.h>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 MultiProtocolDeviceCommunicator::MultiProtocolDeviceCommunicator(const std::string& deviceId)
@@ -469,4 +469,4 @@ json MultiProtocolDeviceCommunicator::getStatus() const {
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

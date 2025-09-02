@@ -6,9 +6,10 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <string>
 
-using namespace astrocomm;
+using namespace hydrogen;
+using namespace hydrogen::device;
 
-std::unique_ptr<GuiderDevice> guider;
+std::unique_ptr<Guider> guider;
 
 void signalHandler(int sig) {
     spdlog::info("Received signal {}, shutting down...", sig);
@@ -37,7 +38,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // 解析命令行参数
+    // 解析命令行参�?
     std::string host = "localhost";
     uint16_t port = 8000;
     std::string deviceId = "guider-main";
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
         deviceId = argv[3];
 
     try {
-        guider = std::make_unique<GuiderDevice>(deviceId, "QHY", "QHY5-II");
+        guider = std::make_unique<Guider>(deviceId, "QHY", "QHY5-II");
 
         if (!guider->connect(host, port)) {
             spdlog::critical("Failed to connect to server");

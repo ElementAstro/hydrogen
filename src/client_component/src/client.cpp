@@ -1,11 +1,11 @@
-#include <astrocomm/client.h>
+#include <hydrogen/client.h>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace client {
 
 void initialize() {
     // Initialize the core component first
-    astrocomm::core::initialize();
+    hydrogen::core::initialize();
     
     // Initialize any client-specific global state
     // This could include setting up networking, initializing SSL contexts, etc.
@@ -15,7 +15,7 @@ void cleanup() {
     // Clean up client-specific resources
     
     // Clean up the core component
-    astrocomm::core::cleanup();
+    hydrogen::core::cleanup();
 }
 
 std::string getVersion() {
@@ -51,4 +51,4 @@ std::unique_ptr<DeviceClient> createAndConnect(const std::string& host, uint16_t
 }
 
 } // namespace client
-} // namespace astrocomm
+} // namespace hydrogen

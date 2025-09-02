@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace astrocomm {
+namespace hydrogen {
 
 using json = nlohmann::json;
 
@@ -124,4 +124,4 @@ private:
     void onConnectionStateChanged(bool connected);
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

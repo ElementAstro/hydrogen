@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "astrocomm/server/protocols/grpc/grpc_server.h"
+#include "hydrogen/server/protocols/grpc/grpc_server.h"
 #include <memory>
 
-using namespace astrocomm::server::protocols::grpc;
+using namespace hydrogen::server::protocols::grpc;
 
 class GrpcServerTest : public ::testing::Test {
 protected:

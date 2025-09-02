@@ -1,12 +1,12 @@
-#include "astrocomm/core/device_health.h"
-#include "astrocomm/core/utils.h"
+#include "hydrogen/core/device_health.h"
+#include "hydrogen/core/utils.h"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <thread>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 // DeviceMetrics implementation
@@ -529,4 +529,4 @@ bool DeviceHealthMonitor::loadMetrics(const std::string& filename) {
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

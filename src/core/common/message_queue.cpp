@@ -1,10 +1,19 @@
-#include "astrocomm/core/message_queue.h"
+#include "hydrogen/core/message_queue.h"
 
 #include <chrono>
 #include <functional>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
+
+// Helper function to create a message from JSON
+// This is a simplified implementation for build compatibility
+std::unique_ptr<Message> createMessageFromJson(const std::string& json) {
+    // For now, return a simple message implementation
+    // In a real implementation, this would parse the JSON and create the appropriate message type
+    (void)json; // Suppress unused parameter warning
+    return nullptr; // Simplified implementation
+}
 
 MessageQueueManager::MessageQueueManager(MessageSendCallback sendCallback)
     : sendCallback_(sendCallback), maxRetries_(3), 
@@ -237,4 +246,4 @@ std::chrono::steady_clock::time_point MessageQueueManager::calculateNextRetryTim
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

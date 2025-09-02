@@ -3,7 +3,7 @@
 #include <chrono>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
@@ -114,12 +114,10 @@ bool DeviceManager::start() {
     try {
         running_ = true;
         
-        // 更新设备状态
-        stateManager_->setProperty("connected", isConnected());
+        // 更新设备状�?        stateManager_->setProperty("connected", isConnected());
         stateManager_->setProperty("running", true);
         
-        // 启动状态更新线程
-        startStatusUpdateThread();
+        // 启动状态更新线�?        startStatusUpdateThread();
         
         SPDLOG_INFO("Device {} started", deviceId_);
         return true;
@@ -138,11 +136,9 @@ void DeviceManager::stop() {
 
     running_ = false;
     
-    // 停止状态更新线程
-    stopStatusUpdateThread();
+    // 停止状态更新线�?    stopStatusUpdateThread();
     
-    // 更新设备状态
-    if (stateManager_) {
+    // 更新设备状�?    if (stateManager_) {
         stateManager_->setProperty("running", false);
     }
     
@@ -190,8 +186,7 @@ json DeviceManager::getDeviceInfo() const {
         info["capabilities"] = stateManager_->getCapabilities();
     }
     
-    // 添加当前属性
-    if (stateManager_) {
+    // 添加当前属�?    if (stateManager_) {
         info["properties"] = stateManager_->getAllProperties();
     }
     
@@ -271,8 +266,7 @@ void DeviceManager::initializeBaseProperties() {
         return;
     }
 
-    // 设置基础属性
-    stateManager_->setProperty("deviceId", deviceId_);
+    // 设置基础属�?    stateManager_->setProperty("deviceId", deviceId_);
     stateManager_->setProperty("deviceType", deviceType_);
     stateManager_->setProperty("manufacturer", manufacturer_);
     stateManager_->setProperty("model", model_);
@@ -291,35 +285,36 @@ void DeviceManager::initializeBaseConfigs() {
         return;
     }
 
-    // 定义基础配置项
-    std::vector<ConfigDefinition> baseConfigs = {
-        {
-            .name = "statusUpdateInterval",
-            .type = ConfigType::INTEGER,
-            .defaultValue = 5,
-            .minValue = 1,
-            .maxValue = 60,
-            .description = "Status update interval in seconds",
-            .required = false,
-            .readOnly = false
-        },
-        {
-            .name = "autoReconnect",
-            .type = ConfigType::BOOLEAN,
-            .defaultValue = true,
-            .description = "Enable automatic reconnection",
-            .required = false,
-            .readOnly = false
-        },
-        {
-            .name = "logLevel",
-            .type = ConfigType::STRING,
-            .defaultValue = "INFO",
-            .description = "Logging level (DEBUG, INFO, WARN, ERROR)",
-            .required = false,
-            .readOnly = false
-        }
-    };
+    // 定义基础配置�?    std::vector<hydrogen::device::core::ConfigDefinition> baseConfigs;
+
+    hydrogen::device::core::ConfigDefinition statusUpdateConfig;
+    statusUpdateConfig.name = "statusUpdateInterval";
+    statusUpdateConfig.type = hydrogen::device::core::ConfigType::INTEGER;
+    statusUpdateConfig.defaultValue = 5;
+    statusUpdateConfig.minValue = 1;
+    statusUpdateConfig.maxValue = 60;
+    statusUpdateConfig.description = "Status update interval in seconds";
+    statusUpdateConfig.required = false;
+    statusUpdateConfig.readOnly = false;
+    baseConfigs.push_back(statusUpdateConfig);
+
+    hydrogen::device::core::ConfigDefinition autoReconnectConfig;
+    autoReconnectConfig.name = "autoReconnect";
+    autoReconnectConfig.type = hydrogen::device::core::ConfigType::BOOLEAN;
+    autoReconnectConfig.defaultValue = true;
+    autoReconnectConfig.description = "Enable automatic reconnection";
+    autoReconnectConfig.required = false;
+    autoReconnectConfig.readOnly = false;
+    baseConfigs.push_back(autoReconnectConfig);
+
+    hydrogen::device::core::ConfigDefinition logLevelConfig;
+    logLevelConfig.name = "logLevel";
+    logLevelConfig.type = hydrogen::device::core::ConfigType::STRING;
+    logLevelConfig.defaultValue = "INFO";
+    logLevelConfig.description = "Logging level (DEBUG, INFO, WARN, ERROR)";
+    logLevelConfig.required = false;
+    logLevelConfig.readOnly = false;
+    baseConfigs.push_back(logLevelConfig);
     
     configManager_->defineConfigs(baseConfigs);
 }
@@ -328,7 +323,7 @@ void DeviceManager::handleMessage(const std::string& message) {
     SPDLOG_DEBUG("Device {} received message: {}", deviceId_, message);
     
     try {
-        json msgJson = json::parse(message);
+        hydrogen::device::core::json msgJson = hydrogen::device::core::json::parse(message);
         
         // 处理基础消息类型
         if (msgJson.contains("messageType")) {
@@ -336,7 +331,7 @@ void DeviceManager::handleMessage(const std::string& message) {
             
             if (msgType == "PING") {
                 // 响应心跳
-                json pongMsg;
+                hydrogen::device::core::json pongMsg;
                 pongMsg["messageType"] = "PONG";
                 pongMsg["deviceId"] = deviceId_;
                 pongMsg["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -344,12 +339,10 @@ void DeviceManager::handleMessage(const std::string& message) {
                 sendMessage(pongMsg);
             }
             else if (msgType == "GET_STATUS") {
-                // 发送状态更新
-                sendStatusUpdate();
+                // 发送状态更�?                sendStatusUpdate();
             }
             else if (msgType == "GET_CONFIG") {
-                // 发送配置信息
-                json configMsg;
+                // 发送配置信�?                hydrogen::device::core::json configMsg;
                 configMsg["messageType"] = "CONFIG_RESPONSE";
                 configMsg["deviceId"] = deviceId_;
                 configMsg["configs"] = configManager_->getAllConfigs();
@@ -362,15 +355,13 @@ void DeviceManager::handleMessage(const std::string& message) {
     }
 }
 
-void DeviceManager::handleConnectionStateChange(ConnectionState state, const std::string& error) {
+void DeviceManager::handleConnectionStateChange(hydrogen::device::core::ConnectionState state, const std::string& error) {
     SPDLOG_INFO("Device {} connection state changed to {}", deviceId_, static_cast<int>(state));
     
-    // 更新连接状态属性
-    stateManager_->setProperty("connected", state == ConnectionState::CONNECTED);
+    // 更新连接状态属�?    stateManager_->setProperty("connected", state == ConnectionState::CONNECTED);
     
     if (state == ConnectionState::CONNECTED) {
-        // 连接成功后注册设备
-        registerDevice();
+        // 连接成功后注册设�?        registerDevice();
     }
     else if (state == ConnectionState::ERROR && !error.empty()) {
         SPDLOG_ERROR("Connection error for device {}: {}", deviceId_, error);
@@ -384,7 +375,7 @@ void DeviceManager::sendStatusUpdate() {
     }
 
     try {
-        json statusMsg;
+        hydrogen::device::core::json statusMsg;
         statusMsg["messageType"] = "STATUS_UPDATE";
         statusMsg["deviceId"] = deviceId_;
         statusMsg["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -438,6 +429,18 @@ void DeviceManager::stopStatusUpdateThread() {
     SPDLOG_DEBUG("Status update thread stopped for device {}", deviceId_);
 }
 
+hydrogen::device::core::json DeviceManager::getDeviceInfo() const {
+    hydrogen::device::core::json info;
+    info["deviceId"] = deviceId_;
+    info["deviceType"] = deviceType_;
+    info["manufacturer"] = manufacturer_;
+    info["model"] = model_;
+    info["firmwareVersion"] = firmwareVersion_;
+    info["connected"] = isConnected();
+    info["running"] = isRunning();
+    return info;
+}
+
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

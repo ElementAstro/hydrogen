@@ -1,0 +1,342 @@
+name: 'Setup Optimized Build Environment'
+description: 'Sets up an optimized build environment with caching and compiler tools'
+
+inputs:
+  compiler:
+    description: 'Compiler to use (gcc, clang, msvc)'
+    required: false
+    default: 'gcc'
+  cache-key:
+    description: 'Cache key suffix for build artifacts'
+    required: true
+  enable-ccache:
+    description: 'Enable ccache for compilation caching'
+    required: false
+    default: 'true'
+  vcpkg-version:
+    description: 'vcpkg version to use'
+    required: false
+    default: '2024.01.12'
+
+outputs:
+  cache-hit:
+    description: 'Whether cache was hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+  compiler-version:
+    description: 'Version of the selected compiler'
+    value: ${{ steps.compiler-info.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    # =============================================================================
+    # System Information and Setup
+    # =============================================================================
+    
+    - name: System Information
+      shell: bash
+      run: |
+        echo "::group::System Information"
+        echo "OS: ${{ runner.os }}"
+        echo "Architecture: ${{ runner.arch }}"
+        echo "CPU Cores: $(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'unknown')"
+        echo "Memory: $(free -h 2>/dev/null | grep '^Mem:' | awk '{print $2}' || echo 'unknown')"
+        echo "Disk Space: $(df -h . | tail -1 | awk '{print $4}' || echo 'unknown')"
+        echo "::endgroup::"
+
+    # =============================================================================
+    # Compiler Setup
+    # =============================================================================
+    
+    - name: Setup GCC
+      if: inputs.compiler == 'gcc' && runner.os == 'Linux'
+      shell: bash
+      run: |
+        echo "::group::Setting up GCC"
+        sudo apt-get update
+        sudo apt-get install -y gcc-11 g++-11
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
+        echo "CC=gcc-11" >> $GITHUB_ENV
+        echo "CXX=g++-11" >> $GITHUB_ENV
+        echo "::endgroup::"
+
+    - name: Setup Clang
+      if: inputs.compiler == 'clang'
+      shell: bash
+      run: |
+        echo "::group::Setting up Clang"
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          sudo apt-get update
+          sudo apt-get install -y clang-15 libc++-15-dev libc++abi-15-dev
+          echo "CC=clang-15" >> $GITHUB_ENV
+          echo "CXX=clang++-15" >> $GITHUB_ENV
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+        fi
+        echo "::endgroup::"
+
+    - name: Setup MSVC
+      if: inputs.compiler == 'msvc' && runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    # =============================================================================
+    # Build Tools Setup
+    # =============================================================================
+    
+    - name: Setup Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
+      with:
+        version: '1.11.1'
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v1.14
+      with:
+        cmake-version: '3.27.0'
+
+    # =============================================================================
+    # Package Manager Setup (vcpkg)
+    # =============================================================================
+    
+    - name: Setup vcpkg
+      shell: bash
+      run: |
+        echo "::group::Setting up vcpkg"
+        if [[ ! -d "$VCPKG_ROOT" ]]; then
+          git clone https://github.com/Microsoft/vcpkg.git $VCPKG_ROOT
+          cd $VCPKG_ROOT
+          git checkout ${{ inputs.vcpkg-version }}
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            ./bootstrap-vcpkg.bat
+          else
+            ./bootstrap-vcpkg.sh
+          fi
+        fi
+        echo "VCPKG_ROOT=$VCPKG_ROOT" >> $GITHUB_ENV
+        echo "::endgroup::"
+      env:
+        VCPKG_ROOT: ${{ runner.temp }}/vcpkg
+
+    # =============================================================================
+    # Caching Setup
+    # =============================================================================
+    
+    - name: Cache vcpkg
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ runner.temp }}/vcpkg
+          !${{ runner.temp }}/vcpkg/buildtrees
+          !${{ runner.temp }}/vcpkg/packages
+          !${{ runner.temp }}/vcpkg/downloads
+        key: vcpkg-${{ runner.os }}-${{ inputs.vcpkg-version }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          vcpkg-${{ runner.os }}-${{ inputs.vcpkg-version }}-
+          vcpkg-${{ runner.os }}-
+
+    - name: Cache vcpkg packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ runner.temp }}/vcpkg/installed
+          ${{ runner.temp }}/vcpkg/packages
+        key: vcpkg-packages-${{ runner.os }}-${{ inputs.cache-key }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          vcpkg-packages-${{ runner.os }}-${{ inputs.cache-key }}-
+          vcpkg-packages-${{ runner.os }}-
+
+    - name: Setup ccache
+      if: inputs.enable-ccache == 'true' && runner.os != 'Windows'
+      shell: bash
+      run: |
+        echo "::group::Setting up ccache"
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          sudo apt-get install -y ccache
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          brew install ccache
+        fi
+        
+        # Configure ccache
+        ccache --set-config=max_size=400M
+        ccache --set-config=compression=true
+        ccache --set-config=compression_level=6
+        ccache --set-config=cache_dir=${{ runner.temp }}/ccache
+        
+        # Add ccache to PATH
+        echo "/usr/lib/ccache" >> $GITHUB_PATH
+        echo "CCACHE_DIR=${{ runner.temp }}/ccache" >> $GITHUB_ENV
+        echo "::endgroup::"
+
+    - name: Cache ccache
+      if: inputs.enable-ccache == 'true' && runner.os != 'Windows'
+      uses: actions/cache@v3
+      with:
+        path: ${{ runner.temp }}/ccache
+        key: ccache-${{ runner.os }}-${{ inputs.cache-key }}-${{ github.sha }}
+        restore-keys: |
+          ccache-${{ runner.os }}-${{ inputs.cache-key }}-
+          ccache-${{ runner.os }}-
+
+    - name: Cache CMake build
+      id: cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          build
+          !build/**/CMakeFiles
+          !build/**/Testing
+          !build/**/*.tmp
+        key: cmake-build-${{ runner.os }}-${{ inputs.cache-key }}-${{ hashFiles('CMakeLists.txt', 'cmake/**', 'vcpkg.json') }}
+        restore-keys: |
+          cmake-build-${{ runner.os }}-${{ inputs.cache-key }}-
+          cmake-build-${{ runner.os }}-
+
+    # =============================================================================
+    # Additional Development Tools
+    # =============================================================================
+    
+    - name: Setup Additional Tools (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        echo "::group::Installing additional tools"
+        sudo apt-get install -y \
+          pkg-config \
+          libtool \
+          autoconf \
+          automake \
+          build-essential \
+          curl \
+          zip \
+          unzip \
+          tar \
+          git \
+          python3-pip
+        
+        # Install static analysis tools
+        sudo apt-get install -y \
+          cppcheck \
+          clang-tidy-15 \
+          valgrind \
+          lcov
+        
+        # Create symlinks for clang-tidy
+        sudo ln -sf /usr/bin/clang-tidy-15 /usr/bin/clang-tidy
+        echo "::endgroup::"
+
+    - name: Setup Additional Tools (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        echo "::group::Installing additional tools"
+        brew install \
+          pkg-config \
+          autoconf \
+          automake \
+          libtool \
+          cppcheck \
+          llvm
+        echo "::endgroup::"
+
+    - name: Setup Additional Tools (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        Write-Host "::group::Installing additional tools"
+        # Install chocolatey packages if needed
+        # choco install cppcheck
+        Write-Host "::endgroup::"
+
+    # =============================================================================
+    # Environment Validation
+    # =============================================================================
+    
+    - name: Validate Build Environment
+      id: compiler-info
+      shell: bash
+      run: |
+        echo "::group::Validating build environment"
+        
+        # Check compiler
+        if [[ "${{ inputs.compiler }}" == "gcc" ]]; then
+          gcc --version
+          g++ --version
+          echo "version=$(gcc --version | head -n1 | cut -d' ' -f4)" >> $GITHUB_OUTPUT
+        elif [[ "${{ inputs.compiler }}" == "clang" ]]; then
+          clang --version
+          clang++ --version
+          echo "version=$(clang --version | head -n1 | cut -d' ' -f4)" >> $GITHUB_OUTPUT
+        elif [[ "${{ inputs.compiler }}" == "msvc" ]]; then
+          cl 2>&1 | head -n1 || true
+          echo "version=msvc" >> $GITHUB_OUTPUT
+        fi
+        
+        # Check build tools
+        cmake --version
+        ninja --version
+        
+        # Check vcpkg
+        $VCPKG_ROOT/vcpkg version
+        
+        # Check ccache if enabled
+        if [[ "${{ inputs.enable-ccache }}" == "true" && "${{ runner.os }}" != "Windows" ]]; then
+          ccache --version
+          ccache --show-stats
+        fi
+        
+        echo "::endgroup::"
+
+    # =============================================================================
+    # Performance Optimizations
+    # =============================================================================
+    
+    - name: Configure Build Optimizations
+      shell: bash
+      run: |
+        echo "::group::Configuring build optimizations"
+        
+        # Set parallel build levels based on available cores
+        if [[ "${{ runner.os }}" == "Linux" || "${{ runner.os }}" == "macOS" ]]; then
+          CORES=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+        else
+          CORES=$NUMBER_OF_PROCESSORS
+        fi
+        
+        # Use 75% of available cores for parallel builds
+        PARALLEL_LEVEL=$((CORES * 3 / 4))
+        if [[ $PARALLEL_LEVEL -lt 1 ]]; then
+          PARALLEL_LEVEL=1
+        fi
+        
+        echo "CMAKE_BUILD_PARALLEL_LEVEL=$PARALLEL_LEVEL" >> $GITHUB_ENV
+        echo "CTEST_PARALLEL_LEVEL=$PARALLEL_LEVEL" >> $GITHUB_ENV
+        
+        # Configure vcpkg for binary caching
+        echo "VCPKG_BINARY_SOURCES=clear;x-gha,readwrite" >> $GITHUB_ENV
+        
+        # Set memory limits for linker
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          echo "LDFLAGS=-Wl,--no-keep-memory" >> $GITHUB_ENV
+        fi
+        
+        echo "Configured for $PARALLEL_LEVEL parallel jobs"
+        echo "::endgroup::"
+
+    # =============================================================================
+    # Final Setup
+    # =============================================================================
+    
+    - name: Display Environment Summary
+      shell: bash
+      run: |
+        echo "::group::Build Environment Summary"
+        echo "Compiler: ${{ inputs.compiler }}"
+        echo "Cache Key: ${{ inputs.cache-key }}"
+        echo "ccache Enabled: ${{ inputs.enable-ccache }}"
+        echo "vcpkg Version: ${{ inputs.vcpkg-version }}"
+        echo "Parallel Jobs: $CMAKE_BUILD_PARALLEL_LEVEL"
+        echo "Cache Hit: ${{ steps.cache.outputs.cache-hit }}"
+        echo "::endgroup::"

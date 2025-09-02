@@ -9,7 +9,7 @@
 #include <condition_variable>
 #include <memory>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 /**
@@ -215,4 +215,4 @@ std::unique_ptr<Dome> createModernDome(const std::string& deviceId,
                                        const std::string& model = "Dome");
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

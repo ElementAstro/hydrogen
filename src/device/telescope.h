@@ -10,7 +10,7 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 using json = nlohmann::json;
@@ -60,11 +60,8 @@ struct TelescopeCoordinates {
 };
 
 /**
- * @brief 望远镜设备实现
- *
- * 基于新架构的望远镜实现，提供完整的望远镜控制功能。
- * 支持多种制造商的望远镜设备，提供统一的控制接口。
- */
+ * @brief 望远镜设备实�? *
+ * 基于新架构的望远镜实现，提供完整的望远镜控制功能�? * 支持多种制造商的望远镜设备，提供统一的控制接口�? */
 class Telescope : public core::ModernDeviceBase, 
                   public interfaces::ITelescope {
 public:
@@ -96,8 +93,7 @@ public:
   }
 
   /**
-   * @brief 获取支持的型号列表
-   */
+   * @brief 获取支持的型号列�?   */
   static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
     if (manufacturer == "Celestron") return {"NexStar Evolution", "CGX", "CGX-L", "AVX"};
     if (manufacturer == "Meade") return {"LX200", "LX600", "LX850", "ETX"};
@@ -140,7 +136,7 @@ public:
    */
   virtual void abort();
 
-  // ==== 新架构扩展功能 ====
+  // ==== 新架构扩展功�?====
 
   /**
    * @brief Set mount type
@@ -297,8 +293,7 @@ private:
   void slewThreadFunction();
 
 private:
-  // 望远镜参数
-  MountType mountType_;
+  // 望远镜参�?  MountType mountType_;
   TrackingMode trackingMode_;
   SlewSpeed slewSpeed_;
   
@@ -313,8 +308,7 @@ private:
   std::atomic<double> siteLongitude_;
   std::atomic<double> siteElevation_;
   
-  // 状态信息
-  std::atomic<bool> isSlewing_;
+  // 状态信�?  std::atomic<bool> isSlewing_;
   std::atomic<bool> isTracking_;
   std::atomic<bool> isParked_;
   std::atomic<bool> isAligned_;
@@ -337,8 +331,7 @@ private:
 };
 
 /**
- * @brief 望远镜工厂
- */
+ * @brief 望远镜工�? */
 class TelescopeFactory : public core::TypedDeviceFactory<Telescope> {
 public:
   TelescopeFactory(const std::string& manufacturer = "Generic", 
@@ -347,4 +340,4 @@ public:
 };
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

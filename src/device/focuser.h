@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 using json = nlohmann::json;
@@ -41,10 +41,10 @@ struct FocusPoint {
 };
 
 /**
- * @brief 调焦器设备实现
+ * @brief 调焦器设备实�?
  *
- * 基于新架构的调焦器实现，使用行为组件提供移动控制和温度管理功能。
- * 支持多种制造商的调焦器设备，提供统一的控制接口。
+ * 基于新架构的调焦器实现，使用行为组件提供移动控制和温度管理功能�?
+ * 支持多种制造商的调焦器设备，提供统一的控制接口�?
  */
 class Focuser : public core::ModernDeviceBase,
                 public interfaces::IFocuser,
@@ -78,7 +78,7 @@ public:
   }
 
   /**
-   * @brief 获取支持的型号列表
+   * @brief 获取支持的型号列�?
    */
   static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
     if (manufacturer == "ZWO") return {"EAF", "EAF-S"};
@@ -215,7 +215,87 @@ public:
   using FocusMetricCallback = std::function<double(int position)>;
   void setFocusMetricCallback(FocusMetricCallback callback);
 
+  // ==== Additional Interface Methods ====
+
+  /**
+   * @brief Get maximum position
+   */
+  int getMaxPosition() const;
+
+  /**
+   * @brief Get backlash compensation value
+   */
+  int getBacklash() const;
+
+  /**
+   * @brief Get temperature compensation coefficient
+   */
+  double getTempCompCoefficient() const;
+
+  /**
+   * @brief Set temperature compensation coefficient
+   */
+  bool setTempCompCoefficient(double coefficient);
+
+  /**
+   * @brief Handle device-specific commands
+   */
+  bool handleDeviceCommand(const std::string& command, const json& parameters, json& result);
+
+  /**
+   * @brief Update device state
+   */
+  void updateDevice();
+
+  /**
+   * @brief Get device capabilities
+   */
+  std::vector<std::string> getCapabilities() const override;
+
+  // Hardware abstraction methods (moved from protected to public for behavior access)
+  virtual bool executeMovement(int targetPosition);
+  virtual bool executeStop();
+  virtual bool executeHome();
+  virtual double readTemperature();
+  virtual double readAmbientTemperature();
+  virtual bool setTemperatureControl(double power);
+
+  // Missing IDevice interface methods
+  std::string getName() const override;
+  std::string getDescription() const override;
+  std::string getDriverInfo() const override;
+  std::string getDriverVersion() const override;
+  int getInterfaceVersion() const override;
+  std::vector<std::string> getSupportedActions() const override;
+  bool isConnecting() const override;
+  interfaces::DeviceState getDeviceState() const override;
+  std::string action(const std::string& actionName, const std::string& actionParameters) override;
+  void commandBlind(const std::string& command, bool raw) override;
+  bool commandBool(const std::string& command, bool raw) override;
+  std::string commandString(const std::string& command, bool raw) override;
+  void setupDialog() override;
+
+  // Device lifecycle methods
+  virtual void run();  // Main device loop
+
 protected:
+  // ==== Base Class Method Overrides ====
+
+  /**
+   * @brief Initialize device-specific functionality
+   */
+  bool initializeDevice();
+
+  /**
+   * @brief Start device-specific functionality
+   */
+  bool startDevice();
+
+  /**
+   * @brief Stop device-specific functionality
+   */
+  void stopDevice();
+
   // ==== Protected Update Methods ====
 
   /**
@@ -262,16 +342,11 @@ protected:
    */
   bool waitForMoveComplete(int timeoutMs = 0);
 
-  // Hardware abstraction methods (to be implemented by derived classes or simulation)
-  virtual bool executeMovement(int targetPosition);
-  virtual bool executeStop();
-  virtual bool executeHome();
-  virtual double readTemperature();
-  virtual double readAmbientTemperature();
-  virtual bool setTemperatureControl(double power);
+  // Note: Hardware abstraction methods moved to public section above
 
   // Enhanced methods from modern_focuser
   void initializeHardware();
+  void initializeFocuserBehaviors();
   bool validatePosition(int position) const;
   int calculateMovementTime(int distance) const;
 
@@ -319,9 +394,6 @@ private:
   // Thread-safe state access
   mutable std::mutex focusCurveMutex_;
   mutable std::mutex focusPointsMutex_;
-
-  // Initialize focuser behaviors
-  void initializeFocuserBehaviors();
 };
 
 /**
@@ -336,4 +408,4 @@ std::unique_ptr<Focuser> createModernFocuser(const std::string& deviceId,
                                              const std::string& model = "EAF");
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

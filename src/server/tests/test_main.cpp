@@ -3,7 +3,7 @@
 #include <spdlog/sinks/null_sink.h>
 
 /**
- * @brief Main test entry point for AstroComm Server tests
+ * @brief Main test entry point for Hydrogen Server tests
  */
 int main(int argc, char** argv) {
     // Initialize Google Test
@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
     
     // Print test banner
     std::cout << "========================================" << std::endl;
-    std::cout << "  AstroComm Server Test Suite" << std::endl;
+    std::cout << "  Hydrogen Server Test Suite" << std::endl;
     std::cout << "========================================" << std::endl;
     
     // Run all tests

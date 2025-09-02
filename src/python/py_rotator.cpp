@@ -4,7 +4,7 @@
 #include "device/rotator.h"
 
 namespace py = pybind11;
-using namespace astrocomm;
+using namespace hydrogen;
 
 void init_rotator(py::module_ &m) {
   // Bind Rotator class

@@ -1,12 +1,12 @@
-#include "astrocomm/core/error_recovery.h"
-#include "astrocomm/core/utils.h"
+#include "hydrogen/core/error_recovery.h"
+#include "hydrogen/core/utils.h"
 
 #include <chrono>
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 ErrorContext ErrorContext::fromErrorMessage(const ErrorMessage &errorMsg) {
@@ -194,9 +194,11 @@ bool ErrorRecoveryManager::executeErrorHandler(const ErrorContext &context,
 }
 
 bool ErrorRecoveryManager::retryOperation(const ErrorContext &context) {
+  (void)context; // Suppress unused parameter warning
+
   // Sleep for retry delay
   std::this_thread::sleep_for(std::chrono::milliseconds(defaultRetryDelayMs_));
-  
+
   // In a real implementation, this would re-execute the original command
   // For now, just return true to indicate retry was attempted
   return true;
@@ -216,4 +218,4 @@ void ErrorRecoveryManager::updateStats(const std::string &errorCode, bool handle
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

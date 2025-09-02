@@ -1,10 +1,10 @@
-#include "astrocomm/core/discovery.h"
+#include "hydrogen/core/discovery.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <fstream>
 #include <random>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 using json = nlohmann::json;
@@ -442,4 +442,4 @@ std::vector<DiscoveredDevice> DeviceDiscovery::performSerialScan() {
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

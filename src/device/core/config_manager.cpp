@@ -7,7 +7,7 @@
 #include <sstream>
 #include <algorithm>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
@@ -36,8 +36,7 @@ bool ConfigManager::defineConfig(const ConfigDefinition& definition) {
     auto configDef = std::make_shared<ConfigDefinition>(definition);
     definitions_[definition.name] = configDef;
     
-    // 如果配置值不存在且有默认值，设置默认值
-    if (!hasConfig(definition.name) && !definition.defaultValue.is_null()) {
+    // 如果配置值不存在且有默认值，设置默认�?    if (!hasConfig(definition.name) && !definition.defaultValue.is_null()) {
         std::lock_guard<std::mutex> configLock(configsMutex_);
         configs_[definition.name] = definition.defaultValue;
     }
@@ -65,29 +64,27 @@ bool ConfigManager::setConfig(const std::string& name, const json& value, bool p
         return false;
     }
 
-    // 验证配置值
+    // 验证配置�?    std::string error;
     std::string error;
     if (!validateConfig(name, value, error)) {
-        SPDLOG_WARN("Config validation failed for device {} config {}: {}", 
+        SPDLOG_WARN("Config validation failed for device {} config {}: {}",
                    deviceId_, name, error);
         return false;
     }
 
-    json oldValue;
+    hydrogen::device::core::json oldValue;
     bool hasOldValue = false;
 
     {
         std::lock_guard<std::mutex> lock(configsMutex_);
         
-        // 获取旧值
-        auto it = configs_.find(name);
+        // 获取旧�?        auto it = configs_.find(name);
         if (it != configs_.end()) {
             oldValue = it->second;
             hasOldValue = true;
         }
         
-        // 设置新值
-        configs_[name] = value;
+        // 设置新�?        configs_[name] = value;
     }
 
     // 触发变化通知
@@ -95,8 +92,7 @@ bool ConfigManager::setConfig(const std::string& name, const json& value, bool p
         notifyConfigChange(name, oldValue, value);
     }
 
-    // 持久化
-    if (persist) {
+    // 持久�?    if (persist) {
         saveToFile();
     }
 
@@ -104,9 +100,9 @@ bool ConfigManager::setConfig(const std::string& name, const json& value, bool p
     return true;
 }
 
-size_t ConfigManager::setConfigs(const std::unordered_map<std::string, json>& configs, bool persist) {
+size_t ConfigManager::setConfigs(const std::unordered_map<std::string, hydrogen::device::core::json>& configs, bool persist) {
     size_t successCount = 0;
-    std::vector<std::pair<std::string, std::pair<json, json>>> changes;
+    std::vector<std::pair<std::string, std::pair<hydrogen::device::core::json, hydrogen::device::core::json>>> changes;
 
     {
         std::lock_guard<std::mutex> lock(configsMutex_);
@@ -116,15 +112,14 @@ size_t ConfigManager::setConfigs(const std::unordered_map<std::string, json>& co
                 continue;
             }
 
-            // 验证配置值
-            std::string error;
+            // 验证配置�?            std::string error;
             if (!validateConfig(name, value, error)) {
                 SPDLOG_WARN("Config validation failed for device {} config {}: {}", 
                            deviceId_, name, error);
                 continue;
             }
 
-            json oldValue;
+            hydrogen::device::core::json oldValue;
             bool hasOldValue = false;
             
             auto it = configs_.find(name);
@@ -148,8 +143,7 @@ size_t ConfigManager::setConfigs(const std::unordered_map<std::string, json>& co
         notifyConfigChange(name, valuePair.first, valuePair.second);
     }
 
-    // 持久化
-    if (persist && successCount > 0) {
+    // 持久�?    if (persist && successCount > 0) {
         saveToFile();
     }
 
@@ -157,7 +151,7 @@ size_t ConfigManager::setConfigs(const std::unordered_map<std::string, json>& co
     return successCount;
 }
 
-json ConfigManager::getConfig(const std::string& name) const {
+hydrogen::device::core::json ConfigManager::getConfig(const std::string& name) const {
     std::lock_guard<std::mutex> lock(configsMutex_);
     
     auto it = configs_.find(name);
@@ -165,8 +159,7 @@ json ConfigManager::getConfig(const std::string& name) const {
         return it->second;
     }
     
-    // 返回默认值
-    std::lock_guard<std::mutex> defLock(definitionsMutex_);
+    // 返回默认�?    std::lock_guard<std::mutex> defLock(definitionsMutex_);
     auto defIt = definitions_.find(name);
     if (defIt != definitions_.end()) {
         return defIt->second->defaultValue;
@@ -175,7 +168,7 @@ json ConfigManager::getConfig(const std::string& name) const {
     return json();
 }
 
-std::unordered_map<std::string, json> ConfigManager::getAllConfigs() const {
+std::unordered_map<std::string, hydrogen::device::core::json> ConfigManager::getAllConfigs() const {
     std::lock_guard<std::mutex> lock(configsMutex_);
     return configs_;
 }
@@ -207,7 +200,7 @@ void ConfigManager::resetAllConfigs() {
     SPDLOG_INFO("All configs reset to defaults for device {}", deviceId_);
 }
 
-std::shared_ptr<ConfigDefinition> ConfigManager::getConfigDefinition(const std::string& name) const {
+std::shared_ptr<hydrogen::device::core::ConfigDefinition> ConfigManager::getConfigDefinition(const std::string& name) const {
     std::lock_guard<std::mutex> lock(definitionsMutex_);
     
     auto it = definitions_.find(name);
@@ -218,12 +211,12 @@ std::shared_ptr<ConfigDefinition> ConfigManager::getConfigDefinition(const std::
     return nullptr;
 }
 
-std::unordered_map<std::string, std::shared_ptr<ConfigDefinition>> ConfigManager::getAllConfigDefinitions() const {
+std::unordered_map<std::string, std::shared_ptr<hydrogen::device::core::ConfigDefinition>> ConfigManager::getAllConfigDefinitions() const {
     std::lock_guard<std::mutex> lock(definitionsMutex_);
     return definitions_;
 }
 
-size_t ConfigManager::addConfigChangeListener(const std::string& name, ConfigChangeListener listener) {
+size_t ConfigManager::addConfigChangeListener(const std::string& name, hydrogen::device::core::ConfigChangeListener listener) {
     std::lock_guard<std::mutex> lock(listenersMutex_);
     
     size_t listenerId = nextListenerId_++;
@@ -295,7 +288,7 @@ bool ConfigManager::loadFromFile(const std::string& filename) {
     }
 }
 
-json ConfigManager::exportToJson(bool includeDefaults) const {
+hydrogen::device::core::json ConfigManager::exportToJson(bool includeDefaults) const {
     json data;
     data["deviceId"] = deviceId_;
     data["timestamp"] = generateTimestamp();
@@ -358,14 +351,12 @@ bool ConfigManager::validateConfig(const std::string& name, const json& value, s
     
     const auto& definition = it->second;
     
-    // 检查只读属性
-    if (definition->readOnly) {
+    // 检查只读属�?    if (definition->readOnly) {
         error = "Config is read-only";
         return false;
     }
     
-    // 类型检查
-    switch (definition->type) {
+    // 类型检�?    switch (definition->type) {
         case ConfigType::STRING:
             if (!value.is_string()) {
                 error = "Expected string value";
@@ -404,8 +395,7 @@ bool ConfigManager::validateConfig(const std::string& name, const json& value, s
             break;
     }
     
-    // 范围检查
-    if (value.is_number() && !definition->minValue.is_null() && value < definition->minValue) {
+    // 范围检�?    if (value.is_number() && !definition->minValue.is_null() && value < definition->minValue) {
         error = "Value below minimum: " + definition->minValue.dump();
         return false;
     }
@@ -464,8 +454,7 @@ std::string ConfigManager::getConfigFilePath(const std::string& filename) const 
         return filename;
     }
     
-    // 相对于设备配置目录
-    std::filesystem::path configDir = "config" / deviceId_;
+    // 相对于设备配置目�?    std::filesystem::path configDir = "config" / deviceId_;
     return (configDir / filename).string();
 }
 
@@ -535,4 +524,4 @@ bool ConfigManager::deletePreset(const std::string& presetName) {
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

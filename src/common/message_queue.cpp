@@ -2,10 +2,12 @@
 
 #include <chrono>
 #include <functional>
+#ifdef HYDROGEN_HAS_SPDLOG
 #include <spdlog/spdlog.h>
+#endif
 
 
-namespace astrocomm {
+namespace hydrogen {
 
 // Priority comparator for the priority queue
 struct PriorityCompare {
@@ -30,7 +32,9 @@ void MessageQueueManager::start() {
   processingThread =
       std::thread(&MessageQueueManager::processMessageQueue, this);
 
+#ifdef HYDROGEN_HAS_SPDLOG
   SPDLOG_INFO("MessageQueueManager: Message queue processor started");
+#endif
 }
 
 void MessageQueueManager::stop() {
@@ -45,7 +49,9 @@ void MessageQueueManager::stop() {
     processingThread.join();
   }
 
+#ifdef HYDROGEN_HAS_SPDLOG
   SPDLOG_INFO("MessageQueueManager: Message queue processor stopped");
+#endif
 }
 
 void MessageQueueManager::setMessageSender(MessageSendCallback sender) {
@@ -56,7 +62,9 @@ void MessageQueueManager::setMessageSender(MessageSendCallback sender) {
 void MessageQueueManager::sendMessage(const Message &msg,
                                       MessageAckCallback ackCallback) {
   if (!messageSender) {
+#ifdef HYDROGEN_HAS_SPDLOG
     SPDLOG_ERROR("MessageQueueManager: No message sender set");
+#endif
     if (ackCallback) {
       ackCallback(msg.getMessageId(), false);
     }
@@ -109,9 +117,11 @@ void MessageQueueManager::sendMessage(const Message &msg,
 
   // Send immediately once
   bool sent = messageSender(msg);
+#ifdef HYDROGEN_HAS_SPDLOG
   SPDLOG_DEBUG("MessageQueueManager: Message sent {}, QoS={}, Priority={}",
                messageId, static_cast<int>(qosLevel),
                static_cast<int>(priority));
+#endif
 }
 
 void MessageQueueManager::acknowledgeMessage(const std::string &messageId,
@@ -127,8 +137,10 @@ void MessageQueueManager::acknowledgeMessage(const std::string &messageId,
 
       // Remove from queue
       pendingMessages.erase(it);
+#ifdef HYDROGEN_HAS_SPDLOG
       SPDLOG_DEBUG("MessageQueueManager: Message acknowledged {}, success={}",
                    messageId, success);
+#endif
     }
   }
 }
@@ -136,9 +148,11 @@ void MessageQueueManager::acknowledgeMessage(const std::string &messageId,
 void MessageQueueManager::setRetryParams(int maxRetries, int retryIntervalMs) {
   defaultMaxRetries = maxRetries;
   defaultRetryIntervalMs = retryIntervalMs;
+#ifdef HYDROGEN_HAS_SPDLOG
   SPDLOG_INFO("MessageQueueManager: Retry parameters set maxRetries={}, "
               "retryIntervalMs={}",
               maxRetries, retryIntervalMs);
+#endif
 }
 
 void MessageQueueManager::processMessageQueue() {
@@ -163,7 +177,9 @@ void MessageQueueManager::processMessageQueue() {
       for (auto &[id, status] : pendingMessages) {
         // Check if message has expired
         if (now > status.expiryTime) {
+#ifdef HYDROGEN_HAS_SPDLOG
           SPDLOG_WARN("MessageQueueManager: Message {} has expired", id);
+#endif
           messagesToRemove.push_back(id);
           if (status.callback) {
             status.callback(id, false);
@@ -179,9 +195,11 @@ void MessageQueueManager::processMessageQueue() {
         if (elapsed >= status.retryIntervalMs) {
           // Check if maximum retry count has been reached
           if (status.retryCount >= status.maxRetries) {
+#ifdef HYDROGEN_HAS_SPDLOG
             SPDLOG_WARN(
                 "MessageQueueManager: Message {} retry count reached limit {}",
                 id, status.maxRetries);
+#endif
             messagesToRemove.push_back(id);
             if (status.callback) {
               status.callback(id, false);
@@ -193,8 +211,10 @@ void MessageQueueManager::processMessageQueue() {
           messagesToRetry.push_back(id);
           status.retryCount++;
           status.lastSentTime = now;
+#ifdef HYDROGEN_HAS_SPDLOG
           SPDLOG_DEBUG("MessageQueueManager: Retrying message {}, attempt {}",
                        id, status.retryCount);
+#endif
         }
       }
 
@@ -263,4 +283,4 @@ void MessageQueueManager::processHighPriorityMessages() {
   }
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

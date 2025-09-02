@@ -5,7 +5,7 @@
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
-using namespace astrocomm;
+using namespace hydrogen;
 
 // First define a derived class for Python inheritance
 class PyGuiderInterface : public GuiderInterface {

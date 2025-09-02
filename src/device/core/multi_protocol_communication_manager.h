@@ -1,7 +1,7 @@
 #pragma once
 
-#include <astrocomm/core/protocol_communicators.h>
-#include <astrocomm/core/device_communicator.h>
+#include <hydrogen/core/protocol_communicators.h>
+#include <hydrogen/core/device_communicator.h>
 #include <nlohmann/json.hpp>
 #include <functional>
 #include <memory>
@@ -11,14 +11,14 @@
 #include <unordered_map>
 #include <vector>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
 using json = nlohmann::json;
-using astrocomm::core::CommunicationProtocol;
-using astrocomm::core::CommunicationMessage;
-using astrocomm::core::MultiProtocolDeviceCommunicator;
+using hydrogen::core::CommunicationProtocol;
+using hydrogen::core::CommunicationMessage;
+using hydrogen::core::MultiProtocolDeviceCommunicator;
 
 /**
  * @brief Enhanced communication state enumeration
@@ -203,4 +203,4 @@ public:
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

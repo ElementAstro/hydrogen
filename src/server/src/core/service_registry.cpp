@@ -1,10 +1,12 @@
-#include "astrocomm/server/core/service_registry.h"
+#include "hydrogen/server/core/service_registry.h"
+#ifdef HYDROGEN_HAS_SPDLOG
 #include <spdlog/spdlog.h>
+#endif
 #include <algorithm>
 #include <queue>
 #include <unordered_set>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace core {
 
@@ -562,4 +564,4 @@ int BaseService::getConfigInt(const std::string& key, int defaultValue) const {
 
 } // namespace core
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

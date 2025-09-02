@@ -13,7 +13,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-namespace astrocomm {
+namespace hydrogen {
 
 namespace beast = boost::beast;
 namespace websocket = beast::websocket;
@@ -39,11 +39,11 @@ public:
   // 获取设备列表
   json getDevices() const;
 
-  // 获取设备属性
+  // 获取设备属�?
   json getDeviceProperties(const std::string &deviceId,
                            const std::vector<std::string> &properties);
 
-  // 设置设备属性
+  // 设置设备属�?
   json setDeviceProperties(const std::string &deviceId, const json &properties);
 
   // 执行设备命令
@@ -59,7 +59,7 @@ public:
       bool sequential = true,
       Message::QoSLevel qosLevel = Message::QoSLevel::AT_MOST_ONCE);
 
-  // 异步执行命令（不等待响应）
+  // 异步执行命令（不等待响应�?
   void executeCommandAsync(
       const std::string &deviceId, const std::string &command,
       const json &parameters = json::object(),
@@ -77,7 +77,7 @@ public:
   // 设置自动重连参数
   void setAutoReconnect(bool enable, int intervalMs = 5000, int maxAttempts = 0);
 
-  // 订阅设备属性变更
+  // 订阅设备属性变�?
   using PropertyCallback =
       std::function<void(const std::string &deviceId,
                          const std::string &property, const json &value)>;
@@ -112,10 +112,10 @@ public:
   // 停止后台消息处理
   void stopMessageProcessing();
 
-  // 获取连接状态
+  // 获取连接状�?
   bool isConnected() const { return connected; }
 
-  // 获取客户端状态信息
+  // 获取客户端状态信�?
   json getStatusInfo() const;
 
 private:
@@ -149,10 +149,10 @@ private:
   std::map<std::string, std::map<std::string, EventCallback>>
       eventSubscriptions;
 
-  // 消息队列管理器
+  // 消息队列管理�?
   std::unique_ptr<MessageQueueManager> messageQueueManager;
 
-  // 连接断开后重连
+  // 连接断开后重�?
   bool enableAutoReconnect{true};
   int reconnectIntervalMs{5000};
   int maxReconnectAttempts{10};
@@ -186,22 +186,22 @@ private:
   // 发送消息并等待响应
   json sendAndWaitForResponse(const Message &msg, int timeoutSeconds = 10);
 
-  // 发送单个消息
+  // 发送单个消�?
   bool sendMessage(const Message &msg);
 
   // 生成设备属性订阅键
   std::string makePropertyKey(const std::string &deviceId,
                               const std::string &property);
 
-  // 生成设备事件订阅键
+  // 生成设备事件订阅�?
   std::string makeEventKey(const std::string &deviceId,
                            const std::string &event);
 
-  // 连接状态变更处理
+  // 连接状态变更处�?
   void handleConnectionStateChange(bool connected);
 
-  // 重置内部状态
+  // 重置内部状�?
   void resetState();
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

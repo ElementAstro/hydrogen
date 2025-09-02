@@ -5,7 +5,7 @@
 #include <memory>
 #include <unordered_map>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 namespace hydrogen {
@@ -314,30 +314,30 @@ inline std::shared_ptr<ObservingConditions> createCompatibleObservingConditions(
  * @brief Enhanced macros for Hydrogen integration
  */
 #define CREATE_COMPATIBLE_CAMERA(deviceId, manufacturer, model) \
-    astrocomm::device::interfaces::hydrogen::enhanced::createCompatibleCamera(deviceId, manufacturer, model)
+    hydrogen::device::interfaces::hydrogen::enhanced::createCompatibleCamera(deviceId, manufacturer, model)
 
 #define CREATE_COMPATIBLE_TELESCOPE(deviceId, manufacturer, model) \
-    astrocomm::device::interfaces::hydrogen::enhanced::createCompatibleTelescope(deviceId, manufacturer, model)
+    hydrogen::device::interfaces::hydrogen::enhanced::createCompatibleTelescope(deviceId, manufacturer, model)
 
 #define CREATE_COMPATIBLE_FOCUSER(deviceId, manufacturer, model) \
-    astrocomm::device::interfaces::hydrogen::enhanced::createCompatibleFocuser(deviceId, manufacturer, model)
+    hydrogen::device::interfaces::hydrogen::enhanced::createCompatibleFocuser(deviceId, manufacturer, model)
 
 #define CREATE_COMPATIBLE_DOME(deviceId, manufacturer, model) \
-    astrocomm::device::interfaces::hydrogen::enhanced::createCompatibleDome(deviceId, manufacturer, model)
+    hydrogen::device::interfaces::hydrogen::enhanced::createCompatibleDome(deviceId, manufacturer, model)
 
 #define CREATE_COMPATIBLE_OBSERVING_CONDITIONS(deviceId, manufacturer, model) \
-    astrocomm::device::interfaces::hydrogen::enhanced::createCompatibleObservingConditions(deviceId, manufacturer, model)
+    hydrogen::device::interfaces::hydrogen::enhanced::createCompatibleObservingConditions(deviceId, manufacturer, model)
 
 #define INIT_HYDROGEN_COMPATIBILITY() \
-    astrocomm::device::interfaces::hydrogen::initializeHydrogenCompatibility()
+    hydrogen::device::interfaces::hydrogen::initializeHydrogenCompatibility()
 
 #define SHUTDOWN_HYDROGEN_COMPATIBILITY() \
-    astrocomm::device::interfaces::hydrogen::shutdownHydrogenCompatibility()
+    hydrogen::device::interfaces::hydrogen::shutdownHydrogenCompatibility()
 
 #define GET_HYDROGEN_COMPATIBILITY_STATS() \
-    astrocomm::device::interfaces::hydrogen::getHydrogenCompatibilityStatistics()
+    hydrogen::device::interfaces::hydrogen::getHydrogenCompatibilityStatistics()
 
 } // namespace hydrogen
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

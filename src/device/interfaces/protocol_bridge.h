@@ -13,7 +13,7 @@
 #include <atomic>
 #include <type_traits>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 namespace bridge {
@@ -475,4 +475,4 @@ public:
 } // namespace bridge
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

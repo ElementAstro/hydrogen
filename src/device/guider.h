@@ -12,7 +12,12 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+// Fix Windows header pollution
+#ifdef ERROR
+#undef ERROR
+#endif
+
+namespace hydrogen {
 namespace device {
 
 using json = nlohmann::json;
@@ -25,6 +30,29 @@ enum class GuideDirection {
   SOUTH,    // South direction
   EAST,     // East direction
   WEST      // West direction
+};
+
+/**
+ * @brief Guider state enumeration
+ */
+enum class GuiderState {
+  DISCONNECTED,
+  CONNECTED,
+  IDLE,
+  GUIDING,
+  CALIBRATING,
+  DITHERING,
+  ERROR
+};
+
+/**
+ * @brief Calibration state enumeration
+ */
+enum class CalibrationState {
+  IDLE,
+  CALIBRATING,
+  COMPLETED,
+  FAILED
 };
 
 /**
@@ -53,12 +81,9 @@ struct GuideStatistics {
 };
 
 /**
- * @brief 导星器设备实现
- *
- * 基于新架构的导星器实现，提供完整的导星控制功能。
- * 支持多种制造商的导星器设备，提供统一的控制接口。
- */
-class Guider : public core::ModernDeviceBase {
+ * @brief 导星器设备实�? *
+ * 基于新架构的导星器实现，提供完整的导星控制功能�? * 支持多种制造商的导星器设备，提供统一的控制接口�? */
+class Guider : public hydrogen::device::core::ModernDeviceBase {
 public:
   /**
    * @brief Constructor
@@ -88,8 +113,7 @@ public:
   }
 
   /**
-   * @brief 获取支持的型号列表
-   */
+   * @brief 获取支持的型号列�?   */
   static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
     if (manufacturer == "ZWO") return {"ASI120MM-Mini", "ASI290MM-Mini", "ASI174MM-Mini"};
     if (manufacturer == "QHY") return {"QHY5L-II", "QHY5P-II", "QHY174GPS"};
@@ -110,6 +134,11 @@ public:
    * @brief Send guide pulse (async)
    */
   virtual bool guideAsync(GuideDirection direction, int duration, const std::string& commandId = "");
+
+  /**
+   * @brief Start guiding
+   */
+  virtual bool startGuiding();
 
   /**
    * @brief Stop all guide pulses
@@ -171,7 +200,7 @@ public:
    */
   virtual bool clearCalibration();
 
-  // ==== 统计和监控接口 ====
+  // ==== 统计和监控接�?====
 
   /**
    * @brief Get guide statistics
@@ -260,6 +289,24 @@ public:
    */
   bool waitForGuideComplete(const std::string& commandId, int timeoutMs = 0);
 
+  // Missing IDevice interface methods
+  std::string getName() const override;
+  std::string getDescription() const override;
+  std::string getDriverInfo() const override;
+  std::string getDriverVersion() const override;
+  int getInterfaceVersion() const override;
+  std::vector<std::string> getSupportedActions() const override;
+  bool isConnecting() const override;
+  interfaces::DeviceState getDeviceState() const override;
+  std::string action(const std::string& actionName, const std::string& actionParameters) override;
+  void commandBlind(const std::string& command, bool raw) override;
+  bool commandBool(const std::string& command, bool raw) override;
+  std::string commandString(const std::string& command, bool raw) override;
+  void setupDialog() override;
+
+  // Device lifecycle methods
+  virtual void run();  // Main device loop
+
 protected:
   // 重写基类方法
   bool initializeDevice() override;
@@ -294,7 +341,7 @@ private:
   std::atomic<bool> ditheringEnabled_;     // Dithering enabled
   std::atomic<bool> loggingEnabled_;       // Logging enabled
 
-  // 导星状态
+  // Guiding state
   std::atomic<bool> isGuiding_;
   std::atomic<bool> sessionActive_;
   std::chrono::system_clock::time_point sessionStartTime_;
@@ -331,11 +378,32 @@ private:
   mutable std::mutex commandCompleteMutex_;
   std::condition_variable commandCompleteCV_;
   std::unordered_map<std::string, bool> completedCommands_;
+
+  // Additional state variables needed by implementation
+  std::atomic<int> guiderState_;
+  std::atomic<int> calibrationState_;
+  std::atomic<bool> isCalibrated_;
+  std::atomic<bool> isDithering_;
+  std::atomic<double> rmsError_;
+  std::atomic<double> peakError_;
+  std::atomic<double> raError_;
+  std::atomic<double> decError_;
+  std::atomic<int> totalFrames_;
+  std::atomic<int> droppedFrames_;
+  std::atomic<int> guidingDuration_;
+  std::atomic<double> exposureTime_;
+  std::atomic<double> settleTime_;
+  std::atomic<double> ditherAmount_;
+  std::atomic<int> aggressiveness_;
+  std::atomic<double> minMovePixels_;
+  std::atomic<double> maxMovePixels_;
+  std::atomic<bool> guidingThreadRunning_;
+  std::thread guidingThread_;
+  std::atomic<double> guidingStartTime_;
 };
 
 /**
- * @brief 导星器工厂
- */
+ * @brief 导星器工�? */
 class GuiderFactory : public core::TypedDeviceFactory<Guider> {
 public:
   GuiderFactory(const std::string& manufacturer = "Generic", 
@@ -344,4 +412,4 @@ public:
 };
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

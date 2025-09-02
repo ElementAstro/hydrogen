@@ -20,11 +20,11 @@
 #include <mutex>
 #include <functional>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 /**
- * @brief 设备注册表 - 管理所有设备工厂和实例
+ * @brief 设备注册�?- 管理所有设备工厂和实例
  * 
  * 提供统一的设备创建、管理和发现机制
  */
@@ -70,8 +70,7 @@ public:
                                                         const std::string& model = "");
 
     /**
-     * @brief 获取支持的设备类型列表
-     * @return 设备类型列表
+     * @brief 获取支持的设备类型列�?     * @return 设备类型列表
      */
     std::vector<std::string> getSupportedDeviceTypes() const;
 
@@ -83,8 +82,7 @@ public:
     std::vector<std::string> getSupportedManufacturers(const std::string& deviceType) const;
 
     /**
-     * @brief 获取指定制造商支持的型号列表
-     * @param deviceType 设备类型
+     * @brief 获取指定制造商支持的型号列�?     * @param deviceType 设备类型
      * @param manufacturer 制造商
      * @return 型号列表
      */
@@ -113,38 +111,31 @@ public:
     std::shared_ptr<core::ModernDeviceBase> getDeviceInstance(const std::string& deviceId);
 
     /**
-     * @brief 获取所有设备实例
-     * @return 设备实例映射
+     * @brief 获取所有设备实�?     * @return 设备实例映射
      */
     std::unordered_map<std::string, std::shared_ptr<core::ModernDeviceBase>> getAllDeviceInstances() const;
 
     /**
-     * @brief 获取指定类型的设备实例
-     * @param deviceType 设备类型
+     * @brief 获取指定类型的设备实�?     * @param deviceType 设备类型
      * @return 设备实例列表
      */
     std::vector<std::shared_ptr<core::ModernDeviceBase>> getDeviceInstancesByType(const std::string& deviceType) const;
 
     /**
-     * @brief 初始化所有设备
-     * @return 成功初始化的设备数量
+     * @brief 初始化所有设�?     * @return 成功初始化的设备数量
      */
     size_t initializeAllDevices();
 
     /**
-     * @brief 启动所有设备
-     * @return 成功启动的设备数量
-     */
+     * @brief 启动所有设�?     * @return 成功启动的设备数�?     */
     size_t startAllDevices();
 
     /**
-     * @brief 停止所有设备
-     */
+     * @brief 停止所有设�?     */
     void stopAllDevices();
 
     /**
-     * @brief 断开所有设备连接
-     */
+     * @brief 断开所有设备连�?     */
     void disconnectAllDevices();
 
     /**
@@ -155,15 +146,13 @@ public:
 
     /**
      * @brief 导出设备配置
-     * @param filename 文件名
-     * @return 导出是否成功
+     * @param filename 文件�?     * @return 导出是否成功
      */
     bool exportDeviceConfigurations(const std::string& filename) const;
 
     /**
      * @brief 导入设备配置
-     * @param filename 文件名
-     * @return 导入是否成功
+     * @param filename 文件�?     * @return 导入是否成功
      */
     bool importDeviceConfigurations(const std::string& filename);
 
@@ -174,13 +163,11 @@ public:
 
 private:
     /**
-     * @brief 私有构造函数（单例模式）
-     */
+     * @brief 私有构造函数（单例模式�?     */
     DeviceRegistry();
 
     /**
-     * @brief 禁用拷贝构造和赋值
-     */
+     * @brief 禁用拷贝构造和赋�?     */
     DeviceRegistry(const DeviceRegistry&) = delete;
     DeviceRegistry& operator=(const DeviceRegistry&) = delete;
 
@@ -200,12 +187,10 @@ private:
 namespace DeviceCreator {
 
 /**
- * @brief 创建调焦器
- * @param deviceId 设备ID
+ * @brief 创建调焦�? * @param deviceId 设备ID
  * @param manufacturer 制造商
  * @param model 型号
- * @return 调焦器实例
- */
+ * @return 调焦器实�? */
 inline std::unique_ptr<Focuser> createFocuser(const std::string& deviceId,
                                               const std::string& manufacturer = "ZWO",
                                               const std::string& model = "EAF") {
@@ -239,12 +224,10 @@ inline std::unique_ptr<CoverCalibrator> createCoverCalibrator(const std::string&
 }
 
 /**
- * @brief 创建观测条件监测器
- * @param deviceId 设备ID
+ * @brief 创建观测条件监测�? * @param deviceId 设备ID
  * @param manufacturer 制造商
  * @param model 型号
- * @return 观测条件监测器实例
- */
+ * @return 观测条件监测器实�? */
 inline std::unique_ptr<ObservingConditions> createObservingConditions(const std::string& deviceId,
                                                                        const std::string& manufacturer = "Generic",
                                                                        const std::string& model = "WeatherStation") {
@@ -252,12 +235,10 @@ inline std::unique_ptr<ObservingConditions> createObservingConditions(const std:
 }
 
 /**
- * @brief 创建安全监控器
- * @param deviceId 设备ID
+ * @brief 创建安全监控�? * @param deviceId 设备ID
  * @param manufacturer 制造商
  * @param model 型号
- * @return 安全监控器实例
- */
+ * @return 安全监控器实�? */
 inline std::unique_ptr<SafetyMonitor> createSafetyMonitor(const std::string& deviceId,
                                                           const std::string& manufacturer = "Generic",
                                                           const std::string& model = "SafetyMonitor") {
@@ -278,12 +259,10 @@ inline std::unique_ptr<Camera> createCamera(const std::string& deviceId,
 }
 
 /**
- * @brief 创建望远镜
- * @param deviceId 设备ID
+ * @brief 创建望远�? * @param deviceId 设备ID
  * @param manufacturer 制造商
  * @param model 型号
- * @return 望远镜实例
- */
+ * @return 望远镜实�? */
 inline std::unique_ptr<Telescope> createTelescope(const std::string& deviceId,
                                                   const std::string& manufacturer = "Celestron",
                                                   const std::string& model = "NexStar Evolution") {
@@ -291,12 +270,10 @@ inline std::unique_ptr<Telescope> createTelescope(const std::string& deviceId,
 }
 
 /**
- * @brief 创建滤镜轮
- * @param deviceId 设备ID
+ * @brief 创建滤镜�? * @param deviceId 设备ID
  * @param manufacturer 制造商
  * @param model 型号
- * @return 滤镜轮实例
- */
+ * @return 滤镜轮实�? */
 inline std::unique_ptr<FilterWheel> createFilterWheel(const std::string& deviceId,
                                                       const std::string& manufacturer = "ZWO",
                                                       const std::string& model = "EFW") {
@@ -304,12 +281,10 @@ inline std::unique_ptr<FilterWheel> createFilterWheel(const std::string& deviceI
 }
 
 /**
- * @brief 创建旋转器
- * @param deviceId 设备ID
+ * @brief 创建旋转�? * @param deviceId 设备ID
  * @param manufacturer 制造商
  * @param model 型号
- * @return 旋转器实例
- */
+ * @return 旋转器实�? */
 inline std::unique_ptr<Rotator> createRotator(const std::string& deviceId,
                                               const std::string& manufacturer = "Pegasus",
                                               const std::string& model = "FocusCube") {
@@ -317,12 +292,10 @@ inline std::unique_ptr<Rotator> createRotator(const std::string& deviceId,
 }
 
 /**
- * @brief 创建导星器
- * @param deviceId 设备ID
+ * @brief 创建导星�? * @param deviceId 设备ID
  * @param manufacturer 制造商
  * @param model 型号
- * @return 导星器实例
- */
+ * @return 导星器实�? */
 inline std::unique_ptr<Guider> createGuider(const std::string& deviceId,
                                             const std::string& manufacturer = "ZWO",
                                             const std::string& model = "ASI120MM-Mini") {
@@ -330,12 +303,10 @@ inline std::unique_ptr<Guider> createGuider(const std::string& deviceId,
 }
 
 /**
- * @brief 创建开关
- * @param deviceId 设备ID
+ * @brief 创建开�? * @param deviceId 设备ID
  * @param manufacturer 制造商
  * @param model 型号
- * @return 开关实例
- */
+ * @return 开关实�? */
 inline std::unique_ptr<Switch> createSwitch(const std::string& deviceId,
                                             const std::string& manufacturer = "Pegasus",
                                             const std::string& model = "Ultimate Powerbox") {
@@ -343,8 +314,7 @@ inline std::unique_ptr<Switch> createSwitch(const std::string& deviceId,
 }
 
 /**
- * @brief 从配置创建设备
- * @param config 设备配置JSON
+ * @brief 从配置创建设�? * @param config 设备配置JSON
  * @return 设备实例
  */
 std::unique_ptr<core::ModernDeviceBase> createDeviceFromConfig(const json& config);
@@ -373,8 +343,7 @@ std::vector<std::unique_ptr<core::ModernDeviceBase>> createDevicesFromConfigs(co
 #define REGISTER_DEVICE(device) \
     DeviceRegistry::getInstance().registerDeviceInstance(device)
 
-// 便捷宏
-#define CREATE_FOCUSER(deviceId, manufacturer, model) \
+// 便捷�?#define CREATE_FOCUSER(deviceId, manufacturer, model) \
     DeviceCreator::createFocuser(deviceId, manufacturer, model)
 
 #define CREATE_CAMERA(deviceId, manufacturer, model) \
@@ -408,4 +377,4 @@ std::vector<std::unique_ptr<core::ModernDeviceBase>> createDevicesFromConfigs(co
     DeviceCreator::createSwitch(deviceId, manufacturer, model)
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

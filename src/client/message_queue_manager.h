@@ -6,7 +6,7 @@
 #include <memory>
 #include <string>
 
-namespace astrocomm {
+namespace hydrogen {
 
 /**
  * @brief Manages message queuing and delivery with QoS support
@@ -71,4 +71,4 @@ private:
     mutable std::atomic<int> totalFailed{0};
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

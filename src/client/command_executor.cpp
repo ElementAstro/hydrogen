@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 
 CommandExecutor::CommandExecutor(MessageProcessor* messageProcessor)
     : messageProcessor(messageProcessor),
@@ -346,4 +346,4 @@ json CommandExecutor::executeWithQoS(const CommandMessage& msg, int /*timeoutSec
   }
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

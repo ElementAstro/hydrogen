@@ -1,10 +1,10 @@
-#include "astrocomm/core/device_lifecycle.h"
-#include "astrocomm/core/utils.h"
+#include "hydrogen/core/device_lifecycle.h"
+#include "hydrogen/core/utils.h"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 // StateTransition implementation
@@ -579,4 +579,4 @@ bool DeviceLifecycleManager::loadLifecycleData(const std::string& filename) {
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

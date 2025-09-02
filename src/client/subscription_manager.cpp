@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 
 SubscriptionManager::SubscriptionManager(MessageProcessor* messageProcessor)
     : messageProcessor(messageProcessor),
@@ -391,4 +391,4 @@ void SubscriptionManager::executeCallbackSafely(CallbackType callback, const std
   }).detach();
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

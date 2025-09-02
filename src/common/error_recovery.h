@@ -10,7 +10,7 @@
 #include <thread>
 #include <vector>
 
-namespace astrocomm {
+namespace hydrogen {
 
 /**
  * Error handling strategies enum
@@ -189,4 +189,4 @@ private:
                         const std::string &action);
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

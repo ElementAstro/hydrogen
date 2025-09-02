@@ -12,7 +12,7 @@
 #include <string>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 
 using json = nlohmann::json;
 
@@ -155,4 +155,4 @@ private:
     void updateStats(size_t sent = 0, size_t received = 0, size_t processed = 0, size_t errors = 0);
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

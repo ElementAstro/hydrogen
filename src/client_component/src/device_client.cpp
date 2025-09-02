@@ -1,5 +1,6 @@
-#include <astrocomm/client/device_client.h>
-#include <astrocomm/core/utils.h>
+#include <hydrogen/client/device_client.h>
+#include <hydrogen/core/utils.h>
+#include <hydrogen/core/unified_websocket_error_handler.h>
 #include <atomic>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -24,7 +25,7 @@ using tcp = boost::asio::ip::tcp;
 #undef ERROR
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 namespace client {
 
 DeviceClient::DeviceClient()
@@ -60,7 +61,7 @@ bool DeviceClient::connect(const std::string &host, uint16_t port) {
         // Set a decorator to change the User-Agent of the handshake
         ws->set_option(websocket::stream_base::decorator(
             [](websocket::request_type& req) {
-                req.set(http::field::user_agent, "AstroComm-Client/1.0");
+                req.set(http::field::user_agent, "Hydrogen-Client/1.0");
             }));
 
         // Perform the websocket handshake
@@ -109,7 +110,7 @@ bool DeviceClient::isConnected() const {
 }
 
 json DeviceClient::discoverDevices(const std::vector<std::string> &deviceTypes) {
-    auto request = std::make_shared<DiscoveryRequestMessage>();
+    auto request = std::make_shared<hydrogen::core::DiscoveryRequestMessage>();
     request->setDeviceTypes(deviceTypes);
     
     return sendMessage(request);
@@ -122,7 +123,7 @@ json DeviceClient::getDevices() const {
 
 json DeviceClient::getDeviceProperties(const std::string &deviceId,
                                      const std::vector<std::string> &properties) {
-    auto command = std::make_shared<CommandMessage>("get_properties");
+    auto command = std::make_shared<hydrogen::core::CommandMessage>("get_properties");
     command->setDeviceId(deviceId);
     
     if (!properties.empty()) {
@@ -133,7 +134,7 @@ json DeviceClient::getDeviceProperties(const std::string &deviceId,
 }
 
 json DeviceClient::setDeviceProperties(const std::string &deviceId, const json &properties) {
-    auto command = std::make_shared<CommandMessage>("set_properties");
+    auto command = std::make_shared<hydrogen::core::CommandMessage>("set_properties");
     command->setDeviceId(deviceId);
     command->setParameters({{"properties", properties}});
     
@@ -142,14 +143,14 @@ json DeviceClient::setDeviceProperties(const std::string &deviceId, const json &
 
 json DeviceClient::executeCommand(const std::string &deviceId, const std::string &command,
                                 const json &parameters) {
-    auto commandMsg = std::make_shared<CommandMessage>(command);
+    auto commandMsg = std::make_shared<hydrogen::core::CommandMessage>(command);
     commandMsg->setDeviceId(deviceId);
     commandMsg->setParameters(parameters);
     
     return sendMessage(commandMsg);
 }
 
-json DeviceClient::sendMessage(std::shared_ptr<Message> message, int timeoutMs) {
+json DeviceClient::sendMessage(std::shared_ptr<hydrogen::core::Message> message, int timeoutMs) {
     if (!connected) {
         return json{{"error", "Not connected"}};
     }
@@ -182,7 +183,7 @@ json DeviceClient::sendMessage(std::shared_ptr<Message> message, int timeoutMs) 
     }
 }
 
-void DeviceClient::sendMessageAsync(std::shared_ptr<Message> message,
+void DeviceClient::sendMessageAsync(std::shared_ptr<hydrogen::core::Message> message,
                                    std::function<void(const json &)> callback) {
     if (!connected) {
         callback(json{{"error", "Not connected"}});
@@ -289,17 +290,70 @@ void DeviceClient::messageThreadFunction() {
             json messageJson = json::parse(message);
             
             handleMessage(messageJson);
+        } catch (const beast::system_error& se) {
+            if (running && connected) {
+                // Use unified error handling
+                auto errorHandler = hydrogen::core::UnifiedWebSocketErrorRegistry::getInstance().getGlobalHandler();
+                if (errorHandler) {
+                    hydrogen::core::WebSocketError error = hydrogen::core::WebSocketErrorFactory::createFromBoostError(se.code(), "DeviceClient", "messageRead");
+                    errorHandler->handleError(error);
+
+                    // Determine if we should reconnect based on error handler recommendation
+                    hydrogen::core::WebSocketRecoveryAction action = errorHandler->determineRecoveryAction(error);
+                    if (action == hydrogen::core::WebSocketRecoveryAction::RECONNECT && autoReconnectEnabled) {
+                        connected = false;
+                        if (connectionCallback) {
+                            connectionCallback(false);
+                        }
+
+                        auto retryDelay = errorHandler->getRetryDelay(error, 0);
+                        std::this_thread::sleep_for(retryDelay);
+                        connect(lastHost, lastPort);
+                    }
+                } else {
+                    // Fallback to original behavior
+                    connected = false;
+                    if (connectionCallback) {
+                        connectionCallback(false);
+                    }
+
+                    if (autoReconnectEnabled) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(reconnectIntervalMs));
+                        connect(lastHost, lastPort);
+                    }
+                }
+            }
+            break;
         } catch (const std::exception& e) {
             if (running && connected) {
-                // Connection error, attempt reconnect if enabled
-                connected = false;
-                if (connectionCallback) {
-                    connectionCallback(false);
-                }
-                
-                if (autoReconnectEnabled) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(reconnectIntervalMs));
-                    connect(lastHost, lastPort);
+                // Use unified error handling for generic exceptions
+                auto errorHandler = hydrogen::core::UnifiedWebSocketErrorRegistry::getInstance().getGlobalHandler();
+                if (errorHandler) {
+                    hydrogen::core::WebSocketError error = hydrogen::core::WebSocketErrorFactory::createFromException(e, "DeviceClient", "messageRead");
+                    errorHandler->handleError(error);
+
+                    hydrogen::core::WebSocketRecoveryAction action = errorHandler->determineRecoveryAction(error);
+                    if (action == hydrogen::core::WebSocketRecoveryAction::RECONNECT && autoReconnectEnabled) {
+                        connected = false;
+                        if (connectionCallback) {
+                            connectionCallback(false);
+                        }
+
+                        auto retryDelay = errorHandler->getRetryDelay(error, 0);
+                        std::this_thread::sleep_for(retryDelay);
+                        connect(lastHost, lastPort);
+                    }
+                } else {
+                    // Fallback to original behavior
+                    connected = false;
+                    if (connectionCallback) {
+                        connectionCallback(false);
+                    }
+
+                    if (autoReconnectEnabled) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(reconnectIntervalMs));
+                        connect(lastHost, lastPort);
+                    }
                 }
             }
             break;
@@ -379,8 +433,8 @@ void DeviceClient::notifyEvent(const std::string &deviceId, const std::string &e
 }
 
 std::string DeviceClient::generateMessageId() {
-    return astrocomm::core::generateUuid();
+    return hydrogen::core::generateUuid();
 }
 
 } // namespace client
-} // namespace astrocomm
+} // namespace hydrogen

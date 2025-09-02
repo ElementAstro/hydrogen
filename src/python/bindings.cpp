@@ -5,10 +5,10 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
-#include <astrocomm/core.h>
-#include <astrocomm/device.h>
-#include <astrocomm/client.h>
-#include <astrocomm/server.h>
+#include <hydrogen/core.h>
+#include <hydrogen/device.h>
+#include <hydrogen/client.h>
+#include <hydrogen/server.h>
 
 // Include new device types
 #include "../device/dome.h"
@@ -38,17 +38,17 @@ class Coordinates;
 class Temperature;
 class TypeSafeCamera;
 class TypeSafeTelescope;
-using namespace astrocomm::core;
-using namespace astrocomm::device;
-using namespace astrocomm::client;
-using namespace astrocomm::server;
-using namespace astrocomm::device::interfaces;
+using namespace hydrogen::core;
+using namespace hydrogen::device;
+using namespace hydrogen::client;
+using namespace hydrogen::server;
+using namespace hydrogen::device::interfaces;
 
 // 定义模块名为 pyhydrogen
 PYBIND11_MODULE(pyhydrogen, m) {
   m.doc() = "Python bindings for Astronomy Device Communication Protocol";
 
-  // 设置 spdlog 格式和级别
+  // 设置 spdlog 格式和级�?
   m.def(
       "set_log_level",
       [](const std::string &level) {
@@ -89,13 +89,13 @@ PYBIND11_MODULE(pyhydrogen, m) {
       .value("AUTHENTICATION", MessageType::AUTHENTICATION)
       .export_values();
 
-  // 字符串转换函数
+  // 字符串转换函�?
   m.def("message_type_to_string", &messageTypeToString, py::arg("type"),
         "Convert MessageType enum to string");
   m.def("string_to_message_type", &stringToMessageType, py::arg("type_str"),
         "Convert string to MessageType enum");
 
-  // 绑定基础消息类
+  // 绑定基础消息�?
   py::class_<Message, std::shared_ptr<Message>>(m, "Message")
       .def(py::init<>())
       .def(py::init<MessageType>())
@@ -113,7 +113,7 @@ PYBIND11_MODULE(pyhydrogen, m) {
       .def("from_json", &Message::fromJson)
       .def("to_string", &Message::toString);
 
-  // 绑定命令消息类
+  // 绑定命令消息�?
   py::class_<CommandMessage, Message, std::shared_ptr<CommandMessage>>(
       m, "CommandMessage")
       .def(py::init<>())
@@ -125,7 +125,7 @@ PYBIND11_MODULE(pyhydrogen, m) {
       .def("get_properties", &CommandMessage::getProperties)
       .def("set_properties", &CommandMessage::setProperties);
 
-  // 绑定响应消息类
+  // 绑定响应消息�?
   py::class_<ResponseMessage, Message, std::shared_ptr<ResponseMessage>>(
       m, "ResponseMessage")
       .def(py::init<>())
@@ -138,7 +138,7 @@ PYBIND11_MODULE(pyhydrogen, m) {
       .def("get_details", &ResponseMessage::getDetails)
       .def("set_details", &ResponseMessage::setDetails);
 
-  // 绑定事件消息类
+  // 绑定事件消息�?
   py::class_<EventMessage, Message, std::shared_ptr<EventMessage>>(
       m, "EventMessage")
       .def(py::init<>())
@@ -152,7 +152,7 @@ PYBIND11_MODULE(pyhydrogen, m) {
       .def("get_related_message_id", &EventMessage::getRelatedMessageId)
       .def("set_related_message_id", &EventMessage::setRelatedMessageId);
 
-  // 绑定错误消息类
+  // 绑定错误消息�?
   py::class_<ErrorMessage, Message, std::shared_ptr<ErrorMessage>>(
       m, "ErrorMessage")
       .def(py::init<>())
@@ -164,7 +164,7 @@ PYBIND11_MODULE(pyhydrogen, m) {
       .def("get_details", &ErrorMessage::getDetails)
       .def("set_details", &ErrorMessage::setDetails);
 
-  // 绑定发现请求消息类
+  // 绑定发现请求消息�?
   py::class_<DiscoveryRequestMessage, Message,
              std::shared_ptr<DiscoveryRequestMessage>>(
       m, "DiscoveryRequestMessage")
@@ -172,7 +172,7 @@ PYBIND11_MODULE(pyhydrogen, m) {
       .def("get_device_types", &DiscoveryRequestMessage::getDeviceTypes)
       .def("set_device_types", &DiscoveryRequestMessage::setDeviceTypes);
 
-  // 绑定发现响应消息类
+  // 绑定发现响应消息�?
   py::class_<DiscoveryResponseMessage, Message,
              std::shared_ptr<DiscoveryResponseMessage>>(
       m, "DiscoveryResponseMessage")
@@ -180,14 +180,14 @@ PYBIND11_MODULE(pyhydrogen, m) {
       .def("get_devices", &DiscoveryResponseMessage::getDevices)
       .def("set_devices", &DiscoveryResponseMessage::setDevices);
 
-  // 绑定设备注册消息类
+  // 绑定设备注册消息�?
   py::class_<RegistrationMessage, Message,
              std::shared_ptr<RegistrationMessage>>(m, "RegistrationMessage")
       .def(py::init<>())
       .def("get_device_info", &RegistrationMessage::getDeviceInfo)
       .def("set_device_info", &RegistrationMessage::setDeviceInfo);
 
-  // 绑定认证消息类
+  // 绑定认证消息�?
   py::class_<AuthenticationMessage, Message,
              std::shared_ptr<AuthenticationMessage>>(m, "AuthenticationMessage")
       .def(py::init<>())
@@ -261,7 +261,7 @@ PYBIND11_MODULE(pyhydrogen, m) {
       "set_async_exception_handler",
       [](py::function handler) {
         py::gil_scoped_acquire acquire;
-        // 全局异常处理器设置
+        // 全局异常处理器设�?
         static py::function exception_handler;
         exception_handler = handler;
 

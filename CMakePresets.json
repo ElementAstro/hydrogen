@@ -7,40 +7,90 @@
   },
   "configurePresets": [
     {
-      "name": "default",
-      "displayName": "Default Config",
-      "description": "Default build using vcpkg",
+      "name": "base",
+      "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "VCPKG_MANIFEST_MODE": "ON",
+        "VCPKG_INSTALL_OPTIONS": "--clean-after-build"
       },
       "environment": {
-        "VCPKG_FEATURE_FLAGS": "manifests,versions,binarycaching"
+        "VCPKG_FEATURE_FLAGS": "manifests,versions,binarycaching",
+        "VCPKG_BINARY_SOURCES": "clear;x-gha,readwrite"
+      }
+    },
+    {
+      "name": "default",
+      "displayName": "Default Config",
+      "description": "Default optimized build using vcpkg",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "HYDROGEN_BUILD_TESTS": "ON",
+        "HYDROGEN_BUILD_EXAMPLES": "ON"
       }
     },
     {
       "name": "debug",
-      "displayName": "Debug",
-      "description": "Debug build with vcpkg",
-      "inherits": "default",
+      "displayName": "Debug Build",
+      "description": "Debug build with full diagnostics",
+      "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "HYDROGEN_ENABLE_WARNINGS": "ON",
+        "HYDROGEN_WARNINGS_AS_ERRORS": "OFF",
         "HYDROGEN_ENABLE_SANITIZERS": "ON",
-        "HYDROGEN_BUILD_TESTS": "ON"
+        "HYDROGEN_ENABLE_COVERAGE": "ON",
+        "HYDROGEN_BUILD_TESTS": "ON",
+        "HYDROGEN_BUILD_EXAMPLES": "ON"
       }
     },
     {
       "name": "release",
-      "displayName": "Release",
-      "description": "Release build with vcpkg",
-      "inherits": "default",
+      "displayName": "Release Build",
+      "description": "Optimized release build",
+      "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "HYDROGEN_ENABLE_LTO": "ON",
-        "HYDROGEN_BUILD_TESTS": "OFF"
+        "HYDROGEN_BUILD_TESTS": "OFF",
+        "HYDROGEN_BUILD_EXAMPLES": "OFF",
+        "HYDROGEN_ENABLE_WARNINGS": "OFF"
+      }
+    },
+    {
+      "name": "release-performance",
+      "displayName": "Performance Release",
+      "description": "Release build optimized for performance testing",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "HYDROGEN_ENABLE_LTO": "ON",
+        "HYDROGEN_BUILD_TESTS": "ON",
+        "HYDROGEN_BUILD_BENCHMARKS": "ON",
+        "HYDROGEN_BUILD_EXAMPLES": "OFF",
+        "CMAKE_CXX_FLAGS": "-O3 -march=native -DNDEBUG"
+      }
+    },
+    {
+      "name": "release-msvc",
+      "displayName": "MSVC Release",
+      "description": "Release build for Windows MSVC",
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "HYDROGEN_ENABLE_LTO": "ON",
+        "HYDROGEN_BUILD_TESTS": "OFF",
+        "HYDROGEN_BUILD_EXAMPLES": "OFF",
+        "CMAKE_CXX_FLAGS": "/O2 /GL /DNDEBUG"
       }
     },
     {

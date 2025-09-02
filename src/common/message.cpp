@@ -3,7 +3,7 @@
 #include <chrono>
 #include <stdexcept>
 
-namespace astrocomm {
+namespace hydrogen {
 
 std::string messageTypeToString(MessageType type) {
   switch (type) {
@@ -545,4 +545,4 @@ std::unique_ptr<Message> createMessageFromJson(const json &j) {
   return msg;
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 namespace automatic {
@@ -255,4 +255,4 @@ template class INDIAutomaticAdapter<IFocuser>;
 } // namespace automatic
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 using json = nlohmann::json;
@@ -25,6 +25,14 @@ enum class SwitchType {
 };
 
 /**
+ * @brief Switch state enumeration
+ */
+enum class SwitchState {
+  OFF,          // Switch is off
+  ON            // Switch is on
+};
+
+/**
  * @brief Switch information structure
  */
 struct SwitchInfo {
@@ -32,7 +40,8 @@ struct SwitchInfo {
   std::string name;           // Switch name
   std::string description;    // Switch description
   SwitchType type;            // Switch type
-  bool state;                 // Current state (for toggle switches)
+  bool state;                 // Current state (for toggle switches) - legacy
+  SwitchState currentState;   // Current state (using enum)
   double value;               // Current value (for analog switches)
   double minValue;            // Minimum value (for analog switches)
   double maxValue;            // Maximum value (for analog switches)
@@ -43,11 +52,8 @@ struct SwitchInfo {
 };
 
 /**
- * @brief 开关设备实现
- *
- * 基于新架构的开关设备实现，提供完整的开关控制功能。
- * 支持多种类型的开关设备，包括继电器、电源开关、USB开关等。
- */
+ * @brief 开关设备实�? *
+ * 基于新架构的开关设备实现，提供完整的开关控制功能�? * 支持多种类型的开关设备，包括继电器、电源开关、USB开关等�? */
 class Switch : public core::ModernDeviceBase {
 public:
   /**
@@ -78,8 +84,7 @@ public:
   }
 
   /**
-   * @brief 获取支持的型号列表
-   */
+   * @brief 获取支持的型号列�?   */
   static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
     if (manufacturer == "Pegasus") return {"Ultimate Powerbox", "Pocket Powerbox", "FocusCube"};
     if (manufacturer == "Lunatico") return {"Seletek", "Armadillo", "Platypus"};
@@ -105,7 +110,7 @@ public:
    */
   virtual std::string getSwitchName(int switchId) const;
 
-  // ==== 开关控制接口 ====
+  // ==== 开关控制接�?====
 
   /**
    * @brief Get number of switches
@@ -178,9 +183,24 @@ public:
   virtual bool setSwitchByName(const std::string& name, bool state);
 
   /**
+   * @brief Set switch state by name (using SwitchState enum)
+   */
+  virtual bool setSwitchState(const std::string& name, SwitchState state);
+
+  /**
+   * @brief Get switch state by name (using SwitchState enum)
+   */
+  virtual SwitchState getSwitchState(const std::string& name) const;
+
+  /**
    * @brief Set all switches state
    */
   virtual bool setAllSwitches(bool state);
+
+  /**
+   * @brief Set all switches state (using SwitchState enum)
+   */
+  virtual bool setAllSwitches(SwitchState state);
 
   /**
    * @brief Get all switches state
@@ -269,6 +289,37 @@ public:
    */
   virtual json getSwitchStatistics() const;
 
+  /**
+   * @brief Get device capabilities
+   */
+  std::vector<std::string> getCapabilities() const override;
+
+  // Extended functionality methods
+  virtual bool addSwitch(const std::string& name, SwitchType type, SwitchState defaultState);
+  virtual bool removeSwitch(const std::string& name);
+  virtual bool pulse(const std::string& name, int durationMs);
+  virtual std::vector<std::string> getSwitchNames() const;
+  virtual bool createSwitchGroup(const std::string& groupName, const std::vector<std::string>& switchNames);
+  virtual bool setGroupState(const std::string& groupName, SwitchState state);
+
+  // Missing IDevice interface methods
+  std::string getName() const override;
+  std::string getDescription() const override;
+  std::string getDriverInfo() const override;
+  std::string getDriverVersion() const override;
+  int getInterfaceVersion() const override;
+  std::vector<std::string> getSupportedActions() const override;
+  bool isConnecting() const override;
+  interfaces::DeviceState getDeviceState() const override;
+  std::string action(const std::string& actionName, const std::string& actionParameters) override;
+  void commandBlind(const std::string& command, bool raw) override;
+  bool commandBool(const std::string& command, bool raw) override;
+  std::string commandString(const std::string& command, bool raw) override;
+  void setupDialog() override;
+
+  // Device lifecycle methods
+  virtual void run();  // Main device loop
+
 protected:
   // 重写基类方法
   bool initializeDevice() override;
@@ -280,12 +331,16 @@ protected:
   void updateDevice() override;
 
 private:
-  // 硬件抽象接口
+  // Hardware abstraction interface
   virtual bool executeSetSwitch(int switchId, bool state);
   virtual bool executeSetSwitchValue(int switchId, double value);
   virtual bool executePulseSwitch(int switchId, int duration);
   virtual bool readSwitchState(int switchId);
   virtual double readSwitchValue(int switchId);
+
+  // Additional hardware methods used by implementation
+  virtual bool executeSetState(const std::string& name, SwitchState state);
+  virtual bool executePulse(const std::string& name, int durationMs);
 
   // 配置管理
   void initializeDefaultSwitches();
@@ -296,25 +351,29 @@ private:
   void updateSwitchStatistics(int switchId, bool state);
 
 private:
-  // 开关信息
+  // Switch information (ID-based)
   mutable std::mutex switchInfoMutex_;
   std::unordered_map<int, SwitchInfo> switchInfo_;
   std::atomic<int> switchCount_;
 
-  // 开关分组
-  mutable std::mutex groupsMutex_;
-  std::unordered_map<std::string, std::vector<int>> switchGroups_;
+  // Switch information (name-based, used by implementation)
+  mutable std::mutex switchesMutex_;
+  std::unordered_map<std::string, SwitchInfo> switches_;
+  std::atomic<bool> groupControlEnabled_;
 
-  // 开关互锁
+  // Switch groups
+  mutable std::mutex groupsMutex_;
+  std::unordered_map<std::string, std::vector<std::string>> switchGroups_;
+  std::unordered_map<std::string, std::vector<int>> switchGroupsInt_;
+
+  // Switch interlocks
   mutable std::mutex interlockMutex_;
   std::unordered_map<int, std::vector<int>> switchInterlocks_;
 
-  // 开关序列
-  mutable std::mutex sequenceMutex_;
+  // 开关序�?  mutable std::mutex sequenceMutex_;
   std::vector<std::pair<int, int>> switchSequence_;
 
-  // 开关保护和启用状态
-  mutable std::mutex protectionMutex_;
+  // 开关保护和启用状�?  mutable std::mutex protectionMutex_;
   std::unordered_map<int, bool> switchEnabled_;
   std::unordered_map<int, bool> switchProtected_;
 
@@ -325,8 +384,7 @@ private:
 };
 
 /**
- * @brief 开关设备工厂
- */
+ * @brief 开关设备工�? */
 class SwitchFactory : public core::TypedDeviceFactory<Switch> {
 public:
   SwitchFactory(const std::string& manufacturer = "Generic", 
@@ -335,4 +393,4 @@ public:
 };
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

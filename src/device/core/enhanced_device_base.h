@@ -1,9 +1,9 @@
 #pragma once
 
 #include "multi_protocol_communication_manager.h"
-#include <astrocomm/core/device_health.h>
-#include <astrocomm/core/performance_metrics.h>
-#include <astrocomm/core/enhanced_error_recovery.h>
+#include <hydrogen/core/device_health.h>
+#include <hydrogen/core/performance_metrics.h>
+#include <hydrogen/core/enhanced_error_recovery.h>
 #include <nlohmann/json.hpp>
 #include <functional>
 #include <memory>
@@ -15,16 +15,16 @@
 #include <thread>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
 using json = nlohmann::json;
-using astrocomm::core::CommunicationProtocol;
-using astrocomm::core::DeviceHealthStatus;
-using astrocomm::core::DeviceMetrics;
-using astrocomm::core::PerformanceMeasurement;
-using astrocomm::core::MetricType;
+using hydrogen::core::CommunicationProtocol;
+using hydrogen::core::DeviceHealthStatus;
+using hydrogen::core::DeviceMetrics;
+using hydrogen::core::PerformanceMeasurement;
+using hydrogen::core::MetricType;
 
 /**
  * @brief Enhanced device base class with multi-protocol communication support
@@ -216,7 +216,7 @@ private:
     MessageHandler messageHandler_;
     
     // Error recovery
-    std::unique_ptr<astrocomm::core::EnhancedErrorRecoveryManager> errorRecoveryManager_;
+    std::unique_ptr<hydrogen::core::EnhancedErrorRecoveryManager> errorRecoveryManager_;
     std::atomic<int> recoveryAttempts_;
     
     // Internal methods
@@ -268,4 +268,4 @@ public:
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

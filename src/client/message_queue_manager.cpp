@@ -3,7 +3,7 @@
 #include <thread>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 
 void MessageQueueManager::sendMessage(const Message& message, DeliveryCallback callback) {
     totalSent++;
@@ -90,4 +90,4 @@ void MessageQueueManager::setRetryParams(int maxRetries, int retryIntervalMs) {
     (void)retryIntervalMs;
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

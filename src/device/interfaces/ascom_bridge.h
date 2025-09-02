@@ -16,7 +16,7 @@
 #include <oleauto.h>
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 namespace ascom {
@@ -400,4 +400,4 @@ private:
 } // namespace ascom
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

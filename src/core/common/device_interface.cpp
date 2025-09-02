@@ -1,8 +1,8 @@
-#include "astrocomm/core/device_interface.h"
-#include "astrocomm/core/utils.h"
+#include "hydrogen/core/device_interface.h"
+#include "hydrogen/core/utils.h"
 #include <algorithm>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 // DeviceBase implementation
@@ -141,11 +141,15 @@ void DeviceBase::handleCommandMessage(const CommandMessage& cmd) {
 }
 
 void DeviceBase::sendResponse(const ResponseMessage& response) {
+    (void)response; // Suppress unused parameter warning
+
     // Default implementation - derived classes should override
     // to actually send the response through their communication channel
 }
 
 void DeviceBase::sendEvent(const EventMessage& event) {
+    (void)event; // Suppress unused parameter warning
+
     // Default implementation - derived classes should override
     // to actually send the event through their communication channel
 }
@@ -212,6 +216,7 @@ void DeviceBase::initializeProperties() {
     
     registerCommandHandler("get_info",
         [this](const CommandMessage& cmd, ResponseMessage& response) {
+            (void)cmd; // Suppress unused parameter warning
             response.setDetails(getDeviceInfo());
         });
 }
@@ -257,4 +262,4 @@ bool DeviceRegistry::isTypeRegistered(const std::string& deviceType) const {
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

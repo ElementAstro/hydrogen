@@ -1,4 +1,5 @@
 #include "client/connection_manager.h"
+#include <hydrogen/core/unified_websocket_error_handler.h>
 #include <boost/asio/connect.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -15,7 +16,7 @@ using tcp = boost::asio::ip::tcp;
 #undef ERROR
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 
 ConnectionManager::ConnectionManager()
     : ioc(), connected(false), lastPort(0),
@@ -71,7 +72,7 @@ bool ConnectionManager::connect(const std::string& host, uint16_t port) {
     std::string host_port = host + ":" + std::to_string(port);
     ws->set_option(websocket::stream_base::decorator(
         [](websocket::request_type& req) {
-          req.set(http::field::user_agent, "AstroComm-ConnectionManager/1.0");
+          req.set(http::field::user_agent, "Hydrogen-ConnectionManager/1.0");
         }));
 
     // Perform WebSocket handshake
@@ -93,8 +94,40 @@ bool ConnectionManager::connect(const std::string& host, uint16_t port) {
     spdlog::info("Connected to server at {}:{}", host, port);
     return true;
 
+  } catch (const beast::system_error& se) {
+    spdlog::error("Connection error: {}", se.what());
+
+    // Use unified error handling
+    auto errorHandler = hydrogen::core::UnifiedWebSocketErrorRegistry::getInstance().getGlobalHandler();
+    if (errorHandler) {
+      hydrogen::core::WebSocketError error = hydrogen::core::WebSocketErrorFactory::createFromBoostError(
+        se.code(), "ConnectionManager", "connect");
+      errorHandler->handleError(error);
+    }
+
+    // Update connection state
+    bool wasConnected = connected.load();
+    connected.store(false);
+
+    // Notify connection state change
+    if (wasConnected) {
+      handleConnectionStateChange(false);
+    }
+
+    // Clean up WebSocket resources
+    ws.reset();
+
+    return false;
   } catch (const std::exception& e) {
     spdlog::error("Connection error: {}", e.what());
+
+    // Use unified error handling for generic exceptions
+    auto errorHandler = hydrogen::core::UnifiedWebSocketErrorRegistry::getInstance().getGlobalHandler();
+    if (errorHandler) {
+      hydrogen::core::WebSocketError error = hydrogen::core::WebSocketErrorFactory::createFromException(
+        e, "ConnectionManager", "connect");
+      errorHandler->handleError(error);
+    }
 
     // Update connection state
     bool wasConnected = connected.load();
@@ -296,4 +329,4 @@ void ConnectionManager::stopReconnectThread() {
   }
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

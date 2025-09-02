@@ -7,7 +7,7 @@
 
 using json = nlohmann::json;
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 CoverCalibrator::CoverCalibrator(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
@@ -871,4 +871,4 @@ std::unique_ptr<CoverCalibrator> createModernCoverCalibrator(const std::string& 
 }
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

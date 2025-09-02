@@ -1,4 +1,4 @@
-#include <astrocomm/core/protocol_communicators.h>
+#include <hydrogen/core/protocol_communicators.h>
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
 #include <spdlog/spdlog.h>
@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <memory>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 using boost::asio::ip::tcp;
@@ -349,4 +349,4 @@ std::unique_ptr<TcpCommunicator> createTcpCommunicatorImpl(const TcpConfig& conf
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

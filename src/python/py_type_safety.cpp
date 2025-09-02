@@ -10,8 +10,8 @@
 #include "py_error_handling.cpp"
 
 namespace py = pybind11;
-using namespace astrocomm::device;
-using namespace astrocomm::device::interfaces;
+using namespace hydrogen::device;
+using namespace hydrogen::device::interfaces;
 
 /**
  * @brief Type-safe wrapper classes for device properties with validation

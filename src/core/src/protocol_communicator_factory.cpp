@@ -1,7 +1,7 @@
-#include <astrocomm/core/protocol_communicators.h>
+#include <hydrogen/core/protocol_communicators.h>
 #include <spdlog/spdlog.h>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 // Forward declarations for implementation classes (defined in separate files)
@@ -34,4 +34,4 @@ std::unique_ptr<StdioCommunicator> ProtocolCommunicatorFactory::createStdioCommu
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

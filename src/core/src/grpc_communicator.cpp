@@ -1,5 +1,5 @@
-#include <astrocomm/core/protocol_communicators.h>
-#include <astrocomm/core/utils.h>
+#include <hydrogen/core/protocol_communicators.h>
+#include <hydrogen/core/utils.h>
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
@@ -7,7 +7,7 @@
 // Note: This is a placeholder implementation
 // In a real implementation, you would use the gRPC C++ library
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 /**
@@ -314,4 +314,4 @@ std::unique_ptr<GrpcCommunicator> ProtocolCommunicatorFactory::createGrpcCommuni
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

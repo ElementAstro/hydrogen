@@ -12,7 +12,7 @@
 #include <queue>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 
 /**
  * @brief Callback function type for sending messages.
@@ -178,4 +178,4 @@ private:
       1000}; ///< Default retry interval (in milliseconds).
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

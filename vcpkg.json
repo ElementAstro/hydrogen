@@ -7,43 +7,17 @@
   "documentation": "https://hydrogen-project.github.io/hydrogen",
   "license": "MIT",
   "supports": "!uwp",
+  "builtin-baseline": "a42af01b72c28a8e1d7b48107b33e4f286a55ef6",
   "dependencies": [
-    {
-      "name": "boost-system",
-      "version>=": "1.82.0"
-    },
-    {
-      "name": "boost-filesystem",
-      "version>=": "1.82.0"
-    },
-    {
-      "name": "boost-thread",
-      "version>=": "1.82.0"
-    },
-    {
-      "name": "openssl",
-      "version>=": "3.0.0"
-    },
-    {
-      "name": "nlohmann-json",
-      "version>=": "3.11.0"
-    },
-    {
-      "name": "crow",
-      "version>=": "1.0.0"
-    },
-    {
-      "name": "grpc",
-      "version>=": "1.50.0"
-    },
-    {
-      "name": "cppzmq",
-      "version>=": "4.8.0"
-    },
-    {
-      "name": "libzmq",
-      "version>=": "4.3.0"
-    }
+    "boost-system",
+    "boost-algorithm",
+    "boost-core",
+    "boost-smart-ptr",
+    "boost-type-traits",
+    "boost-utility",
+    "nlohmann-json",
+    "spdlog",
+    "fmt"
   ],
   "features": {
     "tests": {
@@ -117,27 +91,5 @@
         }
       ]
     }
-  },
-  "overrides": [
-    {
-      "name": "boost-system",
-      "version": "1.84.0"
-    },
-    {
-      "name": "boost-filesystem", 
-      "version": "1.84.0"
-    },
-    {
-      "name": "boost-thread",
-      "version": "1.84.0"
-    },
-    {
-      "name": "boost-winapi",
-      "version": "1.84.0"
-    },
-    {
-      "name": "boost-vcpkg-helpers",
-      "version": "7#2"
-    }
-  ]
+  }
 }

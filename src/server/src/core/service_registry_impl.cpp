@@ -1,9 +1,9 @@
-#include "astrocomm/server/core/service_registry.h"
+#include "hydrogen/server/core/service_registry.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace core {
 
@@ -324,4 +324,4 @@ std::vector<std::string> ServiceRegistry::getStartupOrder() const {
 
 } // namespace core
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

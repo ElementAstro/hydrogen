@@ -1,10 +1,10 @@
-#include <astrocomm/server/zmq_server.h>
+#include <hydrogen/server/zmq_server.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-using namespace astrocomm::server;
-using namespace astrocomm::core;
+using namespace hydrogen::server;
+using namespace hydrogen::core;
 
 int main() {
     std::cout << "ZeroMQ Server Example" << std::endl;

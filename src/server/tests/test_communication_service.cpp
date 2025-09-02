@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
-#include "astrocomm/server/services/communication_service.h"
+#include "hydrogen/server/services/communication_service.h"
 #include <memory>
 #include <chrono>
 #include <thread>
 
-using namespace astrocomm::server::services;
+using namespace hydrogen::server::services;
 
 class CommunicationServiceTest : public ::testing::Test {
 protected:

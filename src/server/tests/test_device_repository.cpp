@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
-#include "astrocomm/server/repositories/device_repository.h"
+#include "hydrogen/server/repositories/device_repository.h"
 #include <memory>
 #include <filesystem>
+#include <algorithm>
+#include <iterator>
 
-using namespace astrocomm::server::repositories;
+using namespace hydrogen::server::repositories;
 
 class DeviceRepositoryTest : public ::testing::Test {
 protected:
@@ -13,7 +15,7 @@ protected:
         std::filesystem::create_directories("./test_data");
         
         // Create repository instance
-        repository_ = DeviceRepositoryFactory::createRepository(testDataPath_);
+        repository_ = createDeviceRepository(testDataPath_);
         ASSERT_NE(repository_, nullptr);
     }
     
@@ -84,17 +86,17 @@ TEST_F(DeviceRepositoryTest, BulkOperations) {
     EXPECT_EQ(repository_->count(), 5);
     
     // Get all devices
-    auto allDevices = repository_->getAll();
+    auto allDevices = repository_->findAll();
     EXPECT_EQ(allDevices.size(), 5);
-    
+
     // Update devices
     for (auto& device : devices) {
         device.deviceName += " Updated";
     }
     EXPECT_TRUE(repository_->updateBulk(devices));
-    
+
     // Verify updates
-    auto updatedDevices = repository_->getAll();
+    auto updatedDevices = repository_->findAll();
     for (const auto& device : updatedDevices) {
         EXPECT_TRUE(device.deviceName.find("Updated") != std::string::npos);
     }
@@ -128,7 +130,7 @@ TEST_F(DeviceRepositoryTest, QueryOperations) {
     repository_->create(focuser);
     
     // Query by type
-    auto telescopes = repository_->getByType("telescope");
+    auto telescopes = repository_->findByType("telescope");
     EXPECT_EQ(telescopes.size(), 1);
     EXPECT_EQ(telescopes[0].deviceId, "telescope_1");
     
@@ -141,8 +143,8 @@ TEST_F(DeviceRepositoryTest, QueryOperations) {
     EXPECT_EQ(tempCompDevices.size(), 1);
     EXPECT_EQ(tempCompDevices[0].deviceId, "focuser_1");
     
-    // Query by property
-    auto focalLengthDevices = repository_->findByProperty("focal_length", "1000mm");
+    // Query by property (using search instead since findByProperty doesn't exist)
+    auto focalLengthDevices = repository_->search("1000mm");
     EXPECT_GE(focalLengthDevices.size(), 1);
 }
 
@@ -184,7 +186,7 @@ TEST_F(DeviceRepositoryTest, PersistenceOperations) {
     EXPECT_TRUE(std::filesystem::exists(testDataPath_));
     
     // Create new repository and load
-    auto newRepository = DeviceRepositoryFactory::createRepository(testDataPath_);
+    auto newRepository = createDeviceRepository(testDataPath_);
     EXPECT_TRUE(newRepository->load());
     EXPECT_EQ(newRepository->count(), 1);
     

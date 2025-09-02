@@ -8,7 +8,7 @@
 
 using json = nlohmann::json;
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 SafetyMonitor::SafetyMonitor(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
@@ -800,4 +800,4 @@ std::unique_ptr<SafetyMonitor> createModernSafetyMonitor(const std::string& devi
 }
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

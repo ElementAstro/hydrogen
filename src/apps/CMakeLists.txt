@@ -1,4 +1,4 @@
-# AstroComm Applications
+# Hydrogen Applications
 # This directory contains example applications and device implementations
 
 # Add include directories for device headers
@@ -6,12 +6,14 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/.cmake-cache/crow-v1.2.1.2/include)
 
 # Find required libraries
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(FMT REQUIRED fmt)
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(FMT QUIET fmt)
+endif()
 
 # Server application (temporarily disabled due to Crow/ASIO compatibility issues)
 # add_executable(astro_server server_main.cpp)
-# target_link_libraries(astro_server PRIVATE AstroComm::Server AstroComm::Core ${FMT_LIBRARIES})
+# target_link_libraries(astro_server PRIVATE Hydrogen::Server Hydrogen::Core ${FMT_LIBRARIES})
 # if(WIN32)
 #     target_link_libraries(astro_server PRIVATE ws2_32)
 # endif()
@@ -24,7 +26,7 @@ pkg_check_modules(FMT REQUIRED fmt)
 
 # Client application
 add_executable(astro_client client_app.cpp)
-target_link_libraries(astro_client PRIVATE AstroComm::Client AstroComm::Core ${FMT_LIBRARIES})
+target_link_libraries(astro_client PRIVATE Hydrogen::Client Hydrogen::Core ${FMT_LIBRARIES})
 if(WIN32)
     target_link_libraries(astro_client PRIVATE ws2_32)
 endif()
@@ -36,7 +38,7 @@ set_target_properties(astro_client PROPERTIES
 
 # Device applications
 add_executable(astro_telescope telescope_device.cpp)
-target_link_libraries(astro_telescope PRIVATE AstroComm::Device AstroComm::Core ${FMT_LIBRARIES})
+target_link_libraries(astro_telescope PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
 if(WIN32)
     target_link_libraries(astro_telescope PRIVATE ws2_32)
 endif()
@@ -47,7 +49,7 @@ set_target_properties(astro_telescope PROPERTIES
 )
 
 add_executable(astro_camera camera_device.cpp)
-target_link_libraries(astro_camera PRIVATE AstroComm::Device AstroComm::Core ${FMT_LIBRARIES})
+target_link_libraries(astro_camera PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
 if(WIN32)
     target_link_libraries(astro_camera PRIVATE ws2_32)
 endif()
@@ -58,7 +60,7 @@ set_target_properties(astro_camera PROPERTIES
 )
 
 add_executable(astro_focuser focuser_device.cpp)
-target_link_libraries(astro_focuser PRIVATE AstroComm::Device AstroComm::Core ${FMT_LIBRARIES})
+target_link_libraries(astro_focuser PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
 if(WIN32)
     target_link_libraries(astro_focuser PRIVATE ws2_32)
 endif()
@@ -69,7 +71,7 @@ set_target_properties(astro_focuser PROPERTIES
 )
 
 add_executable(astro_guider guider_device.cpp)
-target_link_libraries(astro_guider PRIVATE AstroComm::Device AstroComm::Core ${FMT_LIBRARIES})
+target_link_libraries(astro_guider PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
 if(WIN32)
     target_link_libraries(astro_guider PRIVATE ws2_32)
 endif()
@@ -80,7 +82,7 @@ set_target_properties(astro_guider PROPERTIES
 )
 
 add_executable(astro_rotator rotator_device.cpp)
-target_link_libraries(astro_rotator PRIVATE AstroComm::Device AstroComm::Core ${FMT_LIBRARIES})
+target_link_libraries(astro_rotator PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
 if(WIN32)
     target_link_libraries(astro_rotator PRIVATE ws2_32)
 endif()
@@ -91,7 +93,7 @@ set_target_properties(astro_rotator PROPERTIES
 )
 
 add_executable(astro_solver solver_device.cpp)
-target_link_libraries(astro_solver PRIVATE AstroComm::Device AstroComm::Core ${FMT_LIBRARIES})
+target_link_libraries(astro_solver PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
 if(WIN32)
     target_link_libraries(astro_solver PRIVATE ws2_32)
 endif()
@@ -102,7 +104,7 @@ set_target_properties(astro_solver PROPERTIES
 )
 
 add_executable(astro_switch switch_device.cpp)
-target_link_libraries(astro_switch PRIVATE AstroComm::Device AstroComm::Core ${FMT_LIBRARIES})
+target_link_libraries(astro_switch PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
 if(WIN32)
     target_link_libraries(astro_switch PRIVATE ws2_32)
 endif()

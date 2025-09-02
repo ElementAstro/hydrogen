@@ -1,5 +1,5 @@
-#include "astrocomm/core/device_plugin.h"
-#include "astrocomm/core/utils.h"
+#include "hydrogen/core/device_plugin.h"
+#include "hydrogen/core/utils.h"
 #include <algorithm>
 #include <fstream>
 #include <dlfcn.h> // For dynamic loading on Unix-like systems
@@ -7,7 +7,7 @@
 #include <windows.h>
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 // PluginApiVersion implementation
@@ -536,4 +536,4 @@ PluginPermission stringToPluginPermission(const std::string& permission) {
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

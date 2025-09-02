@@ -3,7 +3,7 @@
 #include <chrono>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
@@ -55,7 +55,7 @@ bool CommunicationManager::connect(const std::string& host, uint16_t port) {
         
         ws_->set_option(websocket::stream_base::decorator(
             [](websocket::request_type& req) {
-                req.set(beast::http::field::user_agent, "AstroComm-Device/1.0");
+                req.set(beast::http::field::user_agent, "Hydrogen-Device/1.0");
             }));
         
         // 执行WebSocket握手
@@ -255,4 +255,4 @@ void CommunicationManager::handleReceivedMessage(const std::string& message) {
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "astrocomm/server/infrastructure/error_handler.h"
+#include "hydrogen/server/infrastructure/error_handler.h"
 #include <memory>
 
-using namespace astrocomm::server::infrastructure;
+using namespace hydrogen::server::infrastructure;
 
 class ErrorHandlerTest : public ::testing::Test {
 protected:

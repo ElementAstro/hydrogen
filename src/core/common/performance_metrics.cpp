@@ -1,11 +1,11 @@
-#include "astrocomm/core/performance_metrics.h"
-#include "astrocomm/core/utils.h"
+#include "hydrogen/core/performance_metrics.h"
+#include "hydrogen/core/utils.h"
 #include <algorithm>
 #include <fstream>
 #include <numeric>
 #include <cmath>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 // PerformanceMeasurement implementation
@@ -569,4 +569,4 @@ bool PerformanceMetricsCollector::exportMetrics(const std::string& filename, con
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

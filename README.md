@@ -8,20 +8,41 @@ Modern astronomical device communication protocol and framework designed for sea
 
 ## 🌟 Features
 
+### Core Architecture
+
 - **Modern C++ Design**: Built with C++17/20 standards and modern CMake practices
 - **Cross-Platform**: Supports Windows, macOS, and Linux
 - **Modular Architecture**: Component-based design for maximum flexibility
 - **Multiple Package Managers**: Support for both Conan and vcpkg
 - **Python Bindings**: Full Python API for scripting and automation
-- **Device Support**: Comprehensive support for astronomical devices:
-  - Cameras and imaging devices
-  - Focusers and focusing systems
-  - Filter wheels and filters
-  - Telescopes and mounts
-  - Guiders and autoguiding
-  - Rotators and field rotation
-  - Switches and power management
-  - Plate solvers and astrometry
+
+### Unified Client System
+
+- **Unified Device Client**: Single interface for all device types and protocols
+- **Unified Connection Manager**: Centralized connection handling with circuit breakers
+- **Unified Configuration**: Comprehensive configuration management with validation
+- **Unified Error Handling**: Standardized error handling across all components
+
+### Protocol Support
+
+- **Multi-Protocol**: HTTP/WebSocket, gRPC, MQTT, ZeroMQ support
+- **Protocol Converters**: Automatic message format conversion
+- **Error Mapping**: Consistent error handling across protocols
+- **Connection Pooling**: Efficient connection management and reuse
+
+### Device Support
+
+- **Comprehensive Device Support**: Cameras, Telescopes, Focusers, Filter Wheels, Domes, and more
+- **Automatic ASCOM/INDI Compatibility**: Zero-code protocol support
+- **Device Discovery**: Automatic device detection and registration
+- **Real-time Monitoring**: Live device status and performance metrics
+
+### Testing Framework
+
+- **Comprehensive Testing**: Unit, Integration, Performance, and Stress testing
+- **Mock Objects**: Complete mock framework for all components
+- **Performance Benchmarking**: Built-in performance measurement and analysis
+- **Test Data Management**: Automated test data generation and validation
 
 ## 🚀 Quick Start
 

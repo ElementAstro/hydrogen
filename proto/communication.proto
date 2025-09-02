@@ -33,21 +33,31 @@ service CommunicationService {
   rpc StreamMessages(StreamMessagesRequest) returns (stream MessageEvent);
 }
 
-// Message priority levels
+// Message priority levels - aligned with internal Priority enum
 enum MessagePriority {
   LOW = 0;
   NORMAL = 1;
   HIGH = 2;
-  URGENT = 3;
+  CRITICAL = 3;
 }
 
-// Message types
+// QoS levels - aligned with internal QoSLevel enum
+enum QoSLevel {
+  AT_MOST_ONCE = 0;
+  AT_LEAST_ONCE = 1;
+  EXACTLY_ONCE = 2;
+}
+
+// Message types - aligned with internal MessageType enum
 enum MessageType {
-  TEXT = 0;
-  COMMAND = 1;
-  STATUS = 2;
-  ALERT = 3;
-  DATA = 4;
+  COMMAND = 0;
+  RESPONSE = 1;
+  EVENT = 2;
+  ERROR = 3;
+  DISCOVERY_REQUEST = 4;
+  DISCOVERY_RESPONSE = 5;
+  REGISTRATION = 6;
+  AUTHENTICATION = 7;
 }
 
 // Message status
@@ -68,31 +78,96 @@ enum CommunicationProtocol {
   ZEROMQ = 4;
 }
 
-// Core message structure
+// Core message structure - aligned with internal Message class
 message Message {
-  string id = 1;
-  string sender_id = 2;
-  string recipient_id = 3;
-  string content = 4;
-  MessageType type = 5;
+  string message_id = 1;
+  string device_id = 2;
+  string timestamp = 3;
+  string original_message_id = 4;
+  MessageType message_type = 5;
   MessagePriority priority = 6;
-  MessageStatus status = 7;
-  int64 timestamp = 8;
-  int64 sent_at = 9;
-  int64 delivered_at = 10;
-  int64 read_at = 11;
-  map<string, string> metadata = 12;
+  QoSLevel qos_level = 7;
+  int32 expire_after_seconds = 8;
+
+  // Message-specific content (oneof for different message types)
+  oneof content {
+    CommandContent command = 10;
+    ResponseContent response = 11;
+    EventContent event = 12;
+    ErrorContent error = 13;
+    DiscoveryRequestContent discovery_request = 14;
+    DiscoveryResponseContent discovery_response = 15;
+    RegistrationContent registration = 16;
+    AuthenticationContent authentication = 17;
+  }
+
+  map<string, string> metadata = 20;
 }
 
-// Send message request
+// Message content structures - aligned with internal message classes
+message CommandContent {
+  string command = 1;
+  string parameters_json = 2;  // JSON serialized parameters
+  string properties_json = 3;  // JSON serialized properties
+}
+
+message ResponseContent {
+  string status = 1;
+  string command = 2;
+  string properties_json = 3;  // JSON serialized properties
+  string details_json = 4;     // JSON serialized details
+}
+
+message EventContent {
+  string event_name = 1;
+  string properties_json = 2;  // JSON serialized properties
+  string details_json = 3;     // JSON serialized details
+  string related_message_id = 4;
+}
+
+message ErrorContent {
+  int32 error_code = 1;
+  string error_message = 2;
+  string details_json = 3;     // JSON serialized details
+}
+
+message DiscoveryRequestContent {
+  string device_type = 1;
+  string filter_json = 2;      // JSON serialized filter criteria
+}
+
+message DiscoveryResponseContent {
+  repeated DeviceInfo devices = 1;
+}
+
+message DeviceInfo {
+  string device_id = 1;
+  string device_name = 2;
+  string device_type = 3;
+  string manufacturer = 4;
+  string model = 5;
+  string version = 6;
+  string description = 7;
+  repeated string capabilities = 8;
+  string properties_json = 9;  // JSON serialized properties
+}
+
+message RegistrationContent {
+  DeviceInfo device_info = 1;
+  string registration_token = 2;
+}
+
+message AuthenticationContent {
+  string method = 1;
+  string credentials_json = 2;  // JSON serialized credentials
+}
+
+// Send message request - updated to use new Message structure
 message SendMessageRequest {
-  string sender_id = 1;
+  Message message = 1;
   string recipient_id = 2;
-  string content = 3;
-  MessageType type = 4;
-  MessagePriority priority = 5;
-  map<string, string> metadata = 6;
-  bool request_delivery_receipt = 7;
+  bool request_delivery_receipt = 3;
+  CommunicationProtocol target_protocol = 4;
 }
 
 // Send message response
@@ -103,14 +178,12 @@ message SendMessageResponse {
   int64 timestamp = 4;
 }
 
-// Broadcast message request
+// Broadcast message request - updated to use new Message structure
 message BroadcastMessageRequest {
-  string sender_id = 1;
+  Message message = 1;
   repeated string recipient_ids = 2;
-  string content = 3;
-  MessageType type = 4;
-  MessagePriority priority = 5;
-  map<string, string> metadata = 6;
+  repeated CommunicationProtocol target_protocols = 3;
+  bool request_delivery_receipt = 4;
 }
 
 // Broadcast message response

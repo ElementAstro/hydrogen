@@ -1,4 +1,4 @@
-#include <astrocomm/core/protocol_communicators.h>
+#include <hydrogen/core/protocol_communicators.h>
 #include <spdlog/spdlog.h>
 #include <iostream>
 #include <thread>
@@ -7,7 +7,7 @@
 #include <condition_variable>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 /**
@@ -267,4 +267,4 @@ std::unique_ptr<StdioCommunicator> createStdioCommunicatorImpl(const StdioConfig
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

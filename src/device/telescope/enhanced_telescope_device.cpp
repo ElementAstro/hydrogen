@@ -1,11 +1,11 @@
 #include "enhanced_telescope_device.h"
-#include <astrocomm/core/utils.h>
+#include <hydrogen/core/utils.h>
 #include <spdlog/spdlog.h>
 #include <cmath>
 
 using json = nlohmann::json;
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace telescope {
 
@@ -663,4 +663,4 @@ std::pair<double, double> EnhancedTelescopeDevice::altAzToRaDec(double altitude,
 
 } // namespace telescope
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

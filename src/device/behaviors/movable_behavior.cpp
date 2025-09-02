@@ -5,7 +5,7 @@
 #include <chrono>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace behaviors {
 
@@ -19,8 +19,7 @@ MovableBehavior::MovableBehavior(const std::string& behaviorName)
     , reversed_(false)
     , movementSpeed_(100)
     , monitorRunning_(false)
-    , movementTimeout_(30000) { // 30秒超时
-    
+    , movementTimeout_(30000) { // 30秒超�?    
     SPDLOG_DEBUG("MovableBehavior '{}' created", behaviorName);
 }
 
@@ -34,11 +33,9 @@ bool MovableBehavior::initialize(std::shared_ptr<core::StateManager> stateManage
         return false;
     }
 
-    // 初始化移动相关配置
-    initializeMovementConfigs();
+    // 初始化移动相关配�?    initializeMovementConfigs();
     
-    // 设置初始属性
-    setProperty("currentPosition", currentPosition_.load());
+    // 设置初始属�?    setProperty("currentPosition", currentPosition_.load());
     setProperty("targetPosition", targetPosition_.load());
     setProperty("movementState", static_cast<int>(movementState_.load()));
     setProperty("minPosition", minPosition_.load());
@@ -62,8 +59,7 @@ bool MovableBehavior::start() {
 }
 
 void MovableBehavior::stop() {
-    // 停止任何正在进行的移动
-    stopMovement();
+    // 停止任何正在进行的移�?    stopMovement();
     
     // 停止监控线程
     stopMovementMonitor();
@@ -72,15 +68,13 @@ void MovableBehavior::stop() {
 }
 
 void MovableBehavior::update() {
-    // 更新属性
-    setProperty("currentPosition", currentPosition_.load());
+    // 更新属�?    setProperty("currentPosition", currentPosition_.load());
     setProperty("targetPosition", targetPosition_.load());
     setProperty("movementState", static_cast<int>(movementState_.load()));
 }
 
 bool MovableBehavior::handleCommand(const std::string& command, const json& parameters, json& result) {
-    // 先尝试基类处理
-    if (DeviceBehavior::handleCommand(command, parameters, result)) {
+    // 先尝试基类处�?    if (DeviceBehavior::handleCommand(command, parameters, result)) {
         return true;
     }
 
@@ -233,12 +227,10 @@ bool MovableBehavior::moveToPosition(int position, MovementCompleteCallback call
     currentCallback_ = callback;
     movementState_ = MovementState::MOVING;
     
-    // 更新属性
-    setProperty("targetPosition", position);
+    // 更新属�?    setProperty("targetPosition", position);
     setProperty("movementState", static_cast<int>(MovementState::MOVING));
     
-    // 执行具体的移动操作
-    bool success = executeMovement(position);
+    // 执行具体的移动操�?    bool success = executeMovement(position);
     if (!success) {
         movementState_ = MovementState::ERROR;
         setProperty("movementState", static_cast<int>(MovementState::ERROR));
@@ -325,8 +317,7 @@ bool MovableBehavior::calibrate(MovementCompleteCallback callback) {
     movementState_ = MovementState::CALIBRATING;
     setProperty("movementState", static_cast<int>(MovementState::CALIBRATING));
     
-    // 默认校准实现：先归零，然后移动到最大位置，再回到中间位置
-    bool success = executeHome();
+    // 默认校准实现：先归零，然后移动到最大位置，再回到中间位�?    bool success = executeHome();
     if (!success) {
         movementState_ = MovementState::ERROR;
         setProperty("movementState", static_cast<int>(MovementState::ERROR));
@@ -467,8 +458,7 @@ void MovableBehavior::initializeMovementConfigs() {
     
     configManager_->defineConfigs(movementConfigs);
     
-    // 从配置加载值
-    minPosition_ = getConfig("minPosition", 0);
+    // 从配置加载�?    minPosition_ = getConfig("minPosition", 0);
     maxPosition_ = getConfig("maxPosition", 10000);
     movementSpeed_ = getConfig("movementSpeed", 100);
     reversed_ = getConfig("reversed", false);
@@ -509,11 +499,9 @@ bool MovableBehavior::isValidPosition(int position) const {
 void MovableBehavior::movementMonitorLoop() {
     while (monitorRunning_) {
         try {
-            // 检查移动超时
-            if (isMoving()) {
+            // 检查移动超�?            if (isMoving()) {
                 // 这里可以添加超时检查逻辑
-                // 具体实现取决于子类的需求
-            }
+                // 具体实现取决于子类的需�?            }
             
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             
@@ -551,4 +539,4 @@ void MovableBehavior::stopMovementMonitor() {
 
 } // namespace behaviors
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

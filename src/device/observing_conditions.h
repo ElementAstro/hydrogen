@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 /**
@@ -205,4 +205,4 @@ std::unique_ptr<ObservingConditions> createModernObservingConditions(const std::
                                                                      const std::string& model = "WeatherStation");
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

@@ -1,4 +1,4 @@
-# AstroComm Test Suite
+# Hydrogen Test Suite
 # Comprehensive testing for all components using Google Test
 
 cmake_minimum_required(VERSION 3.10)
@@ -32,6 +32,34 @@ target_include_directories(test_utils
         ${CMAKE_CURRENT_SOURCE_DIR}/utils
 )
 
+# Comprehensive testing framework
+add_library(hydrogen_test_framework STATIC
+    framework/comprehensive_test_framework.cpp
+    framework/mock_objects.cpp
+)
+
+target_include_directories(hydrogen_test_framework
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/framework
+        ${CMAKE_SOURCE_DIR}/src/core/include
+        ${CMAKE_SOURCE_DIR}/src/client_component/include
+)
+
+target_link_libraries(hydrogen_test_framework
+    PUBLIC
+        GTest::gtest
+        GTest::gmock
+        nlohmann_json::nlohmann_json
+        hydrogen_core
+        test_utils
+)
+
+# Optional spdlog dependency (if available)
+if(TARGET spdlog::spdlog)
+    target_link_libraries(hydrogen_test_framework PUBLIC spdlog::spdlog)
+    target_compile_definitions(hydrogen_test_framework PUBLIC HYDROGEN_HAS_SPDLOG)
+endif()
+
 # Core component tests
 add_subdirectory(core)
 
@@ -56,5 +84,5 @@ add_custom_target(run_all_tests
         integration_tests
         # device_tests
         # server_tests
-    COMMENT "Running all AstroComm tests"
+    COMMENT "Running all Hydrogen tests"
 )

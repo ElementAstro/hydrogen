@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
@@ -288,4 +288,4 @@ private:
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

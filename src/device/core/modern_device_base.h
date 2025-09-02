@@ -9,23 +9,19 @@
 #include <mutex>
 #include <functional>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
 /**
- * @brief 现代化设备基类
- * 
- * 基于组合模式的新设备基类，使用DeviceManager和行为组件来实现功能。
- * 相比旧的DeviceBase类，这个类更加模块化和可扩展。
- */
-class ModernDeviceBase : public interfaces::IDevice, 
+ * @brief 现代化设备基�? * 
+ * 基于组合模式的新设备基类，使用DeviceManager和行为组件来实现功能�? * 相比旧的DeviceBase类，这个类更加模块化和可扩展�? */
+class ModernDeviceBase : public interfaces::IDevice,
                         public interfaces::IConfigurable,
                         public interfaces::IStateful {
 public:
     /**
-     * @brief 构造函数
-     * @param deviceId 设备ID
+     * @brief 构造函�?     * @param deviceId 设备ID
      * @param deviceType 设备类型
      * @param manufacturer 制造商
      * @param model 型号
@@ -36,8 +32,7 @@ public:
                     const std::string& model = "");
 
     /**
-     * @brief 虚析构函数
-     */
+     * @brief 虚析构函�?     */
     virtual ~ModernDeviceBase();
 
     // 实现IDevice接口
@@ -87,8 +82,7 @@ public:
     behaviors::DeviceBehavior* getBehavior(const std::string& behaviorName);
 
     /**
-     * @brief 获取指定类型的行为组件
-     * @tparam T 行为类型
+     * @brief 获取指定类型的行为组�?     * @tparam T 行为类型
      * @param behaviorName 行为名称
      * @return 行为组件指针，如果不存在或类型不匹配返回nullptr
      */
@@ -99,15 +93,12 @@ public:
     }
 
     /**
-     * @brief 检查是否具有指定行为
-     * @param behaviorName 行为名称
-     * @return 是否具有该行为
-     */
+     * @brief 检查是否具有指定行�?     * @param behaviorName 行为名称
+     * @return 是否具有该行�?     */
     bool hasBehavior(const std::string& behaviorName) const;
 
     /**
-     * @brief 获取所有行为名称
-     * @return 行为名称列表
+     * @brief 获取所有行为名�?     * @return 行为名称列表
      */
     std::vector<std::string> getBehaviorNames() const;
 
@@ -116,24 +107,20 @@ public:
      * @param command 命令名称
      * @param parameters 命令参数
      * @param result 命令结果输出
-     * @return 命令是否被处理
-     */
+     * @return 命令是否被处�?     */
     virtual bool handleCommand(const std::string& command, 
                               const json& parameters, 
                               json& result);
 
     /**
-     * @brief 发送消息
-     * @param message 消息内容
-     * @return 发送是否成功
-     */
+     * @brief 发送消�?     * @param message 消息内容
+     * @return 发送是否成�?     */
     bool sendMessage(const std::string& message);
 
     /**
      * @brief 发送JSON消息
      * @param jsonMessage JSON消息
-     * @return 发送是否成功
-     */
+     * @return 发送是否成�?     */
     bool sendMessage(const json& jsonMessage);
 
     /**
@@ -143,15 +130,15 @@ public:
     virtual bool registerDevice();
 
     /**
-     * @brief 获取设备管理器
-     * @return 设备管理器指针
+     * @brief Get device manager
+     * @return Device manager pointer
      */
     std::shared_ptr<DeviceManager> getDeviceManager() { return deviceManager_; }
 
 protected:
     /**
-     * @brief 初始化设备特定功能（子类重写）
-     * @return 初始化是否成功
+     * @brief Initialize device-specific functionality (override in subclasses)
+     * @return Whether initialization was successful
      */
     virtual bool initializeDevice() { return true; }
 
@@ -171,15 +158,13 @@ protected:
      * @param command 命令名称
      * @param parameters 命令参数
      * @param result 命令结果输出
-     * @return 命令是否被处理
-     */
+     * @return 命令是否被处�?     */
     virtual bool handleDeviceCommand(const std::string& command,
                                    const json& parameters,
                                    json& result) { return false; }
 
     /**
-     * @brief 更新设备状态（定期调用）
-     */
+     * @brief 更新设备状态（定期调用�?     */
     virtual void updateDevice() {}
 
     /**
@@ -199,29 +184,25 @@ protected:
 
 private:
     /**
-     * @brief 初始化所有行为组件
-     * @return 初始化是否成功
-     */
+     * @brief 初始化所有行为组�?     * @return 初始化是否成�?     */
     bool initializeBehaviors();
 
     /**
-     * @brief 启动所有行为组件
-     * @return 启动是否成功
+     * @brief 启动所有行为组�?     * @return 启动是否成功
      */
     bool startBehaviors();
 
     /**
-     * @brief 停止所有行为组件
-     */
+     * @brief 停止所有行为组�?     */
     void stopBehaviors();
 
     /**
-     * @brief 更新所有行为组件
+     * @brief Update all behavior components
      */
     void updateBehaviors();
 
 protected:
-    // 设备管理器
+    // Device manager
     std::shared_ptr<DeviceManager> deviceManager_;
 
     // 行为组件管理
@@ -268,16 +249,14 @@ public:
     virtual std::vector<std::string> getSupportedManufacturers() const = 0;
     
     /**
-     * @brief 获取支持的型号列表
-     * @param manufacturer 制造商
+     * @brief 获取支持的型号列�?     * @param manufacturer 制造商
      * @return 型号列表
      */
     virtual std::vector<std::string> getSupportedModels(const std::string& manufacturer) const = 0;
 };
 
 /**
- * @brief 模板化设备工厂
- */
+ * @brief 模板化设备工�? */
 template<typename DeviceType>
 class TypedDeviceFactory : public DeviceFactory {
 public:
@@ -307,4 +286,4 @@ private:
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

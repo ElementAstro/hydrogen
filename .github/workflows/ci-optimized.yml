@@ -1,0 +1,445 @@
+name: Optimized CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly builds at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  # Build optimization settings
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+  CTEST_PARALLEL_LEVEL: 4
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_MAXSIZE: 400M
+
+jobs:
+  # =============================================================================
+  # Pre-build Analysis and Caching
+  # =============================================================================
+  
+  analyze-changes:
+    name: Analyze Changes
+    runs-on: ubuntu-latest
+    outputs:
+      core-changed: ${{ steps.changes.outputs.core }}
+      tests-changed: ${{ steps.changes.outputs.tests }}
+      docs-changed: ${{ steps.changes.outputs.docs }}
+      cmake-changed: ${{ steps.changes.outputs.cmake }}
+      skip-build: ${{ steps.changes.outputs.skip-build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            core:
+              - 'src/**'
+              - 'include/**'
+              - 'CMakeLists.txt'
+              - 'cmake/**'
+            tests:
+              - 'tests/**'
+              - 'src/**'
+            docs:
+              - 'docs/**'
+              - '*.md'
+            cmake:
+              - 'CMakeLists.txt'
+              - 'cmake/**'
+              - 'CMakePresets.json'
+            skip-build:
+              - '*.md'
+              - 'docs/**'
+              - '.gitignore'
+              - 'LICENSE'
+
+  # =============================================================================
+  # Fast Build Matrix (Optimized for Speed)
+  # =============================================================================
+  
+  fast-build:
+    name: Fast Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    needs: analyze-changes
+    if: needs.analyze-changes.outputs.skip-build != 'true'
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Ubuntu-GCC-Release"
+            os: ubuntu-latest
+            preset: release
+            compiler: gcc
+            cache-key: ubuntu-gcc
+          - name: "Windows-MSVC-Release"
+            os: windows-latest
+            preset: release-msvc
+            compiler: msvc
+            cache-key: windows-msvc
+          - name: "macOS-Clang-Release"
+            os: macos-latest
+            preset: release
+            compiler: clang
+            cache-key: macos-clang
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          compiler: ${{ matrix.compiler }}
+          cache-key: ${{ matrix.cache-key }}
+
+      - name: Configure CMake
+        run: |
+          cmake --preset ${{ matrix.preset }} \
+            -DHYDROGEN_ENABLE_LTO=ON \
+            -DHYDROGEN_BUILD_TESTS=OFF \
+            -DHYDROGEN_BUILD_EXAMPLES=OFF
+
+      - name: Build (Optimized)
+        run: |
+          cmake --build --preset ${{ matrix.preset }} \
+            --parallel ${{ env.CMAKE_BUILD_PARALLEL_LEVEL }} \
+            --config Release
+
+      - name: Quick Smoke Test
+        run: |
+          # Run basic functionality tests only
+          ctest --preset ${{ matrix.preset }} \
+            --parallel ${{ env.CTEST_PARALLEL_LEVEL }} \
+            --label-regex "smoke" \
+            --output-on-failure
+
+  # =============================================================================
+  # Comprehensive Testing (Parallel Matrix)
+  # =============================================================================
+  
+  comprehensive-test:
+    name: Test (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    needs: [analyze-changes, fast-build]
+    if: needs.analyze-changes.outputs.tests-changed == 'true' || github.event_name == 'schedule'
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Unit-Tests-Debug"
+            os: ubuntu-latest
+            preset: debug
+            test-type: unit
+            coverage: true
+          - name: "Integration-Tests"
+            os: ubuntu-latest
+            preset: release
+            test-type: integration
+            coverage: false
+          - name: "Performance-Tests"
+            os: ubuntu-latest
+            preset: release-performance
+            test-type: performance
+            coverage: false
+          - name: "Cross-Platform-Windows"
+            os: windows-latest
+            preset: release-msvc
+            test-type: cross-platform
+            coverage: false
+          - name: "Cross-Platform-macOS"
+            os: macos-latest
+            preset: release
+            test-type: cross-platform
+            coverage: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          compiler: ${{ matrix.compiler || 'gcc' }}
+          cache-key: ${{ matrix.os }}-test
+
+      - name: Configure CMake (Testing)
+        run: |
+          cmake --preset ${{ matrix.preset }} \
+            -DHYDROGEN_BUILD_TESTS=ON \
+            -DHYDROGEN_BUILD_BENCHMARKS=${{ matrix.test-type == 'performance' && 'ON' || 'OFF' }} \
+            -DHYDROGEN_ENABLE_COVERAGE=${{ matrix.coverage && 'ON' || 'OFF' }} \
+            -DHYDROGEN_ENABLE_SANITIZERS=${{ matrix.preset == 'debug' && 'ON' || 'OFF' }}
+
+      - name: Build with Tests
+        run: |
+          cmake --build --preset ${{ matrix.preset }} \
+            --parallel ${{ env.CMAKE_BUILD_PARALLEL_LEVEL }} \
+            --target all
+
+      - name: Run Tests
+        env:
+          HYDROGEN_TEST_PERFORMANCE: ${{ matrix.test-type == 'performance' && '1' || '0' }}
+          HYDROGEN_TEST_INTEGRATION: ${{ matrix.test-type == 'integration' && '1' || '0' }}
+          HYDROGEN_TEST_STRESS: ${{ matrix.test-type == 'performance' && '1' || '0' }}
+        run: |
+          ctest --preset ${{ matrix.preset }} \
+            --parallel ${{ env.CTEST_PARALLEL_LEVEL }} \
+            --output-on-failure \
+            --label-regex "${{ matrix.test-type }}" \
+            --timeout 300
+
+      - name: Generate Coverage Report
+        if: matrix.coverage
+        run: |
+          gcov --version
+          lcov --capture --directory . --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info
+          lcov --list coverage.info
+
+      - name: Upload Coverage
+        if: matrix.coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage.info
+          flags: unittests
+          name: codecov-umbrella
+
+  # =============================================================================
+  # Static Analysis and Security
+  # =============================================================================
+  
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    needs: analyze-changes
+    if: needs.analyze-changes.outputs.core-changed == 'true'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          compiler: clang
+          cache-key: ubuntu-analysis
+
+      - name: Run Clang-Tidy
+        run: |
+          cmake --preset debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DHYDROGEN_ENABLE_CLANG_TIDY=ON
+          
+          cmake --build --preset debug --parallel 2
+          
+          # Run clang-tidy on changed files only
+          git diff --name-only origin/main...HEAD | \
+            grep -E '\.(cpp|cxx|cc|c\+\+)$' | \
+            xargs -r clang-tidy -p build/debug
+
+      - name: Run Cppcheck
+        run: |
+          cppcheck --enable=all --inconclusive --xml --xml-version=2 \
+            --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
+            --suppress=unusedFunction \
+            src/ 2> cppcheck-report.xml
+
+      - name: Upload Static Analysis Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: static-analysis-results
+          path: |
+            cppcheck-report.xml
+            build/debug/compile_commands.json
+
+  # =============================================================================
+  # Performance Benchmarking
+  # =============================================================================
+  
+  benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    needs: fast-build
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[benchmark]')
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          compiler: gcc
+          cache-key: ubuntu-benchmark
+
+      - name: Configure for Benchmarking
+        run: |
+          cmake --preset release-performance \
+            -DHYDROGEN_BUILD_BENCHMARKS=ON \
+            -DHYDROGEN_ENABLE_LTO=ON \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Benchmarks
+        run: |
+          cmake --build --preset release-performance \
+            --parallel ${{ env.CMAKE_BUILD_PARALLEL_LEVEL }} \
+            --target benchmarks
+
+      - name: Run Benchmarks
+        run: |
+          ./build/release-performance/tests/benchmarks/hydrogen_benchmarks \
+            --benchmark_format=json \
+            --benchmark_out=benchmark_results.json
+
+      - name: Store Benchmark Results
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'googlecpp'
+          output-file-path: benchmark_results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          comment-on-alert: true
+          alert-threshold: '200%'
+          fail-on-alert: false
+
+  # =============================================================================
+  # Documentation and Release
+  # =============================================================================
+  
+  documentation:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    needs: analyze-changes
+    if: needs.analyze-changes.outputs.docs-changed == 'true' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Documentation Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz plantuml
+
+      - name: Generate Documentation
+        run: |
+          cmake --preset release -DHYDROGEN_BUILD_DOCS=ON
+          cmake --build --preset release --target docs
+
+      - name: Deploy Documentation
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/release/docs/html
+
+  # =============================================================================
+  # Package and Release
+  # =============================================================================
+  
+  package:
+    name: Create Release Package
+    runs-on: ${{ matrix.os }}
+    needs: [fast-build, comprehensive-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            preset: release
+            package-name: hydrogen-linux-x64
+          - os: windows-latest
+            preset: release-msvc
+            package-name: hydrogen-windows-x64
+          - os: macos-latest
+            preset: release
+            package-name: hydrogen-macos-x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          cache-key: ${{ matrix.os }}-package
+
+      - name: Configure and Build
+        run: |
+          cmake --preset ${{ matrix.preset }} \
+            -DHYDROGEN_ENABLE_LTO=ON \
+            -DHYDROGEN_BUILD_TESTS=OFF
+          
+          cmake --build --preset ${{ matrix.preset }} \
+            --parallel ${{ env.CMAKE_BUILD_PARALLEL_LEVEL }} \
+            --config Release
+
+      - name: Create Package
+        run: |
+          cmake --build --preset ${{ matrix.preset }} --target package
+
+      - name: Upload Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.package-name }}
+          path: build/${{ matrix.preset }}/Hydrogen-*.zip
+
+  # =============================================================================
+  # Cleanup and Notifications
+  # =============================================================================
+  
+  cleanup:
+    name: Cleanup and Notify
+    runs-on: ubuntu-latest
+    needs: [fast-build, comprehensive-test, static-analysis, documentation, package]
+    if: always()
+    
+    steps:
+      - name: Clean up caches
+        run: |
+          echo "Cleaning up old cache entries..."
+          # Cache cleanup logic would go here
+
+      - name: Notify on Failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#ci-notifications'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          message: |
+            🚨 CI Pipeline Failed
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+
+      - name: Notify on Success
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#releases'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          message: |
+            ✅ New Release Available
+            Repository: ${{ github.repository }}
+            Version: ${{ github.sha }}
+            Packages: Ready for download

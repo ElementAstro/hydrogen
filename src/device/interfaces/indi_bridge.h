@@ -15,7 +15,7 @@
 #include <chrono>
 #include <sstream>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 namespace indi {
@@ -500,4 +500,4 @@ private:
 } // namespace indi
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

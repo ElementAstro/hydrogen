@@ -3,7 +3,7 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 
-namespace astrocomm {
+namespace hydrogen {
 
 DeviceManager::DeviceManager(MessageProcessor* messageProcessor)
     : messageProcessor(messageProcessor), devices(json::object()),
@@ -286,4 +286,4 @@ void DeviceManager::processDiscoveryResponse(const json& response) {
   }
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

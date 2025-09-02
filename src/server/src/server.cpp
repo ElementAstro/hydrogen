@@ -1,14 +1,14 @@
-#include "astrocomm/server/server.h"
-#include "astrocomm/server/core/service_registry.h"
-#include "astrocomm/server/services/device_service.h"
-#include "astrocomm/server/services/auth_service.h"
-#include "astrocomm/server/services/communication_service.h"
-#include "astrocomm/server/services/health_service.h"
-#include "astrocomm/server/protocols/http/http_server.h"
+#include "hydrogen/server/server.h"
+#include "hydrogen/server/core/service_registry.h"
+#include "hydrogen/server/services/device_service.h"
+#include "hydrogen/server/services/auth_service.h"
+#include "hydrogen/server/services/communication_service.h"
+#include "hydrogen/server/services/health_service.h"
+#include "hydrogen/server/protocols/http/http_server.h"
 #include <spdlog/spdlog.h>
 #include <memory>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 
 // Global service registry instance
@@ -391,7 +391,7 @@ void initialize() {
         g_serviceRegistry->registerFactory(std::make_unique<services::DeviceServiceFactory>());
         g_serviceRegistry->registerFactory(std::make_unique<services::AuthServiceFactory>());
         
-        spdlog::info("AstroComm Server component initialized");
+        spdlog::info("Hydrogen Server component initialized");
     }
 }
 
@@ -399,7 +399,7 @@ void shutdown() {
     if (g_serviceRegistry) {
         g_serviceRegistry->shutdownAllServices();
         g_serviceRegistry.reset();
-        spdlog::info("AstroComm Server component shutdown");
+        spdlog::info("Hydrogen Server component shutdown");
     }
 }
 
@@ -576,11 +576,11 @@ std::unique_ptr<core::IMultiProtocolServer> createProductionServer(const std::st
         .withHttp("0.0.0.0", 8080)
         .withGrpc("0.0.0.0", 9090)
         .withMqtt("0.0.0.0", 1883)
-        .withDeviceService("/var/lib/astrocomm/devices")
-        .withAuthService("/etc/astrocomm/auth.json")
+        .withDeviceService("/var/lib/Hydrogen/devices")
+        .withAuthService("/etc/Hydrogen/auth.json")
         .withHealthService(true)
-        .withLogging("info", "/var/log/astrocomm/server.log")
-        .withConfiguration("/etc/astrocomm")
+        .withLogging("info", "/var/log/Hydrogen/server.log")
+        .withConfiguration("/etc/Hydrogen")
         .withErrorHandling(true)
         .build();
 }
@@ -694,7 +694,7 @@ std::unordered_map<std::string, std::string> getMetrics() {
 
 std::string generateReport() {
     std::stringstream report;
-    report << "=== AstroComm Server Diagnostic Report ===\n";
+    report << "=== Hydrogen Server Diagnostic Report ===\n";
     report << "Health Status: " << getHealthStatus() << "\n";
     
     auto metrics = getMetrics();
@@ -713,4 +713,4 @@ bool isReady() {
 } // namespace diagnostics
 
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

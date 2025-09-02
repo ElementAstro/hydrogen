@@ -1,4 +1,4 @@
-#include "astrocomm/server/protocols/mqtt/mqtt_broker.h"
+#include "hydrogen/server/protocols/mqtt/mqtt_broker.h"
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
@@ -6,7 +6,7 @@
 #include <random>
 #include <sstream>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace protocols {
 namespace mqtt {
@@ -525,4 +525,4 @@ std::unique_ptr<IMqttBroker> MqttBrokerFactory::createBroker(const std::string& 
 } // namespace mqtt
 } // namespace protocols
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

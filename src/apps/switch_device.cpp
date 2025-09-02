@@ -4,7 +4,8 @@
 #include <iostream>
 #include <string>
 
-using namespace astrocomm;
+using namespace hydrogen;
+using namespace hydrogen::device;
 
 // 全局设备实例
 std::unique_ptr<Switch> switchDevice;
@@ -22,9 +23,9 @@ void signalHandler(int sig) {
 void printBanner() {
   std::cout << "\n";
   std::cout << "  ╔══════════════════════════════════════════════════════╗\n";
-  std::cout << "  ║                                                      ║\n";
-  std::cout << "  ║           Switch Device Simulator                    ║\n";
-  std::cout << "  ║                                                      ║\n";
+  std::cout << "  �?                                                     ║\n";
+  std::cout << "  �?          Switch Device Simulator                    ║\n";
+  std::cout << "  �?                                                     ║\n";
   std::cout << "  ╚══════════════════════════════════════════════════════╝\n\n";
 }
 
@@ -36,10 +37,10 @@ int main(int argc, char *argv[]) {
   // 显示欢迎信息
   printBanner();
 
-  // 初始化日志
+  // 初始化日�?
   initLogger("switch.log", LogLevel::INFO);
 
-  // 解析命令行参数
+  // 解析命令行参�?
   std::string host = "localhost";
   uint16_t port = 8000;
   std::string deviceId = "switch-main";
@@ -61,27 +62,27 @@ int main(int argc, char *argv[]) {
   std::cout << "Device ID: " << deviceId << std::endl;
 
   try {
-    // 创建开关设备
+    // 创建开关设�?
     switchDevice =
         std::make_unique<Switch>(deviceId, "ASCOM", "PowerSwitch 8-port");
 
-    // 添加一些开关
-    switchDevice->addSwitch("power1", Switch::SwitchType::TOGGLE,
-                            Switch::SwitchState::OFF);
-    switchDevice->addSwitch("power2", Switch::SwitchType::TOGGLE,
-                            Switch::SwitchState::OFF);
-    switchDevice->addSwitch("power3", Switch::SwitchType::TOGGLE,
-                            Switch::SwitchState::OFF);
-    switchDevice->addSwitch("power4", Switch::SwitchType::TOGGLE,
-                            Switch::SwitchState::OFF);
-    switchDevice->addSwitch("reset", Switch::SwitchType::MOMENTARY,
-                            Switch::SwitchState::OFF);
-    switchDevice->addSwitch("dew_heater", Switch::SwitchType::TOGGLE,
-                            Switch::SwitchState::OFF);
-    switchDevice->addSwitch("mount", Switch::SwitchType::TOGGLE,
-                            Switch::SwitchState::ON);
-    switchDevice->addSwitch("camera", Switch::SwitchType::TOGGLE,
-                            Switch::SwitchState::ON);
+    // 添加一些开�?
+    switchDevice->addSwitch("power1", SwitchType::TOGGLE,
+                            SwitchState::OFF);
+    switchDevice->addSwitch("power2", SwitchType::TOGGLE,
+                            SwitchState::OFF);
+    switchDevice->addSwitch("power3", SwitchType::TOGGLE,
+                            SwitchState::OFF);
+    switchDevice->addSwitch("power4", SwitchType::TOGGLE,
+                            SwitchState::OFF);
+    switchDevice->addSwitch("reset", SwitchType::MOMENTARY,
+                            SwitchState::OFF);
+    switchDevice->addSwitch("dew_heater", SwitchType::TOGGLE,
+                            SwitchState::OFF);
+    switchDevice->addSwitch("mount", SwitchType::TOGGLE,
+                            SwitchState::ON);
+    switchDevice->addSwitch("camera", SwitchType::TOGGLE,
+                            SwitchState::ON);
 
     // 创建开关组
     switchDevice->createSwitchGroup("all_power",

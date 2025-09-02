@@ -1,9 +1,11 @@
-#include "astrocomm/server/core/protocol_handler.h"
+#include "hydrogen/server/core/protocol_handler.h"
+#ifdef HYDROGEN_HAS_SPDLOG
 #include <spdlog/spdlog.h>
+#endif
 #include <algorithm>
 #include <regex>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace core {
 
@@ -232,4 +234,4 @@ void BaseProtocolHandler::updateStatistics(const std::string& operation, bool su
 
 } // namespace core
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

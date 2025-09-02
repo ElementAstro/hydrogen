@@ -26,6 +26,7 @@ include(HydrogenCompiler)
 include(HydrogenDependencies)
 include(HydrogenVersions)
 include(HydrogenFeatures)
+include(HydrogenBuildOptimization)
 include(HydrogenExport)
 
 # Initialize the Hydrogen build system
@@ -64,38 +65,46 @@ hydrogen_manage_versions()
 # Legacy cpp-base64 Support (Temporary)
 # =============================================================================
 
-# Handle cpp-base64 dependency (this is a legacy dependency that should be replaced)
-# For now, we maintain backward compatibility
-set(CPP_BASE64_PATH "" CACHE PATH "Path to cpp-base64 library (optional)")
-if(NOT CPP_BASE64_PATH STREQUAL "")
-    message(STATUS "Hydrogen: Using cpp-base64 from: ${CPP_BASE64_PATH}")
-    set(cpp-base64_SOURCE_DIR "${CPP_BASE64_PATH}")
-    # Verify the path has the needed files
-    if(NOT EXISTS "${cpp-base64_SOURCE_DIR}/base64.cpp" OR NOT EXISTS "${cpp-base64_SOURCE_DIR}/base64.h")
-        message(FATAL_ERROR "Hydrogen: Invalid cpp-base64 path: ${CPP_BASE64_PATH}. base64.cpp or base64.h not found.")
+# Only include cpp-base64 if compression or specific features require it
+option(HYDROGEN_ENABLE_BASE64 "Enable base64 encoding support (legacy)" OFF)
+
+if(HYDROGEN_ENABLE_BASE64)
+    # Handle cpp-base64 dependency (this is a legacy dependency that should be replaced)
+    # For now, we maintain backward compatibility
+    set(CPP_BASE64_PATH "" CACHE PATH "Path to cpp-base64 library (optional)")
+    if(NOT CPP_BASE64_PATH STREQUAL "")
+        message(STATUS "Hydrogen: Using cpp-base64 from: ${CPP_BASE64_PATH}")
+        set(cpp-base64_SOURCE_DIR "${CPP_BASE64_PATH}")
+        # Verify the path has the needed files
+        if(NOT EXISTS "${cpp-base64_SOURCE_DIR}/base64.cpp" OR NOT EXISTS "${cpp-base64_SOURCE_DIR}/base64.h")
+            message(FATAL_ERROR "Hydrogen: Invalid cpp-base64 path: ${CPP_BASE64_PATH}. base64.cpp or base64.h not found.")
+        endif()
+    else()
+        # Use FetchContent as fallback for cpp-base64
+        include(FetchContent)
+        if(NOT DEFINED FETCHCONTENT_BASE_DIR)
+            set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.cmake-cache" CACHE PATH "Base directory for FetchContent downloads")
+        endif()
+
+        set(CPP_BASE64_CACHE "${FETCHCONTENT_BASE_DIR}/cpp-base64-master")
+
+        if(EXISTS "${CPP_BASE64_CACHE}/base64.cpp" AND EXISTS "${CPP_BASE64_CACHE}/base64.h")
+            message(STATUS "Hydrogen: Using cached cpp-base64 at: ${CPP_BASE64_CACHE}")
+            set(cpp-base64_SOURCE_DIR "${CPP_BASE64_CACHE}")
+        else()
+            message(STATUS "Hydrogen: Fetching cpp-base64 from GitHub")
+            FetchContent_Declare(
+                cpp-base64
+                GIT_REPOSITORY https://github.com/ReneNyffenegger/cpp-base64.git
+                GIT_TAG master
+                SOURCE_DIR "${CPP_BASE64_CACHE}"
+            )
+            FetchContent_MakeAvailable(cpp-base64)
+        endif()
     endif()
 else()
-    # Use FetchContent as fallback for cpp-base64
-    include(FetchContent)
-    if(NOT DEFINED FETCHCONTENT_BASE_DIR)
-        set(FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.cmake-cache" CACHE PATH "Base directory for FetchContent downloads")
-    endif()
-
-    set(CPP_BASE64_CACHE "${FETCHCONTENT_BASE_DIR}/cpp-base64-master")
-
-    if(EXISTS "${CPP_BASE64_CACHE}/base64.cpp" AND EXISTS "${CPP_BASE64_CACHE}/base64.h")
-        message(STATUS "Hydrogen: Using cached cpp-base64 at: ${CPP_BASE64_CACHE}")
-        set(cpp-base64_SOURCE_DIR "${CPP_BASE64_CACHE}")
-    else()
-        message(STATUS "Hydrogen: Fetching cpp-base64 from GitHub")
-        FetchContent_Declare(
-            cpp-base64
-            GIT_REPOSITORY https://github.com/ReneNyffenegger/cpp-base64.git
-            GIT_TAG master
-            SOURCE_DIR "${CPP_BASE64_CACHE}"
-        )
-        FetchContent_MakeAvailable(cpp-base64)
-    endif()
+    message(STATUS "Hydrogen: Skipping cpp-base64 (base64 support disabled)")
+    set(cpp-base64_SOURCE_DIR "")
 endif()
 
 # =============================================================================
@@ -104,10 +113,11 @@ endif()
 
 # Add global include directories for backward compatibility
 # Note: Modern CMake prefers target-specific includes, but we maintain this for compatibility
-include_directories(
-    ${PROJECT_SOURCE_DIR}/src
-    ${cpp-base64_SOURCE_DIR}
-)
+set(GLOBAL_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/src)
+if(HYDROGEN_ENABLE_BASE64 AND cpp-base64_SOURCE_DIR)
+    list(APPEND GLOBAL_INCLUDE_DIRS ${cpp-base64_SOURCE_DIR})
+endif()
+include_directories(${GLOBAL_INCLUDE_DIRS})
 
 # =============================================================================
 # Component Building
@@ -140,17 +150,17 @@ endif()
 # =============================================================================
 
 # Create a convenience library that includes all components (for backward compatibility)
-add_library(astrocomm INTERFACE)
-target_link_libraries(astrocomm INTERFACE
-    AstroComm::Common
-    AstroComm::Core
-    AstroComm::Server
-    AstroComm::Client
-    AstroComm::Device
+add_library(Hydrogen INTERFACE)
+target_link_libraries(Hydrogen INTERFACE
+    Hydrogen::Common
+    Hydrogen::Core
+    Hydrogen::Server
+    Hydrogen::Client
+    Hydrogen::Device
 )
 
 # Create modern Hydrogen namespace alias
-add_library(Hydrogen::Hydrogen ALIAS astrocomm)
+add_library(Hydrogen::Hydrogen ALIAS Hydrogen)
 
 # =============================================================================
 # Python Bindings
@@ -176,10 +186,10 @@ if(HYDROGEN_ENABLE_PYTHON_BINDINGS)
             src/python/py_documentation.cpp
         )
         target_link_libraries(pyhydrogen PRIVATE
-            AstroComm::Device
-            AstroComm::Client
-            AstroComm::Server
-            AstroComm::Core
+            Hydrogen::Device
+            Hydrogen::Client
+            Hydrogen::Server
+            Hydrogen::Core
         )
 
         # Apply modern CMake configuration
@@ -191,7 +201,7 @@ if(HYDROGEN_ENABLE_PYTHON_BINDINGS)
         )
 
         # Backward compatibility alias
-        add_library(pyastrocomm ALIAS pyhydrogen)
+        add_library(pyHydrogen ALIAS pyhydrogen)
     else()
         message(WARNING "Hydrogen: Python bindings requested but pybind11 not found")
     endif()
@@ -208,16 +218,18 @@ include(GNUInstallDirs)
 # Export and Installation Setup
 # =============================================================================
 
-# Export all targets using the new export system
-hydrogen_export_target(astrocomm_common EXPORT_NAME Common COMPONENT Development)
-hydrogen_export_target(astrocomm_core EXPORT_NAME Core COMPONENT Development)
-hydrogen_export_target(astrocomm_server EXPORT_NAME Server COMPONENT Development)
-hydrogen_export_target(astrocomm_client EXPORT_NAME Client COMPONENT Development)
-hydrogen_export_target(astrocomm_device EXPORT_NAME Device COMPONENT Development)
-hydrogen_export_target(astrocomm EXPORT_NAME AstroComm COMPONENT Runtime)
+# Simplified export system - disable complex exports for now
+# hydrogen_export_target(hydrogen_common EXPORT_NAME Common COMPONENT Development)
+# hydrogen_export_target(hydrogen_core EXPORT_NAME Core COMPONENT Development)
+# hydrogen_export_target(hydrogen_server EXPORT_NAME Server COMPONENT Development)
+# hydrogen_export_target(hydrogen_client EXPORT_NAME Client COMPONENT Development)
+# hydrogen_export_target(hydrogen_device EXPORT_NAME Device COMPONENT Development)
 
-# Setup comprehensive package exports
-hydrogen_setup_exports()
+# Export the convenience library as well (INTERFACE library)
+# hydrogen_export_target(Hydrogen EXPORT_NAME Hydrogen COMPONENT Development INTERFACE_TARGET)
+
+# Setup comprehensive package exports (MUST be after all target exports)
+# hydrogen_setup_exports()
 
 # =============================================================================
 # Build Summary

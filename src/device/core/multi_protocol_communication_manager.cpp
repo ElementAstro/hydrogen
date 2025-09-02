@@ -1,10 +1,10 @@
 #include "multi_protocol_communication_manager.h"
-#include <astrocomm/core/utils.h>
+#include <hydrogen/core/utils.h>
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
@@ -238,7 +238,7 @@ bool MultiProtocolCommunicationManager::sendMessage(const std::string& message, 
     }
     
     CommunicationMessage msg;
-    msg.messageId = astrocomm::core::generateUuid();
+    msg.messageId = hydrogen::core::generateUuid();
     msg.deviceId = deviceId_;
     msg.command = "device_message";
     msg.payload = json{{"message", message}};
@@ -602,4 +602,4 @@ std::unique_ptr<MultiProtocolCommunicationManager> CommunicationManagerFactory::
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

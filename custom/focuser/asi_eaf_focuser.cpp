@@ -812,11 +812,11 @@ void AsiEafFocuser::updateHealthMetrics() {
     sendEvent(event);
   }
 
-  // 检测温度警告
+  // Detect temperature warnings
   if (controllerTemp > 50.0f) {
     SPDLOG_WARN("High temperature detected: {}°C", controllerTemp);
 
-    // 发送高温警告事件
+    // Send high temperature warning event
     EventMessage event("TEMPERATURE_WARNING");
     event.setDetails(
         {{"temperature", controllerTemp}, {"maxTemperature", 50.0f}});
@@ -825,7 +825,7 @@ void AsiEafFocuser::updateHealthMetrics() {
 }
 
 std::string AsiEafFocuser::generateSerialNumber() {
-  // 生成仿真序列号 (ASI + 8位数字)
+  // Generate simulation serial number (ASI + 8 digits)
   std::stringstream ss;
   ss << "ASI" << std::setfill('0') << std::setw(2) << (1 + (rng() % 99));
   ss << std::setfill('0') << std::setw(6) << (rng() % 1000000);

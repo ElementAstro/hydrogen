@@ -21,7 +21,7 @@ target_link_libraries(core_message_basic_tests
         GTest::gtest
         GTest::gtest_main
         test_utils
-        astrocomm_core
+        hydrogen_core
 )
 
 # Register tests with CTest

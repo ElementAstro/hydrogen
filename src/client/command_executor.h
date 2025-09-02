@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-namespace astrocomm {
+namespace hydrogen {
 
 using json = nlohmann::json;
 
@@ -189,4 +189,4 @@ private:
     json executeWithQoS(const CommandMessage& msg, int timeoutSeconds = 30);
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

@@ -4,9 +4,10 @@
 #include <iostream>
 #include <string>
 
-using namespace astrocomm;
+using namespace hydrogen;
+using namespace hydrogen::device;
 
-std::unique_ptr<Solver> solver;
+std::unique_ptr<ISolver> solver;
 
 void signalHandler(int sig) {
   logInfo("Received signal " + std::to_string(sig) + ", shutting down...",
@@ -23,7 +24,7 @@ int main(int argc, char *argv[]) {
 
   initLogger("solver.log", LogLevel::INFO);
 
-  // 解析命令行参数
+  // 解析命令行参�?
   std::string host = "localhost";
   uint16_t port = 8000;
   std::string deviceId = "solver-main";
@@ -36,7 +37,7 @@ int main(int argc, char *argv[]) {
     deviceId = argv[3];
 
   try {
-    solver = std::make_unique<Solver>(deviceId, "AstroCode", "AstroSolver");
+    solver = SolverFactory::createSolver(deviceId);
 
     if (!solver->connect(host, port)) {
       logCritical("Failed to connect to server", "Main");

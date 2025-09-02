@@ -60,18 +60,39 @@ endfunction()
 function(hydrogen_find_with_vcpkg package_name package_config)
     list(GET package_config 0 cmake_name)
     list(GET package_config 1 vcpkg_name)
-    
+
     if(vcpkg_name)
         message(STATUS "Hydrogen: Looking for ${cmake_name} via vcpkg (${vcpkg_name})")
-        find_package(${cmake_name} CONFIG QUIET)
-        
-        if(${cmake_name}_FOUND)
-            message(STATUS "Hydrogen: Found ${cmake_name} via vcpkg")
-            set(${package_name}_FOUND TRUE PARENT_SCOPE)
-            return()
+
+        # Special handling for Boost to use individual component packages from vcpkg
+        if(cmake_name STREQUAL "Boost")
+            # Try to find individual boost components that are available
+            find_package(boost_system CONFIG QUIET)
+            if(boost_system_FOUND)
+                message(STATUS "Hydrogen: Found Boost components via vcpkg (individual packages)")
+                set(${package_name}_FOUND TRUE PARENT_SCOPE)
+                return()
+            endif()
+        else()
+            find_package(${cmake_name} CONFIG QUIET)
+            if(${cmake_name}_FOUND)
+                message(STATUS "Hydrogen: Found ${cmake_name} via vcpkg")
+                set(${package_name}_FOUND TRUE PARENT_SCOPE)
+                return()
+            endif()
+
+            # Special case for nlohmann_json which might have different naming
+            if(cmake_name STREQUAL "nlohmann_json")
+                find_package(nlohmann_json CONFIG QUIET)
+                if(nlohmann_json_FOUND)
+                    message(STATUS "Hydrogen: Found nlohmann_json via vcpkg")
+                    set(${package_name}_FOUND TRUE PARENT_SCOPE)
+                    return()
+                endif()
+            endif()
         endif()
     endif()
-    
+
     set(${package_name}_FOUND FALSE PARENT_SCOPE)
 endfunction()
 
@@ -226,16 +247,32 @@ function(hydrogen_find_dependency package_name)
             list(APPEND find_args QUIET)
         endif()
 
-        # Special handling for Boost to ensure components are found
-        if(cmake_name STREQUAL "Boost" AND ARG_COMPONENTS)
-            find_package(Boost REQUIRED COMPONENTS ${ARG_COMPONENTS})
+        # Special handling for Boost - try CONFIG first for vcpkg compatibility
+        if(cmake_name STREQUAL "Boost")
+            # First try CONFIG mode (modern Boost::* targets from vcpkg)
+            find_package(Boost CONFIG QUIET)
+            if(Boost_FOUND)
+                message(STATUS "Hydrogen: Found Boost via CONFIG mode (modern targets)")
+                set(${package_name}_FOUND TRUE PARENT_SCOPE)
+                set(package_found TRUE)
+            else()
+                # Fallback to MODULE mode with components
+                if(ARG_COMPONENTS)
+                    find_package(Boost REQUIRED COMPONENTS ${ARG_COMPONENTS})
+                else()
+                    find_package(Boost REQUIRED)
+                endif()
+                if(Boost_FOUND)
+                    set(${package_name}_FOUND TRUE PARENT_SCOPE)
+                    set(package_found TRUE)
+                endif()
+            endif()
         else()
             find_package(${find_args})
-        endif()
-
-        if(${cmake_name}_FOUND)
-            set(${package_name}_FOUND TRUE PARENT_SCOPE)
-            set(package_found TRUE)
+            if(${cmake_name}_FOUND)
+                set(${package_name}_FOUND TRUE PARENT_SCOPE)
+                set(package_found TRUE)
+            endif()
         endif()
     endif()
     
@@ -269,12 +306,31 @@ endfunction()
 # Find all core dependencies
 function(hydrogen_find_core_dependencies)
     message(STATUS "Hydrogen: Resolving core dependencies...")
-    
-    hydrogen_find_dependency(Boost REQUIRED COMPONENTS system filesystem thread)
-    hydrogen_find_dependency(OpenSSL REQUIRED)
+
+    # Try to find Boost using standard find_package first
+    find_package(Boost QUIET COMPONENTS system)
+    if(Boost_FOUND)
+        message(STATUS "Hydrogen: Found Boost via standard find_package")
+        set(HYDROGEN_HAS_BOOST_SYSTEM TRUE CACHE BOOL "boost_system available" FORCE)
+    else()
+        # Try to find individual boost components directly from vcpkg
+        find_package(boost_system CONFIG QUIET)
+        if(boost_system_FOUND)
+            message(STATUS "Hydrogen: Found boost_system via vcpkg")
+            set(HYDROGEN_HAS_BOOST_SYSTEM TRUE CACHE BOOL "boost_system available" FORCE)
+        else()
+            message(WARNING "Hydrogen: boost_system not found - some networking features may be limited")
+            set(HYDROGEN_HAS_BOOST_SYSTEM FALSE CACHE BOOL "boost_system available" FORCE)
+        endif()
+    endif()
+
     hydrogen_find_dependency(nlohmann_json REQUIRED)
     hydrogen_find_dependency(Threads REQUIRED)
-    
+
+    # OpenSSL is optional for now since SSL features are disabled
+    # Skip OpenSSL to avoid FetchContent network issues
+    message(STATUS "Hydrogen: Skipping OpenSSL (SSL features disabled)")
+
     message(STATUS "Hydrogen: Core dependencies resolved")
 endfunction()
 
@@ -282,8 +338,18 @@ endfunction()
 function(hydrogen_find_web_dependencies)
     message(STATUS "Hydrogen: Resolving web framework dependencies...")
 
-    hydrogen_find_dependency(asio REQUIRED)
-    hydrogen_find_dependency(Crow REQUIRED)
+    # Only find asio if websockets or HTTP server features are enabled
+    if(HYDROGEN_ENABLE_WEBSOCKETS OR HYDROGEN_ENABLE_HTTP_SERVER)
+        hydrogen_find_dependency(asio REQUIRED)
+    else()
+        message(STATUS "Hydrogen: Skipping asio (websockets and HTTP server disabled)")
+    endif()
+
+    if(HYDROGEN_ENABLE_HTTP_SERVER)
+        hydrogen_find_dependency(Crow REQUIRED)
+    else()
+        message(STATUS "Hydrogen: Skipping Crow (HTTP server disabled)")
+    endif()
 
     message(STATUS "Hydrogen: Web framework dependencies resolved")
 endfunction()

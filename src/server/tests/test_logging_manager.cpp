@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "astrocomm/server/infrastructure/logging.h"
+#include "hydrogen/server/infrastructure/logging.h"
 #include <memory>
 
-using namespace astrocomm::server::infrastructure;
+using namespace hydrogen::server::infrastructure;
 
 class LoggingManagerTest : public ::testing::Test {
 protected:

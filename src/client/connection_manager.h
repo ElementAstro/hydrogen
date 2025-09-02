@@ -12,7 +12,7 @@
 #include <string>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 
 namespace beast = boost::beast;
 namespace websocket = beast::websocket;
@@ -145,4 +145,4 @@ private:
     void stopReconnectThread();
 };
 
-} // namespace astrocomm
+} // namespace hydrogen

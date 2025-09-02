@@ -4,7 +4,7 @@
 #include <fstream>
 #include <algorithm>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 // FilterWheelMovableBehavior implementation
@@ -608,4 +608,4 @@ double FilterWheel::calculateFocusOffset(int fromFilter, int toFilter) const {
 }
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

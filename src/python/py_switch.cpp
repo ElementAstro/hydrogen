@@ -4,26 +4,26 @@
 #include "device/switch.h"
 
 namespace py = pybind11;
-using namespace astrocomm;
+using namespace hydrogen;
 
-// 定义可被Python继承的类，以便Python代码可以重写虚方法
+// 定义可被Python继承的类，以便Python代码可以重写虚方�?
 class PySwitch : public Switch {
 public:
-  // 使用与基类相同的构造函数
+  // 使用与基类相同的构造函�?
   using Switch::Switch;
 
   // 为Python重写虚方法提供的转发方法
   bool start() override {
     PYBIND11_OVERRIDE(bool,   // 返回类型
                       Switch, // 父类
-                      start   // 函数名
+                      start   // 函数�?
     );
   }
 
   void stop() override {
     PYBIND11_OVERRIDE(void,   // 返回类型
                       Switch, // 父类
-                      stop    // 函数名
+                      stop    // 函数�?
     );
   }
 };
@@ -42,7 +42,7 @@ void init_switch(py::module_ &m) {
       .value("ON", Switch::SwitchState::ON)
       .export_values();
 
-  // 绑定Switch类，注意添加PySwitch作为继承类
+  // 绑定Switch类，注意添加PySwitch作为继承�?
   py::class_<Switch, DeviceBase, PySwitch, std::shared_ptr<Switch>>(m, "Switch")
       .def(py::init<const std::string &, const std::string &,
                     const std::string &>(),

@@ -11,7 +11,7 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 using json = nlohmann::json;
@@ -25,11 +25,8 @@ enum class RotationDirection {
 };
 
 /**
- * @brief 旋转器设备实现
- *
- * 基于新架构的旋转器实现，使用MovableBehavior提供移动控制功能。
- * 支持多种制造商的旋转器设备，提供统一的控制接口。
- */
+ * @brief 旋转器设备实�? *
+ * 基于新架构的旋转器实现，使用MovableBehavior提供移动控制功能�? * 支持多种制造商的旋转器设备，提供统一的控制接口�? */
 class Rotator : public core::ModernDeviceBase, 
                 public interfaces::IRotator {
 public:
@@ -61,8 +58,7 @@ public:
   }
 
   /**
-   * @brief 获取支持的型号列表
-   */
+   * @brief 获取支持的型号列�?   */
   static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
     if (manufacturer == "Pegasus") return {"FocusCube", "Falcon Rotator"};
     if (manufacturer == "Optec") return {"Gemini", "IFW"};
@@ -71,8 +67,7 @@ public:
     return {"Generic Rotator"};
   }
 
-  // 实现IMovable接口（委托给MovableBehavior）
-  bool moveToPosition(int position) override;
+  // 实现IMovable接口（委托给MovableBehavior�?  bool moveToPosition(int position) override;
   bool moveRelative(int steps) override;
   bool stopMovement() override;
   bool home() override;
@@ -84,7 +79,8 @@ public:
   bool rotateToAngle(double angle) override;
   bool rotateRelative(double angle) override;
   bool supportsReverse() const override;
-  bool setReverse(bool reversed) override;
+  void setReverse(bool value) override;  // ASCOM standard (void return)
+  bool setReverseMode(bool reversed) override;  // Legacy method (bool return)
 
   // ==== 向后兼容接口 ====
 
@@ -113,10 +109,7 @@ public:
    */
   virtual void halt();
 
-  /**
-   * @brief Set reverse (向后兼容)
-   */
-  virtual void setReverse(bool reverse);
+  // Note: setReverse is already implemented above with bool return type
 
   /**
    * @brief Get reverse (向后兼容)
@@ -210,6 +203,46 @@ public:
    */
   bool waitForRotationComplete(int timeoutMs = 0);
 
+  // Additional methods needed by implementation
+  bool moveToPosition(int position) override;
+  bool setReversed(bool reversed);
+  bool isReversed() const;
+  std::vector<std::string> getCapabilities() const override;
+
+  // Hardware abstraction interface (public for behavior classes)
+  virtual bool executeRotation(double targetAngle);
+  virtual bool executeStop();
+  virtual bool executeHome();
+  virtual double readCurrentAngle();
+
+  // Missing IRotator interface methods
+  double getMechanicalPosition() const override;
+  double getTargetPosition() const override;
+  void move(double position) override;
+  void moveAbsolute(double position) override;
+  void moveMechanical(double position) override;
+  bool getIsMoving() const override;
+  bool getCanReverse() const override;
+  void sync(double position) override;
+
+  // Missing IDevice interface methods
+  std::string getName() const override;
+  std::string getDescription() const override;
+  std::string getDriverInfo() const override;
+  std::string getDriverVersion() const override;
+  int getInterfaceVersion() const override;
+  std::vector<std::string> getSupportedActions() const override;
+  bool isConnecting() const override;
+  interfaces::DeviceState getDeviceState() const override;
+  std::string action(const std::string& actionName, const std::string& actionParameters) override;
+  void commandBlind(const std::string& command, bool raw) override;
+  bool commandBool(const std::string& command, bool raw) override;
+  std::string commandString(const std::string& command, bool raw) override;
+  void setupDialog() override;
+
+  // Device lifecycle methods
+  virtual void run();  // Main device loop
+
 protected:
   // 重写基类方法
   bool initializeDevice() override;
@@ -221,14 +254,16 @@ protected:
   void updateDevice() override;
 
 private:
+  // Forward declaration and friend class
+  class RotatorMovableBehavior;
+  friend class RotatorMovableBehavior;
   /**
    * @brief 初始化旋转器行为组件
    */
   void initializeRotatorBehaviors();
 
   /**
-   * @brief 旋转器移动行为实现
-   */
+   * @brief 旋转器移动行为实�?   */
   class RotatorMovableBehavior : public behaviors::MovableBehavior {
   public:
     explicit RotatorMovableBehavior(Rotator* rotator);
@@ -242,13 +277,7 @@ private:
     Rotator* rotator_;
   };
 
-  // 硬件抽象接口
-  virtual bool executeRotation(double targetAngle);
-  virtual bool executeStop();
-  virtual bool executeHome();
-  virtual double readCurrentAngle();
-
-  // 角度处理函数
+  // Angle processing functions
   double normalizeAngle(double angle) const;
   bool validateAngle(double angle) const;
   double calculateShortestPath(double fromAngle, double toAngle) const;
@@ -257,18 +286,24 @@ private:
   // 行为组件指针
   RotatorMovableBehavior* movableBehavior_;
 
-  // 旋转器参数
-  std::atomic<double> rotationSpeed_;      // 旋转速度 (degrees/second)
-  std::atomic<double> stepSize_;           // 步长 (degrees/step)
-  std::atomic<double> mechanicalOffset_;   // 机械偏移角度
-  std::atomic<bool> reversed_;             // 是否反向
+  // Rotator parameters
+  std::atomic<double> rotationSpeed_;      // Rotation speed (degrees/second)
+  std::atomic<double> stepSize_;           // Step size (degrees/step)
+  std::atomic<double> mechanicalOffset_;   // Mechanical offset angle
+  std::atomic<bool> reversed_;             // Whether reversed
+
+  // Additional parameters needed by implementation
+  std::atomic<double> maxSpeed_;           // Maximum speed
+  std::atomic<double> currentSpeed_;       // Current speed
+  std::atomic<bool> isReversed_;           // Reverse state
+  std::atomic<bool> canReverse_;           // Can reverse capability
   
-  // 角度限制
+  // Angle limits
   std::atomic<bool> limitsEnabled_;
   std::atomic<double> minAngle_;
   std::atomic<double> maxAngle_;
-  
-  // 当前状态
+
+  // Current state
   std::atomic<double> currentAngle_;
   std::atomic<double> targetAngle_;
   
@@ -278,8 +313,7 @@ private:
 };
 
 /**
- * @brief 旋转器工厂
- */
+ * @brief 旋转器工�? */
 class RotatorFactory : public core::TypedDeviceFactory<Rotator> {
 public:
   RotatorFactory(const std::string& manufacturer = "Generic", 
@@ -288,4 +322,4 @@ public:
 };
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

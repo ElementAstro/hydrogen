@@ -1,5 +1,5 @@
-#include "astrocomm/server/services/auth_service.h"
-#include "astrocomm/server/core/service_registry.h"
+#include "hydrogen/server/services/auth_service.h"
+#include "hydrogen/server/core/service_registry.h"
 #include <spdlog/spdlog.h>
 #include <random>
 #include <iomanip>
@@ -9,7 +9,7 @@
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace services {
 
@@ -20,7 +20,7 @@ class AuthServiceImpl : public core::BaseService, public IAuthService {
 public:
     explicit AuthServiceImpl(const std::string& name = "AuthService")
         : core::BaseService(name, "1.0.0") {
-        description_ = "Authentication and authorization service for AstroComm server";
+        description_ = "Authentication and authorization service for Hydrogen server";
     }
 
     // IService implementation
@@ -186,7 +186,7 @@ public:
         token.permissions = user.permissions;
         token.issuedAt = std::chrono::system_clock::now();
         token.expiresAt = token.issuedAt + tokenExpiration_;
-        token.issuer = "AstroComm-AuthService";
+        token.issuer = "Hydrogen-AuthService";
         
         tokens_[token.token] = token;
         
@@ -1014,7 +1014,7 @@ private:
             UserInfo admin;
             admin.userId = generateUserId();
             admin.username = "admin";
-            admin.email = "admin@astrocomm.local";
+            admin.email = "admin@Hydrogen.local";
             admin.fullName = "System Administrator";
             admin.role = UserRole::SUPER_ADMIN;
             admin.permissions = getRolePermissions(UserRole::SUPER_ADMIN);
@@ -1107,4 +1107,4 @@ bool AuthServiceFactory::isServiceSupported(const std::string& serviceName) cons
 
 } // namespace services
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

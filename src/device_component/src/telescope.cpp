@@ -1,5 +1,5 @@
-#include <astrocomm/device/telescope.h>
-#include <astrocomm/core/utils.h>
+#include <hydrogen/device/telescope.h>
+#include <hydrogen/core/utils.h>
 #include <chrono>
 #include <cmath>
 
@@ -7,7 +7,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 Telescope::Telescope(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
@@ -57,7 +57,7 @@ void Telescope::gotoPosition(double ra, double dec) {
     setProperty("target_dec", dec);
     
     // Send event
-    EventMessage event("goto_started");
+    hydrogen::core::EventMessage event("goto_started");
     event.setDeviceId(getDeviceId());
     event.setProperties({
         {"target_ra", ra},
@@ -70,7 +70,7 @@ void Telescope::setTracking(bool enabled) {
     tracking_ = enabled;
     setProperty("tracking", enabled);
     
-    EventMessage event("tracking_changed");
+    hydrogen::core::EventMessage event("tracking_changed");
     event.setDeviceId(getDeviceId());
     event.setProperties({{"tracking", enabled}});
     sendEvent(event);
@@ -89,7 +89,7 @@ void Telescope::abort() {
     moving_ = false;
     setProperty("moving", false);
     
-    EventMessage event("movement_aborted");
+    hydrogen::core::EventMessage event("movement_aborted");
     event.setDeviceId(getDeviceId());
     sendEvent(event);
 }
@@ -103,7 +103,7 @@ void Telescope::park() {
     setProperty("parked", true);
     setProperty("tracking", false);
     
-    EventMessage event("parked");
+    hydrogen::core::EventMessage event("parked");
     event.setDeviceId(getDeviceId());
     sendEvent(event);
 }
@@ -112,7 +112,7 @@ void Telescope::unpark() {
     parked_ = false;
     setProperty("parked", false);
     
-    EventMessage event("unparked");
+    hydrogen::core::EventMessage event("unparked");
     event.setDeviceId(getDeviceId());
     sendEvent(event);
 }
@@ -132,7 +132,7 @@ void Telescope::sync(double ra, double dec) {
     setProperty("dec", dec);
     updateAltAz();
     
-    EventMessage event("synced");
+    hydrogen::core::EventMessage event("synced");
     event.setDeviceId(getDeviceId());
     event.setProperties({
         {"ra", ra},
@@ -196,8 +196,8 @@ void Telescope::initializeTelescopeProperties() {
 }
 
 void Telescope::registerTelescopeCommands() {
-    registerCommandHandler("goto", 
-        [this](const CommandMessage& cmd, ResponseMessage& response) {
+    registerCommandHandler("goto",
+        [this](const hydrogen::core::CommandMessage& cmd, hydrogen::core::ResponseMessage& response) {
             auto params = cmd.getParameters();
             if (!params.contains("ra") || !params.contains("dec")) {
                 throw std::invalid_argument("Missing ra or dec parameter");
@@ -215,7 +215,7 @@ void Telescope::registerTelescopeCommands() {
         });
     
     registerCommandHandler("set_tracking",
-        [this](const CommandMessage& cmd, ResponseMessage& response) {
+        [this](const hydrogen::core::CommandMessage& cmd, hydrogen::core::ResponseMessage& response) {
             auto params = cmd.getParameters();
             if (!params.contains("enabled")) {
                 throw std::invalid_argument("Missing enabled parameter");
@@ -231,25 +231,25 @@ void Telescope::registerTelescopeCommands() {
         });
     
     registerCommandHandler("abort",
-        [this](const CommandMessage& cmd, ResponseMessage& response) {
+        [this](const hydrogen::core::CommandMessage& cmd, hydrogen::core::ResponseMessage& response) {
             abort();
             response.setDetails({{"message", "Movement aborted"}});
         });
     
     registerCommandHandler("park",
-        [this](const CommandMessage& cmd, ResponseMessage& response) {
+        [this](const hydrogen::core::CommandMessage& cmd, hydrogen::core::ResponseMessage& response) {
             park();
             response.setDetails({{"message", "Telescope parked"}});
         });
     
     registerCommandHandler("unpark",
-        [this](const CommandMessage& cmd, ResponseMessage& response) {
+        [this](const hydrogen::core::CommandMessage& cmd, hydrogen::core::ResponseMessage& response) {
             unpark();
             response.setDetails({{"message", "Telescope unparked"}});
         });
     
     registerCommandHandler("sync",
-        [this](const CommandMessage& cmd, ResponseMessage& response) {
+        [this](const hydrogen::core::CommandMessage& cmd, hydrogen::core::ResponseMessage& response) {
             auto params = cmd.getParameters();
             if (!params.contains("ra") || !params.contains("dec")) {
                 throw std::invalid_argument("Missing ra or dec parameter");
@@ -267,7 +267,7 @@ void Telescope::registerTelescopeCommands() {
         });
     
     registerCommandHandler("set_observer_location",
-        [this](const CommandMessage& cmd, ResponseMessage& response) {
+        [this](const hydrogen::core::CommandMessage& cmd, hydrogen::core::ResponseMessage& response) {
             auto params = cmd.getParameters();
             if (!params.contains("latitude") || !params.contains("longitude")) {
                 throw std::invalid_argument("Missing latitude or longitude parameter");
@@ -310,7 +310,7 @@ void Telescope::updateLoop() {
                     moving_ = false;
                     setProperty("moving", false);
                     
-                    EventMessage event("goto_complete");
+                    hydrogen::core::EventMessage event("goto_complete");
                     event.setDeviceId(getDeviceId());
                     event.setProperties({
                         {"ra", currentRA_},
@@ -404,4 +404,4 @@ void Telescope::stopUpdateThread() {
 }
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

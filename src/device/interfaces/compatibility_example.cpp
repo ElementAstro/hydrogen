@@ -6,8 +6,8 @@
 #include <thread>
 #include <chrono>
 
-using namespace astrocomm::device;
-using namespace astrocomm::device::interfaces;
+using namespace hydrogen::device;
+using namespace hydrogen::device::interfaces;
 
 /**
  * @brief Comprehensive example demonstrating automatic ASCOM/INDI compatibility

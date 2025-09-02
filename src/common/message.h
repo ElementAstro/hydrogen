@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace astrocomm {
+namespace hydrogen {
 
 using json = nlohmann::json;
 
@@ -24,14 +24,14 @@ std::string messageTypeToString(MessageType type);
 // 从字符串转换为MessageType
 MessageType stringToMessageType(const std::string &typeStr);
 
-// 基础消息类
+// 基础消息�?
 class Message {
 public:
   Message();
   Message(MessageType type);
   virtual ~Message() = default;
 
-  // 设置和获取基本属性
+  // 设置和获取基本属�?
   void setMessageType(MessageType type);
   MessageType getMessageType() const;
 
@@ -57,7 +57,7 @@ public:
   void setQoSLevel(QoSLevel level);
   QoSLevel getQoSLevel() const;
   
-  // 消息优先级
+  // 消息优先�?
   enum class Priority {
     LOW,
     NORMAL,
@@ -258,7 +258,7 @@ private:
   std::string credentials;
 };
 
-// 工厂函数，根据JSON创建适当类型的消息
+// 工厂函数，根据JSON创建适当类型的消�?
 std::unique_ptr<Message> createMessageFromJson(const json &j);
 
-} // namespace astrocomm
+} // namespace hydrogen

@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "astrocomm/server/protocols/mqtt/mqtt_broker.h"
+#include "hydrogen/server/protocols/mqtt/mqtt_broker.h"
 #include <memory>
 
-using namespace astrocomm::server::protocols::mqtt;
+using namespace hydrogen::server::protocols::mqtt;
 
 class MqttBrokerTest : public ::testing::Test {
 protected:

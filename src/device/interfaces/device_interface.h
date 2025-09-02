@@ -8,11 +8,16 @@
 #include <future>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 
 using json = nlohmann::json;
+
+// Fix Windows header pollution
+#ifdef ERROR
+#undef ERROR
+#endif
 
 // ASCOM/INDI Standard Enumerations
 enum class DeviceState {
@@ -150,8 +155,7 @@ public:
 };
 
 /**
- * @brief 可配置设备接口
- */
+ * @brief 可配置设备接�? */
 class IConfigurable {
 public:
     virtual ~IConfigurable() = default;
@@ -167,8 +171,7 @@ public:
     virtual json getConfig(const std::string& name) const = 0;
 
     /**
-     * @brief 获取所有配置
-     */
+     * @brief 获取所有配�?     */
     virtual json getAllConfigs() const = 0;
 
     /**
@@ -183,25 +186,21 @@ public:
 };
 
 /**
- * @brief 有状态设备接口
- */
+ * @brief 有状态设备接�? */
 class IStateful {
 public:
     virtual ~IStateful() = default;
 
     /**
-     * @brief 设置属性
-     */
+     * @brief 设置属�?     */
     virtual bool setProperty(const std::string& property, const json& value) = 0;
 
     /**
-     * @brief 获取属性
-     */
+     * @brief 获取属�?     */
     virtual json getProperty(const std::string& property) const = 0;
 
     /**
-     * @brief 获取所有属性
-     */
+     * @brief 获取所有属�?     */
     virtual json getAllProperties() const = 0;
 
     /**
@@ -211,15 +210,13 @@ public:
 };
 
 /**
- * @brief 可移动设备接口
- */
+ * @brief 可移动设备接�? */
 class IMovable {
 public:
     virtual ~IMovable() = default;
 
     /**
-     * @brief 移动到绝对位置
-     */
+     * @brief 移动到绝对位�?     */
     virtual bool moveToPosition(int position) = 0;
 
     /**
@@ -504,8 +501,7 @@ public:
 };
 
 /**
- * @brief 调焦器设备接口
- */
+ * @brief 调焦器设备接�? */
 class IFocuser : public IMovable {
 public:
     virtual ~IFocuser() = default;
@@ -527,8 +523,7 @@ public:
 };
 
 /**
- * @brief 滤镜轮设备接口
- */
+ * @brief 滤镜轮设备接�? */
 class IFilterWheel : public IMovable {
 public:
     virtual ~IFilterWheel() = default;
@@ -729,4 +724,4 @@ public:
 
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

@@ -1,4 +1,4 @@
-#include "astrocomm/core/utils.h"
+#include "hydrogen/core/utils.h"
 
 #include <algorithm>
 #include <cctype>
@@ -12,7 +12,7 @@
 #include <regex>
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 std::string generateUuid() {
@@ -138,4 +138,4 @@ parseIsoTimestamp(const std::string &timestamp) {
 } // namespace string_utils
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

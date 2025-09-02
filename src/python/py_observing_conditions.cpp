@@ -7,8 +7,8 @@
 #include "../device/interfaces/automatic_compatibility.h"
 
 namespace py = pybind11;
-using namespace astrocomm::device;
-using namespace astrocomm::device::interfaces;
+using namespace hydrogen::device;
+using namespace hydrogen::device::interfaces;
 
 // Python-compatible ObservingConditions class for inheritance
 class PyObservingConditions : public ObservingConditions {

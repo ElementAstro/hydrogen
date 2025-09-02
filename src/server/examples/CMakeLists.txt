@@ -1,9 +1,9 @@
-# AstroComm Server Examples - Reorganized Architecture
+# Hydrogen Server Examples - Reorganized Architecture
 # Demonstrates usage of the new layered server architecture
 
 cmake_minimum_required(VERSION 3.15)
 
-message(STATUS "Configuring AstroComm Server examples (reorganized architecture)...")
+message(STATUS "Configuring Hydrogen Server examples (reorganized architecture)...")
 
 # =============================================================================
 # Example Applications
@@ -17,10 +17,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../../examples/multi_protocol_server_e
     
     target_link_libraries(multi_protocol_server_example
         PRIVATE
-            AstroComm::Server
-            AstroComm::Core
-            spdlog::spdlog
+            hydrogen_server
+            hydrogen_core
     )
+
+    # Link spdlog if available
+    if(TARGET spdlog::spdlog)
+        target_link_libraries(multi_protocol_server_example PRIVATE spdlog::spdlog)
+    endif()
     
     set_target_properties(multi_protocol_server_example PROPERTIES
         CXX_STANDARD 17
@@ -39,8 +43,8 @@ endif()
 add_executable(mqtt_broker_example mqtt_broker_example.cpp)
 target_link_libraries(mqtt_broker_example
     PRIVATE
-        AstroComm::Server
-        AstroComm::Core
+        hydrogen_server
+        hydrogen_core
 )
 
 # gRPC server example
@@ -48,8 +52,8 @@ if(Protobuf_FOUND AND gRPC_FOUND)
     add_executable(grpc_server_example grpc_server_example.cpp)
     target_link_libraries(grpc_server_example
         PRIVATE
-            AstroComm::Server
-            AstroComm::Core
+            hydrogen_server
+            hydrogen_core
     )
     message(STATUS "  - gRPC server example configured")
 endif()
@@ -58,16 +62,16 @@ endif()
 add_executable(zmq_server_example zmq_server_example.cpp)
 target_link_libraries(zmq_server_example
     PRIVATE
-        AstroComm::Server
-        AstroComm::Core
+        hydrogen_server
+        hydrogen_core
 )
 
 # Enhanced device manager example
 add_executable(enhanced_device_manager_example enhanced_device_manager_example.cpp)
 target_link_libraries(enhanced_device_manager_example
     PRIVATE
-        AstroComm::Server
-        AstroComm::Core
+        hydrogen_server
+        hydrogen_core
 )
 
 # Set properties for all examples
@@ -100,13 +104,13 @@ endforeach()
 set(MQTT_EXAMPLE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/mqtt_broker_example.cpp")
 if(NOT EXISTS ${MQTT_EXAMPLE_SOURCE})
     file(WRITE ${MQTT_EXAMPLE_SOURCE}
-"#include <astrocomm/server/mqtt_broker.h>
+"#include <hydrogen/server/mqtt_broker.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-using namespace astrocomm::server;
-using namespace astrocomm::core;
+using namespace hydrogen::server;
+using namespace hydrogen::core;
 
 int main() {
     std::cout << \"MQTT Broker Example\" << std::endl;
@@ -135,13 +139,13 @@ endif()
 set(ZMQ_EXAMPLE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/zmq_server_example.cpp")
 if(NOT EXISTS ${ZMQ_EXAMPLE_SOURCE})
     file(WRITE ${ZMQ_EXAMPLE_SOURCE}
-"#include <astrocomm/server/zmq_server.h>
+"#include <hydrogen/server/zmq_server.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-using namespace astrocomm::server;
-using namespace astrocomm::core;
+using namespace hydrogen::server;
+using namespace hydrogen::core;
 
 int main() {
     std::cout << \"ZeroMQ Server Example\" << std::endl;
@@ -166,12 +170,12 @@ endif()
 set(DEVICE_MANAGER_EXAMPLE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/enhanced_device_manager_example.cpp")
 if(NOT EXISTS ${DEVICE_MANAGER_EXAMPLE_SOURCE})
     file(WRITE ${DEVICE_MANAGER_EXAMPLE_SOURCE}
-"#include <astrocomm/core/enhanced_device_manager.h>
+"#include <hydrogen/core/enhanced_device_manager.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-using namespace astrocomm::core;
+using namespace hydrogen::core;
 
 int main() {
     std::cout << \"Enhanced Device Manager Example\" << std::endl;
@@ -205,13 +209,13 @@ if(Protobuf_FOUND AND gRPC_FOUND)
     set(GRPC_EXAMPLE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/grpc_server_example.cpp")
     if(NOT EXISTS ${GRPC_EXAMPLE_SOURCE})
         file(WRITE ${GRPC_EXAMPLE_SOURCE}
-"#include <astrocomm/server/grpc_server.h>
+"#include <hydrogen/server/grpc_server.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-using namespace astrocomm::server;
-using namespace astrocomm::core;
+using namespace hydrogen::server;
+using namespace hydrogen::core;
 
 int main() {
     std::cout << \"gRPC Server Example\" << std::endl;
@@ -234,4 +238,4 @@ int main() {
     endif()
 endif()
 
-message(STATUS \"AstroComm Server examples configured successfully\")
+message(STATUS \"Hydrogen Server examples configured successfully\")

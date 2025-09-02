@@ -12,7 +12,7 @@
 #include <atomic>
 #include <type_traits>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 namespace integration {
@@ -410,24 +410,24 @@ private:
  * @brief Convenience macros for automatic device registration
  */
 #define REGISTER_DEVICE_AUTO(deviceId, device) \
-    astrocomm::device::interfaces::integration::AutomaticIntegrationManager::getInstance().registerDevice(deviceId, device)
+    hydrogen::device::interfaces::integration::AutomaticIntegrationManager::getInstance().registerDevice(deviceId, device)
 
 #define UNREGISTER_DEVICE_AUTO(deviceId) \
-    astrocomm::device::interfaces::integration::AutomaticIntegrationManager::getInstance().unregisterDevice(deviceId)
+    hydrogen::device::interfaces::integration::AutomaticIntegrationManager::getInstance().unregisterDevice(deviceId)
 
 #define GET_DEVICE_AUTO(DeviceType, deviceId) \
-    astrocomm::device::interfaces::integration::AutomaticIntegrationManager::getInstance().getTypedDevice<DeviceType>(deviceId)
+    hydrogen::device::interfaces::integration::AutomaticIntegrationManager::getInstance().getTypedDevice<DeviceType>(deviceId)
 
 #define GET_DEVICE_PROPERTY_AUTO(DeviceType, deviceId, propertyName, PropertyType, protocol) \
-    astrocomm::device::interfaces::integration::AutomaticIntegrationManager::getInstance().getDeviceProperty<DeviceType, PropertyType>(deviceId, propertyName, protocol)
+    hydrogen::device::interfaces::integration::AutomaticIntegrationManager::getInstance().getDeviceProperty<DeviceType, PropertyType>(deviceId, propertyName, protocol)
 
 #define SET_DEVICE_PROPERTY_AUTO(DeviceType, deviceId, propertyName, value, protocol) \
-    astrocomm::device::interfaces::integration::AutomaticIntegrationManager::getInstance().setDeviceProperty<DeviceType>(deviceId, propertyName, value, protocol)
+    hydrogen::device::interfaces::integration::AutomaticIntegrationManager::getInstance().setDeviceProperty<DeviceType>(deviceId, propertyName, value, protocol)
 
 #define INVOKE_DEVICE_METHOD_AUTO(DeviceType, ReturnType, deviceId, methodName, protocol, ...) \
-    astrocomm::device::interfaces::integration::AutomaticIntegrationManager::getInstance().invokeDeviceMethod<DeviceType, ReturnType>(deviceId, methodName, protocol, __VA_ARGS__)
+    hydrogen::device::interfaces::integration::AutomaticIntegrationManager::getInstance().invokeDeviceMethod<DeviceType, ReturnType>(deviceId, methodName, protocol, __VA_ARGS__)
 
 } // namespace integration
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

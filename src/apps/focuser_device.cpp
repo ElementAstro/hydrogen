@@ -7,7 +7,8 @@
 #include <string>
 
 
-using namespace astrocomm;
+using namespace hydrogen;
+using namespace hydrogen::device;
 
 std::unique_ptr<Focuser> focuser;
 
@@ -40,7 +41,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // 解析命令行参数
+  // 解析命令行参�?
   std::string host = "localhost";
   uint16_t port = 8000;
   std::string deviceId = "focuser-main";

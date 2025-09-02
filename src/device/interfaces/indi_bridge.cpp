@@ -14,7 +14,7 @@
 #include <unistd.h>
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 namespace indi {
@@ -352,4 +352,4 @@ template class INDIProtocolBridge<IFocuser>;
 } // namespace indi
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

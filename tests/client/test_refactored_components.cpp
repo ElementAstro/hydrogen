@@ -9,8 +9,9 @@
 #include <thread>
 #include <chrono>
 
-using namespace astrocomm;
+using namespace hydrogen;
 using namespace testing;
+using json = nlohmann::json;
 
 // Mock ConnectionManager for testing - removed for now since ConnectionManager is not virtual
 // We'll test the actual implementation instead
@@ -47,12 +48,12 @@ TEST_F(ConnectionManagerTest, AutoReconnectConfiguration) {
 class MessageProcessorTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        connectionManager = std::make_unique<ConnectionManager>();
-        messageProcessor = std::make_unique<MessageProcessor>(connectionManager.get());
+        connectionManager = std::make_unique<hydrogen::ConnectionManager>();
+        messageProcessor = std::make_unique<hydrogen::MessageProcessor>(connectionManager.get());
     }
 
-    std::unique_ptr<ConnectionManager> connectionManager;
-    std::unique_ptr<MessageProcessor> messageProcessor;
+    std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
+    std::unique_ptr<hydrogen::MessageProcessor> messageProcessor;
 };
 
 TEST_F(MessageProcessorTest, InitialState) {
@@ -69,7 +70,7 @@ TEST_F(MessageProcessorTest, MessageHandlerRegistration) {
     bool handlerCalled = false;
 
     messageProcessor->registerMessageHandler(MessageType::EVENT,
-        [&handlerCalled](const astrocomm::Message& msg) {
+        [&handlerCalled](const hydrogen::Message& msg) {
             handlerCalled = true;
             // Avoid unused parameter warning
             (void)msg;
@@ -86,14 +87,14 @@ TEST_F(MessageProcessorTest, MessageHandlerRegistration) {
 class DeviceManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        connectionManager = std::make_unique<ConnectionManager>();
-        messageProcessor = std::make_unique<MessageProcessor>(connectionManager.get());
-        deviceManager = std::make_unique<DeviceManager>(messageProcessor.get());
+        connectionManager = std::make_unique<hydrogen::ConnectionManager>();
+        messageProcessor = std::make_unique<hydrogen::MessageProcessor>(connectionManager.get());
+        deviceManager = std::make_unique<hydrogen::DeviceManager>(messageProcessor.get());
     }
 
-    std::unique_ptr<ConnectionManager> connectionManager;
-    std::unique_ptr<MessageProcessor> messageProcessor;
-    std::unique_ptr<DeviceManager> deviceManager;
+    std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
+    std::unique_ptr<hydrogen::MessageProcessor> messageProcessor;
+    std::unique_ptr<hydrogen::DeviceManager> deviceManager;
 };
 
 TEST_F(DeviceManagerTest, InitialState) {
@@ -141,14 +142,14 @@ TEST_F(DeviceManagerTest, DeviceInfoManagement) {
 class CommandExecutorTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        connectionManager = std::make_unique<ConnectionManager>();
-        messageProcessor = std::make_unique<MessageProcessor>(connectionManager.get());
-        commandExecutor = std::make_unique<CommandExecutor>(messageProcessor.get());
+        connectionManager = std::make_unique<hydrogen::ConnectionManager>();
+        messageProcessor = std::make_unique<hydrogen::MessageProcessor>(connectionManager.get());
+        commandExecutor = std::make_unique<hydrogen::CommandExecutor>(messageProcessor.get());
     }
 
-    std::unique_ptr<ConnectionManager> connectionManager;
-    std::unique_ptr<MessageProcessor> messageProcessor;
-    std::unique_ptr<CommandExecutor> commandExecutor;
+    std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
+    std::unique_ptr<hydrogen::MessageProcessor> messageProcessor;
+    std::unique_ptr<hydrogen::CommandExecutor> commandExecutor;
 };
 
 TEST_F(CommandExecutorTest, InitialState) {
@@ -174,14 +175,14 @@ TEST_F(CommandExecutorTest, AsyncCommandCancellation) {
 class SubscriptionManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        connectionManager = std::make_unique<ConnectionManager>();
-        messageProcessor = std::make_unique<MessageProcessor>(connectionManager.get());
-        subscriptionManager = std::make_unique<SubscriptionManager>(messageProcessor.get());
+        connectionManager = std::make_unique<hydrogen::ConnectionManager>();
+        messageProcessor = std::make_unique<hydrogen::MessageProcessor>(connectionManager.get());
+        subscriptionManager = std::make_unique<hydrogen::SubscriptionManager>(messageProcessor.get());
     }
 
-    std::unique_ptr<ConnectionManager> connectionManager;
-    std::unique_ptr<MessageProcessor> messageProcessor;
-    std::unique_ptr<SubscriptionManager> subscriptionManager;
+    std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
+    std::unique_ptr<hydrogen::MessageProcessor> messageProcessor;
+    std::unique_ptr<hydrogen::SubscriptionManager> subscriptionManager;
 };
 
 TEST_F(SubscriptionManagerTest, InitialState) {
@@ -240,10 +241,10 @@ TEST_F(SubscriptionManagerTest, EventSubscription) {
 class DeviceClientRefactoredTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        client = std::make_unique<DeviceClientRefactored>();
+        client = std::make_unique<hydrogen::DeviceClientRefactored>();
     }
 
-    std::unique_ptr<DeviceClientRefactored> client;
+    std::unique_ptr<hydrogen::DeviceClientRefactored> client;
 };
 
 TEST_F(DeviceClientRefactoredTest, InitialState) {

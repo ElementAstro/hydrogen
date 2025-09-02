@@ -11,8 +11,9 @@
 #include <future>
 #include <atomic>
 
-using namespace astrocomm;
+using namespace hydrogen;
 using namespace testing;
+using json = nlohmann::json;
 
 // ============================================================================
 // EXPANDED CONNECTION MANAGER TESTS
@@ -21,7 +22,7 @@ using namespace testing;
 class ConnectionManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        connectionManager = std::make_unique<ConnectionManager>();
+        connectionManager = std::make_unique<hydrogen::ConnectionManager>();
     }
 
     void TearDown() override {
@@ -30,7 +31,7 @@ protected:
         }
     }
 
-    std::unique_ptr<ConnectionManager> connectionManager;
+    std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
 };
 
 // Existing tests
@@ -156,8 +157,8 @@ TEST_F(ConnectionManagerTest, StatusConsistency) {
 class MessageProcessorTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        connectionManager = std::make_unique<ConnectionManager>();
-        messageProcessor = std::make_unique<MessageProcessor>(connectionManager.get());
+        connectionManager = std::make_unique<hydrogen::ConnectionManager>();
+        messageProcessor = std::make_unique<hydrogen::MessageProcessor>(connectionManager.get());
     }
 
     void TearDown() override {
@@ -166,8 +167,8 @@ protected:
         }
     }
 
-    std::unique_ptr<ConnectionManager> connectionManager;
-    std::unique_ptr<MessageProcessor> messageProcessor;
+    std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
+    std::unique_ptr<hydrogen::MessageProcessor> messageProcessor;
 };
 
 // Existing tests
@@ -184,12 +185,12 @@ TEST_F(MessageProcessorTest, InitialState) {
 TEST_F(MessageProcessorTest, MessageHandlerRegistration) {
     bool handlerCalled = false;
     
-    messageProcessor->registerMessageHandler(MessageType::EVENT, 
-        [&handlerCalled](const astrocomm::Message& msg) {
+    messageProcessor->registerMessageHandler(MessageType::EVENT,
+        [&handlerCalled](const hydrogen::Message& msg) {
             handlerCalled = true;
             (void)msg;
         });
-    
+
     messageProcessor->unregisterMessageHandler(MessageType::EVENT);
     SUCCEED();
 }
@@ -202,20 +203,20 @@ TEST_F(MessageProcessorTest, MessageRouting) {
     std::atomic<int> commandHandlerCalls{0};
     
     // Register handlers for different message types
-    messageProcessor->registerMessageHandler(MessageType::EVENT, 
-        [&eventHandlerCalls](const astrocomm::Message& msg) {
+    messageProcessor->registerMessageHandler(MessageType::EVENT,
+        [&eventHandlerCalls](const hydrogen::Message& msg) {
             eventHandlerCalls++;
             (void)msg;
         });
-    
-    messageProcessor->registerMessageHandler(MessageType::RESPONSE, 
-        [&responseHandlerCalls](const astrocomm::Message& msg) {
+
+    messageProcessor->registerMessageHandler(MessageType::RESPONSE,
+        [&responseHandlerCalls](const hydrogen::Message& msg) {
             responseHandlerCalls++;
             (void)msg;
         });
-    
-    messageProcessor->registerMessageHandler(MessageType::COMMAND, 
-        [&commandHandlerCalls](const astrocomm::Message& msg) {
+
+    messageProcessor->registerMessageHandler(MessageType::COMMAND,
+        [&commandHandlerCalls](const hydrogen::Message& msg) {
             commandHandlerCalls++;
             (void)msg;
         });
@@ -237,15 +238,15 @@ TEST_F(MessageProcessorTest, HandlerPriority) {
     std::mutex orderMutex;
     
     // Register multiple handlers for the same message type
-    messageProcessor->registerMessageHandler(MessageType::EVENT, 
-        [&callOrder, &orderMutex](const astrocomm::Message& msg) {
+    messageProcessor->registerMessageHandler(MessageType::EVENT,
+        [&callOrder, &orderMutex](const hydrogen::Message& msg) {
             std::lock_guard<std::mutex> lock(orderMutex);
             callOrder.push_back(1);
             (void)msg;
         });
-    
-    messageProcessor->registerMessageHandler(MessageType::EVENT, 
-        [&callOrder, &orderMutex](const astrocomm::Message& msg) {
+
+    messageProcessor->registerMessageHandler(MessageType::EVENT,
+        [&callOrder, &orderMutex](const hydrogen::Message& msg) {
             std::lock_guard<std::mutex> lock(orderMutex);
             callOrder.push_back(2);
             (void)msg;
@@ -262,8 +263,8 @@ TEST_F(MessageProcessorTest, ErrorPropagation) {
     std::string lastError;
     
     // Register a handler that throws an exception
-    messageProcessor->registerMessageHandler(MessageType::EVENT, 
-        [](const astrocomm::Message& msg) {
+    messageProcessor->registerMessageHandler(MessageType::EVENT,
+        [](const hydrogen::Message& msg) {
             (void)msg;
             throw std::runtime_error("Test error");
         });
@@ -283,15 +284,15 @@ TEST_F(MessageProcessorTest, ConcurrentMessageProcessing) {
     std::atomic<int> maxConcurrent{0};
     std::atomic<int> currentConcurrent{0};
     
-    messageProcessor->registerMessageHandler(MessageType::EVENT, 
-        [&messageCount, &maxConcurrent, &currentConcurrent](const astrocomm::Message& msg) {
+    messageProcessor->registerMessageHandler(MessageType::EVENT,
+        [&messageCount, &maxConcurrent, &currentConcurrent](const hydrogen::Message& msg) {
             int current = ++currentConcurrent;
             int prevMax = maxConcurrent.load();
             while (prevMax < current && !maxConcurrent.compare_exchange_weak(prevMax, current)) {}
-            
+
             // Simulate some processing time
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            
+
             messageCount++;
             --currentConcurrent;
             (void)msg;
@@ -342,14 +343,14 @@ TEST_F(MessageProcessorTest, StatisticsAccuracy) {
 class DeviceManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        connectionManager = std::make_unique<ConnectionManager>();
-        messageProcessor = std::make_unique<MessageProcessor>(connectionManager.get());
-        deviceManager = std::make_unique<DeviceManager>(messageProcessor.get());
+        connectionManager = std::make_unique<hydrogen::ConnectionManager>();
+        messageProcessor = std::make_unique<hydrogen::MessageProcessor>(connectionManager.get());
+        deviceManager = std::make_unique<hydrogen::DeviceManager>(messageProcessor.get());
     }
 
-    std::unique_ptr<ConnectionManager> connectionManager;
-    std::unique_ptr<MessageProcessor> messageProcessor;
-    std::unique_ptr<DeviceManager> deviceManager;
+    std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
+    std::unique_ptr<hydrogen::MessageProcessor> messageProcessor;
+    std::unique_ptr<hydrogen::DeviceManager> deviceManager;
 };
 
 // Existing tests
@@ -477,14 +478,14 @@ TEST_F(DeviceManagerTest, CacheManagement) {
 class CommandExecutorTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        connectionManager = std::make_unique<ConnectionManager>();
-        messageProcessor = std::make_unique<MessageProcessor>(connectionManager.get());
-        commandExecutor = std::make_unique<CommandExecutor>(messageProcessor.get());
+        connectionManager = std::make_unique<hydrogen::ConnectionManager>();
+        messageProcessor = std::make_unique<hydrogen::MessageProcessor>(connectionManager.get());
+        commandExecutor = std::make_unique<hydrogen::CommandExecutor>(messageProcessor.get());
     }
 
-    std::unique_ptr<ConnectionManager> connectionManager;
-    std::unique_ptr<MessageProcessor> messageProcessor;
-    std::unique_ptr<CommandExecutor> commandExecutor;
+    std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
+    std::unique_ptr<hydrogen::MessageProcessor> messageProcessor;
+    std::unique_ptr<hydrogen::CommandExecutor> commandExecutor;
 };
 
 // Existing tests
@@ -644,14 +645,14 @@ TEST_F(CommandExecutorTest, ErrorRecovery) {
 class SubscriptionManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        connectionManager = std::make_unique<ConnectionManager>();
-        messageProcessor = std::make_unique<MessageProcessor>(connectionManager.get());
-        subscriptionManager = std::make_unique<SubscriptionManager>(messageProcessor.get());
+        connectionManager = std::make_unique<hydrogen::ConnectionManager>();
+        messageProcessor = std::make_unique<hydrogen::MessageProcessor>(connectionManager.get());
+        subscriptionManager = std::make_unique<hydrogen::SubscriptionManager>(messageProcessor.get());
     }
 
-    std::unique_ptr<ConnectionManager> connectionManager;
-    std::unique_ptr<MessageProcessor> messageProcessor;
-    std::unique_ptr<SubscriptionManager> subscriptionManager;
+    std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
+    std::unique_ptr<hydrogen::MessageProcessor> messageProcessor;
+    std::unique_ptr<hydrogen::SubscriptionManager> subscriptionManager;
 };
 
 // Existing tests
@@ -830,7 +831,7 @@ TEST_F(SubscriptionManagerTest, MemoryManagement) {
 class IntegrationTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        client = std::make_unique<DeviceClientRefactored>();
+        client = std::make_unique<hydrogen::DeviceClientRefactored>();
     }
 
     void TearDown() override {
@@ -839,7 +840,7 @@ protected:
         }
     }
 
-    std::unique_ptr<DeviceClientRefactored> client;
+    std::unique_ptr<hydrogen::DeviceClientRefactored> client;
 };
 
 TEST_F(IntegrationTest, EndToEndMessageFlow) {
@@ -975,10 +976,10 @@ TEST_F(IntegrationTest, ThreadSafetyUnderConcurrentOperations) {
 class EdgeCaseTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        client = std::make_unique<DeviceClientRefactored>();
+        client = std::make_unique<hydrogen::DeviceClientRefactored>();
     }
 
-    std::unique_ptr<DeviceClientRefactored> client;
+    std::unique_ptr<hydrogen::DeviceClientRefactored> client;
 };
 
 TEST_F(EdgeCaseTest, NetworkDisconnectionScenarios) {
@@ -1096,10 +1097,10 @@ TEST_F(EdgeCaseTest, ExtremeInputValues) {
 class DeviceClientRefactoredTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        client = std::make_unique<DeviceClientRefactored>();
+        client = std::make_unique<hydrogen::DeviceClientRefactored>();
     }
 
-    std::unique_ptr<DeviceClientRefactored> client;
+    std::unique_ptr<hydrogen::DeviceClientRefactored> client;
 };
 
 // Existing tests

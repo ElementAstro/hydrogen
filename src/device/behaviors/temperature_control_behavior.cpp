@@ -6,7 +6,7 @@
 #include <thread>
 #include <cmath>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace behaviors {
 
@@ -44,11 +44,9 @@ bool TemperatureControlBehavior::initialize(std::shared_ptr<core::StateManager> 
         return false;
     }
 
-    // 初始化温度控制配置
-    initializeTemperatureConfigs();
+    // 初始化温度控制配�?    initializeTemperatureConfigs();
     
-    // 设置初始属性
-    setProperty("currentTemperature", currentTemperature_.load());
+    // 设置初始属�?    setProperty("currentTemperature", currentTemperature_.load());
     setProperty("targetTemperature", targetTemperature_.load());
     setProperty("ambientTemperature", ambientTemperature_.load());
     setProperty("controlState", static_cast<int>(controlState_.load()));
@@ -83,8 +81,7 @@ void TemperatureControlBehavior::stop() {
 }
 
 void TemperatureControlBehavior::update() {
-    // 更新属性
-    setProperty("currentTemperature", currentTemperature_.load());
+    // 更新属�?    setProperty("currentTemperature", currentTemperature_.load());
     setProperty("targetTemperature", targetTemperature_.load());
     setProperty("ambientTemperature", ambientTemperature_.load());
     setProperty("controlState", static_cast<int>(controlState_.load()));
@@ -93,8 +90,7 @@ void TemperatureControlBehavior::update() {
 }
 
 bool TemperatureControlBehavior::handleCommand(const std::string& command, const json& parameters, json& result) {
-    // 先尝试基类处理
-    if (DeviceBehavior::handleCommand(command, parameters, result)) {
+    // 先尝试基类处�?    if (DeviceBehavior::handleCommand(command, parameters, result)) {
         return true;
     }
 
@@ -222,12 +218,10 @@ bool TemperatureControlBehavior::setTargetTemperature(double temperature, Temper
     targetTemperature_ = temperature;
     currentCallback_ = callback;
     
-    // 重置PID积分项
-    pidIntegral_ = 0.0;
+    // 重置PID积分�?    pidIntegral_ = 0.0;
     pidLastError_ = 0.0;
     
-    // 设置控制状态
-    double currentTemp = getCurrentTemperature();
+    // 设置控制状�?    double currentTemp = getCurrentTemperature();
     if (std::abs(temperature - currentTemp) < stabilityTolerance_) {
         controlState_ = TemperatureControlState::IDLE;
     } else if (temperature < currentTemp) {
@@ -236,8 +230,7 @@ bool TemperatureControlBehavior::setTargetTemperature(double temperature, Temper
         controlState_ = TemperatureControlState::HEATING;
     }
     
-    // 更新属性
-    setProperty("targetTemperature", temperature);
+    // 更新属�?    setProperty("targetTemperature", temperature);
     setProperty("controlState", static_cast<int>(controlState_.load()));
     
     SPDLOG_INFO("TemperatureControlBehavior '{}' target temperature set to {:.2f}°C", behaviorName_, temperature);
@@ -432,8 +425,7 @@ void TemperatureControlBehavior::initializeTemperatureConfigs() {
     
     configManager_->defineConfigs(tempConfigs);
     
-    // 从配置加载值
-    minTemperature_ = getConfig("minTemperature", -50.0);
+    // 从配置加载�?    minTemperature_ = getConfig("minTemperature", -50.0);
     maxTemperature_ = getConfig("maxTemperature", 50.0);
     stabilityTolerance_ = getConfig("stabilityTolerance", 0.5);
     stabilityDuration_ = getConfig("stabilityDuration", 30);
@@ -454,13 +446,11 @@ void TemperatureControlBehavior::updateAmbientTemperature(double temperature) {
 
 bool TemperatureControlBehavior::checkTemperatureStability() {
     if (!isTemperatureStable()) {
-        // 温度不稳定，重置计时器
-        stabilityStartTime_ = std::chrono::steady_clock::now();
+        // 温度不稳定，重置计时�?        stabilityStartTime_ = std::chrono::steady_clock::now();
         return false;
     }
     
-    // 检查稳定持续时间
-    auto now = std::chrono::steady_clock::now();
+    // 检查稳定持续时�?    auto now = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - stabilityStartTime_).count();
     
     return duration >= stabilityDuration_.load();
@@ -499,15 +489,12 @@ double TemperatureControlBehavior::calculatePIDOutput(double error, double delta
     double ki = pidKi_.load();
     double kd = pidKd_.load();
     
-    // 比例项
-    double proportional = kp * error;
+    // 比例�?    double proportional = kp * error;
     
-    // 积分项
-    pidIntegral_ += error * deltaTime;
+    // 积分�?    pidIntegral_ += error * deltaTime;
     double integral = ki * pidIntegral_;
     
-    // 微分项
-    double derivative = kd * (error - pidLastError_) / deltaTime;
+    // 微分�?    double derivative = kd * (error - pidLastError_) / deltaTime;
     pidLastError_ = error;
     
     // PID输出
@@ -547,8 +534,7 @@ void TemperatureControlBehavior::temperatureControlLoop() {
                     // PID控制
                     power = calculatePIDOutput(error, deltaTime);
                 } else if (controlMode_.load() == TemperatureControlMode::AUTO) {
-                    // 简单自动控制
-                    if (std::abs(error) > stabilityTolerance_.load()) {
+                    // 简单自动控�?                    if (std::abs(error) > stabilityTolerance_.load()) {
                         power = error > 0 ? 50.0 : -50.0; // 50%功率
                     }
                 }
@@ -557,8 +543,7 @@ void TemperatureControlBehavior::temperatureControlLoop() {
                 setControlPower(power);
                 controlPower_ = power;
                 
-                // 检查温度稳定性
-                if (checkTemperatureStability()) {
+                // 检查温度稳定�?                if (checkTemperatureStability()) {
                     controlState_ = TemperatureControlState::STABILIZING;
                     onTemperatureStabilized(true, currentTemp);
                 }
@@ -600,4 +585,4 @@ void TemperatureControlBehavior::stopTemperatureControl() {
 
 } // namespace behaviors
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

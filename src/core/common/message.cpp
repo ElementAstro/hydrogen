@@ -1,9 +1,9 @@
-#include "astrocomm/core/message.h"
-#include "astrocomm/core/utils.h"
+#include "../include/hydrogen/core/message.h"
+#include "../include/hydrogen/core/utils.h"
 #include <chrono>
 #include <stdexcept>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 std::string messageTypeToString(MessageType type) {
@@ -270,11 +270,11 @@ void ResponseMessage::fromJson(const json &j) {
 EventMessage::EventMessage() : Message(MessageType::EVENT) {}
 
 EventMessage::EventMessage(const std::string &eventName)
-    : Message(MessageType::EVENT), event(eventName) {}
+    : Message(MessageType::EVENT), eventName(eventName) {}
 
-void EventMessage::setEvent(const std::string &eventName) { event = eventName; }
+void EventMessage::setEventName(const std::string &name) { eventName = name; }
 
-std::string EventMessage::getEvent() const { return event; }
+std::string EventMessage::getEventName() const { return eventName; }
 
 void EventMessage::setProperties(const json &props) { properties = props; }
 
@@ -294,7 +294,7 @@ std::string EventMessage::getRelatedMessageId() const {
 
 json EventMessage::toJson() const {
   json j = Message::toJson();
-  j["event"] = event;
+  j["event"] = eventName;
   if (!properties.is_null()) {
     j["properties"] = properties;
   }
@@ -309,7 +309,7 @@ json EventMessage::toJson() const {
 
 void EventMessage::fromJson(const json &j) {
   Message::fromJson(j);
-  event = j.at("event");
+  eventName = j.at("event");
   if (j.contains("properties")) {
     properties = j["properties"];
   }
@@ -369,15 +369,29 @@ std::vector<std::string> DiscoveryRequestMessage::getDeviceTypes() const {
   return deviceTypes;
 }
 
+void DiscoveryRequestMessage::setFilter(const json &f) {
+  filter = f;
+}
+
+json DiscoveryRequestMessage::getFilter() const {
+  return filter;
+}
+
 json DiscoveryRequestMessage::toJson() const {
   json j = Message::toJson();
   j["deviceTypes"] = deviceTypes;
+  if (!filter.is_null()) {
+    j["filter"] = filter;
+  }
   return j;
 }
 
 void DiscoveryRequestMessage::fromJson(const json &j) {
   Message::fromJson(j);
   deviceTypes = j.at("deviceTypes");
+  if (j.contains("filter")) {
+    filter = j["filter"];
+  }
 }
 
 // DiscoveryResponseMessage implementation
@@ -480,4 +494,4 @@ std::unique_ptr<Message> createMessageFromJson(const json &j) {
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

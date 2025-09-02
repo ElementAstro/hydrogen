@@ -11,7 +11,7 @@
 
 using json = nlohmann::json;
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 Dome::Dome(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
@@ -941,4 +941,4 @@ std::unique_ptr<Dome> createModernDome(const std::string& deviceId,
 }
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

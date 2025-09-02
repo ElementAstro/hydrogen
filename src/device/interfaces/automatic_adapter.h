@@ -12,7 +12,7 @@
 #include <variant>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 namespace automatic {
@@ -311,4 +311,4 @@ private:
 } // namespace automatic
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

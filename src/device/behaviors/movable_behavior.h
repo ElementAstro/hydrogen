@@ -7,49 +7,47 @@
 #include <thread>
 #include <functional>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace behaviors {
 
 /**
- * @brief 移动状态枚举
- */
+ * @brief 移动状态枚�? */
 enum class MovementState {
-    IDLE,           // 空闲状态
-    MOVING,         // 正在移动
-    HOMING,         // 正在归零
-    CALIBRATING,    // 正在校准
-    ERROR           // 错误状态
+    IDLE,           // Idle state
+    MOVING,         // Moving
+    HOMING,         // Homing
+    CALIBRATING,    // Calibrating
+    MOVEMENT_ERROR  // Error state
 };
 
 /**
- * @brief 移动方向枚举
+ * @brief Movement direction enumeration
  */
 enum class MovementDirection {
-    INWARD,         // 向内移动
-    OUTWARD,        // 向外移动
-    POSITIVE,       // 正方向
-    NEGATIVE,       // 负方向
-    CLOCKWISE,      // 顺时针
-    COUNTERCLOCKWISE // 逆时针
+    INWARD,         // Move inward
+    OUTWARD,        // Move outward
+    POSITIVE,       // Positive direction
+    NEGATIVE,       // Negative direction
+    CLOCKWISE,      // Clockwise
+    COUNTERCLOCKWISE // Counterclockwise
 };
 
 /**
- * @brief 移动完成回调函数类型
+ * @brief Movement completion callback function type
  */
 using MovementCompleteCallback = std::function<void(bool success, const std::string& error)>;
 
 /**
- * @brief 可移动设备行为组件
- * 
- * 提供通用的移动控制功能，适用于调焦器、滤镜轮、旋转器等可移动设备。
- * 支持绝对位置移动、相对位置移动、归零、校准等功能。
+ * @brief Movable device behavior component
+ *
+ * Provides common movement control functionality for focusers, filter wheels, rotators and other movable devices.
+ * Supports absolute position movement, relative position movement, homing, calibration and other functions.
  */
 class MovableBehavior : public DeviceBehavior {
 public:
     /**
-     * @brief 构造函数
-     * @param behaviorName 行为名称
+     * @brief 构造函�?     * @param behaviorName 行为名称
      */
     explicit MovableBehavior(const std::string& behaviorName = "movable");
     
@@ -74,19 +72,16 @@ public:
     std::vector<std::string> getCapabilities() const override;
 
     /**
-     * @brief 移动到绝对位置
-     * @param position 目标位置
+     * @brief 移动到绝对位�?     * @param position 目标位置
      * @param callback 完成回调（可选）
-     * @return 移动是否开始成功
-     */
+     * @return 移动是否开始成�?     */
     virtual bool moveToPosition(int position, MovementCompleteCallback callback = nullptr);
 
     /**
      * @brief 相对移动
-     * @param steps 移动步数（正数向外/正方向，负数向内/负方向）
+     * @param steps 移动步数（正数向�?正方向，负数向内/负方向）
      * @param callback 完成回调（可选）
-     * @return 移动是否开始成功
-     */
+     * @return 移动是否开始成�?     */
     virtual bool moveRelative(int steps, MovementCompleteCallback callback = nullptr);
 
     /**
@@ -98,15 +93,13 @@ public:
     /**
      * @brief 归零操作
      * @param callback 完成回调（可选）
-     * @return 归零是否开始成功
-     */
+     * @return 归零是否开始成�?     */
     virtual bool home(MovementCompleteCallback callback = nullptr);
 
     /**
      * @brief 校准操作
      * @param callback 完成回调（可选）
-     * @return 校准是否开始成功
-     */
+     * @return 校准是否开始成�?     */
     virtual bool calibrate(MovementCompleteCallback callback = nullptr);
 
     /**
@@ -122,34 +115,25 @@ public:
     virtual int getTargetPosition() const;
 
     /**
-     * @brief 获取移动状态
-     * @return 移动状态
-     */
+     * @brief 获取移动状�?     * @return 移动状�?     */
     virtual MovementState getMovementState() const;
 
     /**
      * @brief 是否正在移动
-     * @return 移动状态
-     */
+     * @return 移动状�?     */
     virtual bool isMoving() const;
 
     /**
      * @brief 设置位置范围
-     * @param minPosition 最小位置
-     * @param maxPosition 最大位置
-     */
+     * @param minPosition 最小位�?     * @param maxPosition 最大位�?     */
     virtual void setPositionRange(int minPosition, int maxPosition);
 
     /**
-     * @brief 获取最小位置
-     * @return 最小位置
-     */
+     * @brief 获取最小位�?     * @return 最小位�?     */
     virtual int getMinPosition() const;
 
     /**
-     * @brief 获取最大位置
-     * @return 最大位置
-     */
+     * @brief 获取最大位�?     * @return 最大位�?     */
     virtual int getMaxPosition() const;
 
     /**
@@ -172,14 +156,25 @@ public:
 
     /**
      * @brief 是否反向
-     * @return 反向状态
-     */
+     * @return 反向状�?     */
     virtual bool isReversed() const;
+
+    /**
+     * @brief Update current position (called by subclasses)
+     * @param position New position
+     */
+    virtual void updateCurrentPosition(int position);
+
+    /**
+     * @brief Movement completion handler
+     * @param success Whether successful
+     * @param error Error message
+     */
+    virtual void onMovementComplete(bool success, const std::string& error = "");
 
 protected:
     /**
-     * @brief 初始化移动行为配置
-     */
+     * @brief 初始化移动行为配�?     */
     virtual void initializeMovementConfigs();
 
     /**
@@ -202,22 +197,8 @@ protected:
     virtual bool executeHome() = 0;
 
     /**
-     * @brief 更新当前位置（子类调用）
-     * @param position 新位置
-     */
-    virtual void updateCurrentPosition(int position);
-
-    /**
-     * @brief 移动完成处理
-     * @param success 是否成功
-     * @param error 错误信息
-     */
-    virtual void onMovementComplete(bool success, const std::string& error = "");
-
-    /**
      * @brief 验证位置是否有效
-     * @param position 位置值
-     * @return 是否有效
+     * @param position 位置�?     * @return 是否有效
      */
     virtual bool isValidPosition(int position) const;
 
@@ -243,8 +224,7 @@ protected:
     std::atomic<int> minPosition_;
     std::atomic<int> maxPosition_;
     
-    // 移动状态
-    std::atomic<MovementState> movementState_;
+    // 移动状�?    std::atomic<MovementState> movementState_;
     std::atomic<bool> reversed_;
     std::atomic<int> movementSpeed_;
     
@@ -263,4 +243,4 @@ protected:
 
 } // namespace behaviors
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

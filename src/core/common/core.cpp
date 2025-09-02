@@ -1,7 +1,7 @@
-#include "astrocomm/core.h"
+#include "hydrogen/core.h"
 #include <string>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 void initialize() {
@@ -18,4 +18,4 @@ std::string getVersion() {
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

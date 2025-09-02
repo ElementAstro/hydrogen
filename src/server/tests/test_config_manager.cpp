@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
-#include "astrocomm/server/infrastructure/config_manager.h"
-#include "astrocomm/server/repositories/config_repository.h"
+#include "hydrogen/server/infrastructure/config_manager.h"
+#include "hydrogen/server/repositories/config_repository.h"
 #include <memory>
 
-using namespace astrocomm::server::infrastructure;
-using namespace astrocomm::server::repositories;
+using namespace hydrogen::server::infrastructure;
+using namespace hydrogen::server::repositories;
 
 class ConfigManagerTest : public ::testing::Test {
 protected:

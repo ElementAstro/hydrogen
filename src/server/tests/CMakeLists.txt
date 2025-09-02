@@ -1,4 +1,4 @@
-# AstroComm Server Tests
+# Hydrogen Server Tests
 cmake_minimum_required(VERSION 3.15)
 
 # Find required testing dependencies
@@ -28,31 +28,31 @@ set(SERVER_TEST_SOURCES
 )
 
 # Create test executable
-add_executable(test_astrocomm_server ${SERVER_TEST_SOURCES})
+add_executable(test_hydrogen_server ${SERVER_TEST_SOURCES})
 
 # Link libraries
-target_link_libraries(test_astrocomm_server
+target_link_libraries(test_hydrogen_server
     PRIVATE
-        astrocomm_server
-        astrocomm_core
-        astrocomm_common
+        hydrogen_server
+        hydrogen_core
+        hydrogen_common
         GTest::gtest
         GTest::gtest_main
         ${CMAKE_THREAD_LIBS_INIT}
 )
 
 # Set C++ standard
-target_compile_features(test_astrocomm_server PRIVATE cxx_std_17)
+target_compile_features(test_hydrogen_server PRIVATE cxx_std_17)
 
 # Add compiler flags
-target_compile_options(test_astrocomm_server PRIVATE
+target_compile_options(test_hydrogen_server PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
 )
 
 # Register tests with CTest
 include(GoogleTest)
-gtest_discover_tests(test_astrocomm_server
+gtest_discover_tests(test_hydrogen_server
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     PROPERTIES
         LABELS "server"
@@ -61,10 +61,10 @@ gtest_discover_tests(test_astrocomm_server
 
 # Add custom test target
 add_custom_target(run_server_tests
-    COMMAND test_astrocomm_server
-    DEPENDS test_astrocomm_server
+    COMMAND test_hydrogen_server
+    DEPENDS test_hydrogen_server
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running AstroComm Server tests"
+    COMMENT "Running Hydrogen Server tests"
 )
 
 # Test data directory
@@ -77,7 +77,7 @@ configure_file(
     COPYONLY
 )
 
-message(STATUS "AstroComm Server tests configured")
-message(STATUS "  - Test executable: test_astrocomm_server")
+message(STATUS "Hydrogen Server tests configured")
+message(STATUS "  - Test executable: test_hydrogen_server")
 message(STATUS "  - Test sources: ${SERVER_TEST_SOURCES}")
 message(STATUS "  - Test framework: Google Test")

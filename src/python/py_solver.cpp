@@ -6,7 +6,7 @@
 #include "device/solver.h"
 
 namespace py = pybind11;
-using namespace astrocomm;
+using namespace hydrogen;
 
 // Define the Python-inheritable class, so Python code can override virtual
 // methods
@@ -73,7 +73,7 @@ public:
     );
   }
 
-  // 添加公共方法来访问受保护的方法
+  // 添加公共方法来访问受保护的方�?
   bool py_perform_solve(const std::vector<uint8_t> &imageData, int width,
                         int height) {
     return performSolve(imageData, width, height);
@@ -156,7 +156,7 @@ void init_solver(py::module_ &m) {
       .def("get_state", &Solver::getState, "Get current solver state")
       .def("get_progress", &Solver::getProgress,
            "Get current solving progress (0-100)")
-      // 使用PySolver中新添加的公共方法进行绑定
+      // 使用PySolver中新添加的公共方法进行绑�?
       .def("perform_solve", &PySolver::py_perform_solve, py::arg("image_data"),
            py::arg("width"), py::arg("height"),
            "Core implementation of plate solving algorithm")

@@ -1,4 +1,4 @@
-#include <astrocomm/client.h>
+#include <hydrogen/client.h>
 #include "common/logger.h"
 #include <chrono>
 #include <iomanip>
@@ -6,7 +6,7 @@
 #include <string>
 #include <thread>
 
-using namespace astrocomm::client;
+using namespace hydrogen::client;
 
 // 命令行界面颜色
 namespace Color {

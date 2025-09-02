@@ -1,12 +1,12 @@
 #include "enhanced_device_base.h"
-#include <astrocomm/core/utils.h>
+#include <hydrogen/core/utils.h>
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>
 #include <algorithm>
 #include <set>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
@@ -15,7 +15,7 @@ EnhancedDeviceBase::EnhancedDeviceBase(const DeviceConfiguration& config)
       healthStatus_(DeviceHealthStatus::UNKNOWN), monitoringActive_(false), recoveryAttempts_(0) {
     
     // Initialize error recovery manager
-    errorRecoveryManager_ = std::make_unique<astrocomm::core::EnhancedErrorRecoveryManager>();
+    errorRecoveryManager_ = std::make_unique<hydrogen::core::EnhancedErrorRecoveryManager>();
     
     // Initialize default properties and commands
     initializeDefaultProperties();
@@ -691,4 +691,4 @@ double EnhancedDeviceBase::getCurrentCpuUsage() const {
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

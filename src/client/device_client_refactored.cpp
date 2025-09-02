@@ -4,7 +4,7 @@
 #include <thread>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 
 DeviceClientRefactored::DeviceClientRefactored() {
   initializeComponents();
@@ -294,4 +294,4 @@ void DeviceClientRefactored::onConnectionStateChanged(bool connected) {
   }
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

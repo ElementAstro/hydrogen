@@ -4,7 +4,8 @@
 #include <iostream>
 #include <string>
 
-using namespace astrocomm;
+using namespace hydrogen;
+using namespace hydrogen::device;
 
 // 全局设备实例
 std::unique_ptr<Rotator> rotatorDevice;
@@ -22,9 +23,9 @@ void signalHandler(int sig) {
 void printBanner() {
   std::cout << "\n";
   std::cout << "  ╔══════════════════════════════════════════════════════╗\n";
-  std::cout << "  ║                                                      ║\n";
-  std::cout << "  ║           Rotator Device Simulator                   ║\n";
-  std::cout << "  ║                                                      ║\n";
+  std::cout << "  �?                                                     ║\n";
+  std::cout << "  �?          Rotator Device Simulator                   ║\n";
+  std::cout << "  �?                                                     ║\n";
   std::cout << "  ╚══════════════════════════════════════════════════════╝\n\n";
 }
 
@@ -36,10 +37,10 @@ int main(int argc, char *argv[]) {
   // 显示欢迎信息
   printBanner();
 
-  // 初始化日志
+  // 初始化日�?
   initLogger("rotator.log", LogLevel::INFO);
 
-  // 解析命令行参数
+  // 解析命令行参�?
   std::string host = "localhost";
   uint16_t port = 8000;
   std::string deviceId = "rotator-main";
@@ -61,7 +62,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Device ID: " << deviceId << std::endl;
 
   try {
-    // 创建旋转器设备
+    // 创建旋转器设�?
     rotatorDevice =
         std::make_unique<Rotator>(deviceId, "Optec", "Pyxis Field Rotator");
 

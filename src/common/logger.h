@@ -1,12 +1,15 @@
 #pragma once
 
+#ifdef HYDROGEN_HAS_SPDLOG
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#endif
 #include <string>
 #include <memory>
+#include <iostream>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace common {
 
 /**
@@ -64,13 +67,13 @@ void logError(const std::string& message, const std::string& component = "");
 void logCritical(const std::string& message, const std::string& component = "");
 
 } // namespace common
-} // namespace astrocomm
+} // namespace hydrogen
 
 // Global convenience functions for backward compatibility
-using LogLevel = astrocomm::common::LogLevel;
-using astrocomm::common::initLogger;
-using astrocomm::common::logInfo;
-using astrocomm::common::logDebug;
-using astrocomm::common::logWarning;
-using astrocomm::common::logError;
-using astrocomm::common::logCritical;
+using LogLevel = hydrogen::common::LogLevel;
+using hydrogen::common::initLogger;
+using hydrogen::common::logInfo;
+using hydrogen::common::logDebug;
+using hydrogen::common::logWarning;
+using hydrogen::common::logError;
+using hydrogen::common::logCritical;

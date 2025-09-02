@@ -8,7 +8,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 Telescope::Telescope(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
@@ -527,4 +527,4 @@ std::vector<std::string> Telescope::getCapabilities() const {
 }
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

@@ -12,7 +12,7 @@
 #include <functional>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 /**
@@ -232,4 +232,4 @@ std::unique_ptr<SafetyMonitor> createModernSafetyMonitor(const std::string& devi
                                                          const std::string& model = "SafetyMonitor");
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

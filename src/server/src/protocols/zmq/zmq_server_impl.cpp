@@ -1,4 +1,4 @@
-#include "astrocomm/server/protocols/zmq/zmq_server.h"
+#include "hydrogen/server/protocols/zmq/zmq_server.h"
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
@@ -6,7 +6,7 @@
 #include <random>
 #include <sstream>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace protocols {
 namespace zmq {
@@ -555,4 +555,4 @@ std::unique_ptr<IZmqServer> ZmqServerFactory::createServer(const std::string& bi
 } // namespace zmq
 } // namespace protocols
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

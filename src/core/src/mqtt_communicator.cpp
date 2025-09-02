@@ -1,5 +1,5 @@
-#include <astrocomm/core/protocol_communicators.h>
-#include <astrocomm/core/utils.h>
+#include <hydrogen/core/protocol_communicators.h>
+#include <hydrogen/core/utils.h>
 #include <spdlog/spdlog.h>
 #include <thread>
 #include <chrono>
@@ -7,7 +7,7 @@
 // Note: This is a placeholder implementation using a simple MQTT client approach
 // In a real implementation, you would use a library like MQTT-C or Paho MQTT
 
-namespace astrocomm {
+namespace hydrogen {
 namespace core {
 
 /**
@@ -187,4 +187,4 @@ std::unique_ptr<MqttCommunicator> ProtocolCommunicatorFactory::createMqttCommuni
 }
 
 } // namespace core
-} // namespace astrocomm
+} // namespace hydrogen

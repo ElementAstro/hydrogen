@@ -53,6 +53,7 @@ option(HYDROGEN_ENABLE_PROFILING "Enable profiling support" OFF)
 # Package manager preferences
 option(HYDROGEN_PREFER_VCPKG "Prefer vcpkg over other package managers" OFF)
 option(HYDROGEN_PREFER_CONAN "Prefer Conan over other package managers" OFF)
+option(HYDROGEN_DISABLE_VCPKG "Disable vcpkg package manager completely" OFF)
 option(HYDROGEN_ALLOW_FETCHCONTENT "Allow FetchContent fallback for missing packages" ON)
 
 # =============================================================================

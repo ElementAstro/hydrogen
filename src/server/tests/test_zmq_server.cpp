@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "astrocomm/server/protocols/zmq/zmq_server.h"
+#include "hydrogen/server/protocols/zmq/zmq_server.h"
 #include <memory>
 
-using namespace astrocomm::server::protocols::zmq;
+using namespace hydrogen::server::protocols::zmq;
 
 class ZmqServerTest : public ::testing::Test {
 protected:

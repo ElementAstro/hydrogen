@@ -6,23 +6,22 @@
 #include <thread>
 #include <functional>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace behaviors {
 
 /**
- * @brief 温度控制状态枚举
- */
+ * @brief 温度控制状态枚�? */
 enum class TemperatureControlState {
-    IDLE,           // 空闲状态
-    HEATING,        // 正在加热
-    COOLING,        // 正在制冷
-    STABILIZING,    // 正在稳定温度
-    ERROR           // 错误状态
+    IDLE,           // Idle state
+    HEATING,        // Heating
+    COOLING,        // Cooling
+    STABILIZING,    // Stabilizing temperature
+    CONTROL_ERROR   // Error state
 };
 
 /**
- * @brief 温度控制模式枚举
+ * @brief Temperature control mode enumeration
  */
 enum class TemperatureControlMode {
     MANUAL,         // 手动模式
@@ -38,14 +37,11 @@ using TemperatureStabilizedCallback = std::function<void(bool success, double fi
 /**
  * @brief 温度控制行为组件
  * 
- * 提供通用的温度控制功能，适用于相机制冷、加热器等温度控制设备。
- * 支持目标温度设置、PID控制、温度监控等功能。
- */
+ * 提供通用的温度控制功能，适用于相机制冷、加热器等温度控制设备�? * 支持目标温度设置、PID控制、温度监控等功能�? */
 class TemperatureControlBehavior : public DeviceBehavior {
 public:
     /**
-     * @brief 构造函数
-     * @param behaviorName 行为名称
+     * @brief 构造函�?     * @param behaviorName 行为名称
      */
     explicit TemperatureControlBehavior(const std::string& behaviorName = "temperature_control");
     
@@ -71,34 +67,28 @@ public:
 
     /**
      * @brief 设置目标温度
-     * @param temperature 目标温度（摄氏度）
-     * @param callback 稳定回调（可选）
+     * @param temperature 目标温度（摄氏度�?     * @param callback 稳定回调（可选）
      * @return 设置是否成功
      */
     virtual bool setTargetTemperature(double temperature, TemperatureStabilizedCallback callback = nullptr);
 
     /**
      * @brief 获取当前温度
-     * @return 当前温度（摄氏度）
-     */
+     * @return 当前温度（摄氏度�?     */
     virtual double getCurrentTemperature() const;
 
     /**
      * @brief 获取目标温度
-     * @return 目标温度（摄氏度）
-     */
+     * @return 目标温度（摄氏度�?     */
     virtual double getTargetTemperature() const;
 
     /**
      * @brief 获取环境温度
-     * @return 环境温度（摄氏度）
-     */
+     * @return 环境温度（摄氏度�?     */
     virtual double getAmbientTemperature() const;
 
     /**
-     * @brief 获取温度控制状态
-     * @return 控制状态
-     */
+     * @brief 获取温度控制状�?     * @return 控制状�?     */
     virtual TemperatureControlState getControlState() const;
 
     /**
@@ -115,14 +105,11 @@ public:
 
     /**
      * @brief 是否正在控制温度
-     * @return 控制状态
-     */
+     * @return 控制状�?     */
     virtual bool isControlling() const;
 
     /**
-     * @brief 温度是否已稳定
-     * @return 稳定状态
-     */
+     * @brief 温度是否已稳�?     * @return 稳定状�?     */
     virtual bool isTemperatureStable() const;
 
     /**
@@ -133,21 +120,15 @@ public:
 
     /**
      * @brief 设置温度范围
-     * @param minTemp 最低温度
-     * @param maxTemp 最高温度
-     */
+     * @param minTemp 最低温�?     * @param maxTemp 最高温�?     */
     virtual void setTemperatureRange(double minTemp, double maxTemp);
 
     /**
-     * @brief 获取最低温度
-     * @return 最低温度
-     */
+     * @brief 获取最低温�?     * @return 最低温�?     */
     virtual double getMinTemperature() const;
 
     /**
-     * @brief 获取最高温度
-     * @return 最高温度
-     */
+     * @brief 获取最高温�?     * @return 最高温�?     */
     virtual double getMaxTemperature() const;
 
     /**
@@ -167,15 +148,13 @@ public:
     virtual void getPIDParameters(double& kp, double& ki, double& kd) const;
 
     /**
-     * @brief 获取控制功率百分比
-     * @return 功率百分比 (0-100)
+     * @brief 获取控制功率百分�?     * @return 功率百分�?(0-100)
      */
     virtual double getControlPower() const;
 
 protected:
     /**
-     * @brief 初始化温度控制配置
-     */
+     * @brief 初始化温度控制配�?     */
     virtual void initializeTemperatureConfigs();
 
     /**
@@ -192,15 +171,14 @@ protected:
 
     /**
      * @brief 设置控制功率（子类实现）
-     * @param power 功率百分比 (0-100)
+     * @param power 功率百分�?(0-100)
      * @return 设置是否成功
      */
     virtual bool setControlPower(double power) = 0;
 
     /**
      * @brief 更新当前温度（子类调用）
-     * @param temperature 新温度
-     */
+     * @param temperature 新温�?     */
     virtual void updateCurrentTemperature(double temperature);
 
     /**
@@ -210,22 +188,19 @@ protected:
     virtual void updateAmbientTemperature(double temperature);
 
     /**
-     * @brief 温度稳定检查
-     * @return 是否稳定
+     * @brief 温度稳定检�?     * @return 是否稳定
      */
     virtual bool checkTemperatureStability();
 
     /**
      * @brief 温度控制完成处理
      * @param success 是否成功
-     * @param finalTemperature 最终温度
-     */
+     * @param finalTemperature 最终温�?     */
     virtual void onTemperatureStabilized(bool success, double finalTemperature);
 
     /**
      * @brief 验证温度是否有效
-     * @param temperature 温度值
-     * @return 是否有效
+     * @param temperature 温度�?     * @return 是否有效
      */
     virtual bool isValidTemperature(double temperature) const;
 
@@ -260,8 +235,7 @@ protected:
     std::atomic<double> minTemperature_;
     std::atomic<double> maxTemperature_;
     
-    // 控制状态
-    std::atomic<TemperatureControlState> controlState_;
+    // 控制状�?    std::atomic<TemperatureControlState> controlState_;
     std::atomic<TemperatureControlMode> controlMode_;
     std::atomic<double> controlPower_;
     
@@ -272,8 +246,7 @@ protected:
     double pidIntegral_;
     double pidLastError_;
     
-    // 稳定性检查
-    std::atomic<double> stabilityTolerance_;
+    // 稳定性检�?    std::atomic<double> stabilityTolerance_;
     std::atomic<int> stabilityDuration_;
     std::chrono::steady_clock::time_point stabilityStartTime_;
     
@@ -283,11 +256,11 @@ protected:
     std::atomic<bool> controlRunning_;
     TemperatureStabilizedCallback currentCallback_;
     
-    // 控制参数
-    std::atomic<int> controlInterval_; // 控制循环间隔（毫秒）
-    std::atomic<int> stabilizationTimeout_; // 稳定超时（秒）
+    // Control parameters
+    std::atomic<int> controlInterval_; // Control loop interval (milliseconds)
+    std::atomic<int> stabilizationTimeout_; // Stabilization timeout (seconds)
 };
 
 } // namespace behaviors
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

@@ -1,10 +1,10 @@
-#include <astrocomm/server/server.h>
+#include <hydrogen/server/server.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
 #include <csignal>
 
-using namespace astrocomm::server;
+using namespace hydrogen::server;
 
 std::atomic<bool> running{true};
 
@@ -20,7 +20,7 @@ void demonstrateDeviceService() {
     auto deviceService = registry.getService<services::IDeviceService>();
     
     if (!deviceService) {
-        std::cout << "  âŒ Device service not available" << std::endl;
+        std::cout << "  â?Device service not available" << std::endl;
         return;
     }
     
@@ -29,7 +29,7 @@ void demonstrateDeviceService() {
     telescope.deviceId = "telescope-001";
     telescope.deviceType = "telescope";
     telescope.deviceName = "Main Observatory Telescope";
-    telescope.manufacturer = "AstroComm";
+    telescope.manufacturer = "Hydrogen";
     telescope.model = "AC-2000";
     telescope.capabilities = {"goto", "tracking", "imaging", "guiding"};
     telescope.properties["focal_length"] = "2000mm";
@@ -37,11 +37,11 @@ void demonstrateDeviceService() {
     telescope.properties["mount_type"] = "equatorial";
     
     if (deviceService->registerDevice(telescope)) {
-        std::cout << "  âœ… Registered telescope: " << telescope.deviceName << std::endl;
+        std::cout << "  âœ?Registered telescope: " << telescope.deviceName << std::endl;
         
         // Connect the device
         if (deviceService->connectDevice(telescope.deviceId)) {
-            std::cout << "  âœ… Connected telescope" << std::endl;
+            std::cout << "  âœ?Connected telescope" << std::endl;
             
             // Execute a command
             services::DeviceCommand gotoCommand;
@@ -52,13 +52,13 @@ void demonstrateDeviceService() {
             gotoCommand.clientId = "demo_client";
             
             std::string commandId = deviceService->executeCommand(gotoCommand);
-            std::cout << "  âœ… Executed goto command: " << commandId << std::endl;
+            std::cout << "  âœ?Executed goto command: " << commandId << std::endl;
             
             // Wait a moment and check result
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
             auto result = deviceService->getCommandResult(commandId);
             if (!result.commandId.empty()) {
-                std::cout << "  âœ… Command result: " << (result.success ? "SUCCESS" : "FAILED") 
+                std::cout << "  âœ?Command result: " << (result.success ? "SUCCESS" : "FAILED") 
                          << " - " << result.result << std::endl;
             }
         }
@@ -82,7 +82,7 @@ void demonstrateAuthService() {
     auto authService = registry.getService<services::IAuthService>();
     
     if (!authService) {
-        std::cout << "  âŒ Authentication service not available" << std::endl;
+        std::cout << "  â?Authentication service not available" << std::endl;
         return;
     }
     
@@ -98,7 +98,7 @@ void demonstrateAuthService() {
     auto authResult = authService->authenticate(authReq);
     
     if (authResult.success) {
-        std::cout << "  âœ… Authentication successful!" << std::endl;
+        std::cout << "  âœ?Authentication successful!" << std::endl;
         std::cout << "    User: " << authResult.token.username << std::endl;
         std::cout << "    Role: " << static_cast<int>(authResult.token.role) << std::endl;
         std::cout << "    Token expires: " << std::chrono::duration_cast<std::chrono::seconds>(
@@ -106,18 +106,18 @@ void demonstrateAuthService() {
         
         // Validate the token
         if (authService->validateToken(authResult.token.token)) {
-            std::cout << "  âœ… Token validation successful" << std::endl;
+            std::cout << "  âœ?Token validation successful" << std::endl;
         }
         
         // Create a new user
         services::UserInfo newUser;
         newUser.username = "operator1";
-        newUser.email = "operator1@astrocomm.local";
+        newUser.email = "operator1@Hydrogen.local";
         newUser.fullName = "Telescope Operator";
         newUser.role = services::UserRole::OPERATOR;
         
         if (authService->createUser(newUser, "operator123!")) {
-            std::cout << "  âœ… Created new user: " << newUser.username << std::endl;
+            std::cout << "  âœ?Created new user: " << newUser.username << std::endl;
         }
         
         // Show user statistics
@@ -131,12 +131,12 @@ void demonstrateAuthService() {
         }
         
     } else {
-        std::cout << "  âŒ Authentication failed: " << authResult.errorMessage << std::endl;
+        std::cout << "  â?Authentication failed: " << authResult.errorMessage << std::endl;
     }
 }
 
 int main() {
-    std::cout << "ðŸš€ AstroComm Server - Reorganized Architecture Demo" << std::endl;
+    std::cout << "ðŸš€ Hydrogen Server - Reorganized Architecture Demo" << std::endl;
     std::cout << "===================================================" << std::endl;
     
     // Set up signal handling
@@ -149,11 +149,11 @@ int main() {
         initialize();
         
         // Create a development server
-        std::cout << "ðŸ—ï¸  Creating development server..." << std::endl;
+        std::cout << "ðŸ—ï¸? Creating development server..." << std::endl;
         auto server = presets::createDevelopmentServer(8080);
         
         if (!server) {
-            std::cerr << "âŒ Failed to create server" << std::endl;
+            std::cerr << "â?Failed to create server" << std::endl;
             return 1;
         }
         
@@ -167,11 +167,11 @@ int main() {
         // Start the server
         std::cout << "\nðŸš€ Starting server..." << std::endl;
         if (!server->startAll()) {
-            std::cerr << "âŒ Failed to start server" << std::endl;
+            std::cerr << "â?Failed to start server" << std::endl;
             return 1;
         }
         
-        std::cout << "\nâœ… Server started successfully!" << std::endl;
+        std::cout << "\nâœ?Server started successfully!" << std::endl;
         
         // Show active protocols
         std::cout << "\nðŸŒ Active Protocols:" << std::endl;
@@ -179,7 +179,7 @@ int main() {
         for (const auto& protocol : protocols) {
             auto protocolServer = server->getProtocolServer(protocol);
             if (protocolServer) {
-                std::cout << "  âœ“ " << protocolServer->getProtocolName() 
+                std::cout << "  âœ?" << protocolServer->getProtocolName() 
                          << " (Status: " << protocolServer->getHealthStatus() << ")" << std::endl;
             }
         }
@@ -200,7 +200,7 @@ int main() {
         // Show diagnostics
         std::cout << "\nðŸ©º System Diagnostics:" << std::endl;
         std::cout << "  Health Status: " << diagnostics::getHealthStatus() << std::endl;
-        std::cout << "  Ready: " << (diagnostics::isReady() ? "âœ… Yes" : "âŒ No") << std::endl;
+        std::cout << "  Ready: " << (diagnostics::isReady() ? "âœ?Yes" : "â?No") << std::endl;
         
         auto metrics = diagnostics::getMetrics();
         std::cout << "  Metrics:" << std::endl;
@@ -208,7 +208,7 @@ int main() {
             std::cout << "    " << pair.first << ": " << pair.second << std::endl;
         }
         
-        std::cout << "\nâ³ Server is running. Press Ctrl+C to stop..." << std::endl;
+        std::cout << "\nâ?Server is running. Press Ctrl+C to stop..." << std::endl;
         std::cout << "\nðŸ’¡ Try these commands in another terminal:" << std::endl;
         std::cout << "  curl http://localhost:8080/api/health" << std::endl;
         std::cout << "  curl http://localhost:8080/api/status" << std::endl;
@@ -255,10 +255,10 @@ int main() {
         // Shutdown the server component
         shutdown();
         
-        std::cout << "âœ… Server stopped successfully. Goodbye!" << std::endl;
+        std::cout << "âœ?Server stopped successfully. Goodbye!" << std::endl;
         
     } catch (const std::exception& e) {
-        std::cerr << "âŒ Error: " << e.what() << std::endl;
+        std::cerr << "â?Error: " << e.what() << std::endl;
         return 1;
     }
     

@@ -1,9 +1,9 @@
-#include <astrocomm/core/enhanced_device_manager.h>
+#include <hydrogen/core/enhanced_device_manager.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-using namespace astrocomm::core;
+using namespace hydrogen::core;
 
 int main() {
     std::cout << "Enhanced Device Manager Example" << std::endl;

@@ -3,7 +3,7 @@
 include(CMakeFindDependencyMacro)
 
 # Find required dependencies
-find_dependency(AstroComm REQUIRED COMPONENTS Core)
+find_dependency(Hydrogen REQUIRED COMPONENTS Core)
 find_dependency(Threads REQUIRED)
 
 # Conditionally find Boost if available
@@ -13,6 +13,6 @@ find_dependency(Boost QUIET COMPONENTS system thread)
 find_dependency(OpenSSL QUIET)
 
 # Include the targets file
-include("${CMAKE_CURRENT_LIST_DIR}/AstroCommDeviceTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/HydrogenDeviceTargets.cmake")
 
-check_required_components(AstroCommDevice)
+check_required_components(HydrogenDevice)

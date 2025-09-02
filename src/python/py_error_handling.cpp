@@ -10,8 +10,8 @@
 #include <spdlog/spdlog.h>
 
 namespace py = pybind11;
-using namespace astrocomm::device;
-using namespace astrocomm::device::interfaces;
+using namespace hydrogen::device;
+using namespace hydrogen::device::interfaces;
 
 /**
  * @brief Custom exception classes for Python bindings with ASCOM/INDI compliance

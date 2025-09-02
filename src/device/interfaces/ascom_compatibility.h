@@ -9,7 +9,7 @@
 #include <future>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 namespace ascom {
@@ -259,4 +259,4 @@ public:
 } // namespace ascom
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

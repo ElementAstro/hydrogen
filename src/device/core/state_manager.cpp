@@ -6,7 +6,7 @@
 #include <sstream>
 #include <algorithm>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
@@ -27,7 +27,7 @@ bool StateManager::setProperty(const std::string& property, const json& value, b
         return false;
     }
 
-    // 验证属性值
+    // Validate property value
     std::string error;
     if (!validateProperty(property, value, error)) {
         SPDLOG_WARN("Property validation failed for device {} property {}: {}", 
@@ -41,15 +41,14 @@ bool StateManager::setProperty(const std::string& property, const json& value, b
     {
         std::lock_guard<std::mutex> lock(propertiesMutex_);
         
-        // 获取旧值
+        // Get old value
         auto it = properties_.find(property);
         if (it != properties_.end()) {
             oldValue = it->second;
             hasOldValue = true;
         }
         
-        // 设置新值
-        properties_[property] = value;
+        // 设置新�?        properties_[property] = value;
     }
 
     // 触发变化通知
@@ -73,7 +72,7 @@ size_t StateManager::setProperties(const std::unordered_map<std::string, json>& 
                 continue;
             }
 
-            // 验证属性值
+            // Validate property value
             std::string error;
             if (!validateProperty(property, value, error)) {
                 SPDLOG_WARN("Property validation failed for device {} property {}: {}", 
@@ -324,8 +323,7 @@ void StateManager::notifyPropertyChange(const std::string& property, const json&
     std::lock_guard<std::mutex> lock(listenersMutex_);
     
     for (const auto& listenerInfo : listeners_) {
-        // 监听所有属性或特定属性
-        if (listenerInfo.property.empty() || listenerInfo.property == property) {
+        // 监听所有属性或特定属�?        if (listenerInfo.property.empty() || listenerInfo.property == property) {
             try {
                 listenerInfo.listener(event);
             } catch (const std::exception& e) {
@@ -335,7 +333,7 @@ void StateManager::notifyPropertyChange(const std::string& property, const json&
     }
 }
 
-bool StateManager::validateProperty(const std::string& property, const json& value, std::string& error) const {
+bool StateManager::validateProperty(const std::string& property, const hydrogen::device::core::json& value, std::string& error) const {
     std::lock_guard<std::mutex> lock(validatorsMutex_);
     
     auto it = validators_.find(property);
@@ -361,4 +359,4 @@ std::string StateManager::generateTimestamp() const {
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

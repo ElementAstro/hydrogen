@@ -1,7 +1,7 @@
 #pragma once
 
 #include "multi_protocol_communication_manager.h"
-#include <astrocomm/core/device_health.h>
+#include <hydrogen/core/device_health.h>
 #include <nlohmann/json.hpp>
 #include <functional>
 #include <memory>
@@ -14,13 +14,13 @@
 #include <thread>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
 using json = nlohmann::json;
-using astrocomm::core::CommunicationProtocol;
-using astrocomm::core::DeviceHealthStatus;
+using hydrogen::core::CommunicationProtocol;
+using hydrogen::core::DeviceHealthStatus;
 
 /**
  * @brief Device discovery information
@@ -353,4 +353,4 @@ public:
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

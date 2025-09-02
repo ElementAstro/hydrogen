@@ -6,7 +6,7 @@
 #include <spdlog/spdlog.h>
 
 namespace py = pybind11;
-using namespace astrocomm;
+using namespace hydrogen;
 
 // Create a camera-derived class for Python inheritance
 class PyCamera : public Camera {

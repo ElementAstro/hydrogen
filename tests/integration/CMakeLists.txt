@@ -15,8 +15,8 @@ target_link_libraries(test_client_integration
     PRIVATE
         GTest::gtest
         GTest::gtest_main
-        AstroComm::Client
-        AstroComm::Core
+        Hydrogen::Client
+        Hydrogen::Core
         test_utils
 )
 

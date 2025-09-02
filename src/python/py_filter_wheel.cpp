@@ -6,7 +6,7 @@
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
-using namespace astrocomm;
+using namespace hydrogen;
 using json = nlohmann::json; // Alias for convenience
 
 /**

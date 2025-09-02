@@ -1,21 +1,21 @@
 #pragma once
 
 #include "../core/enhanced_device_base.h"
-#include <astrocomm/core/coordinate_system.h>
-#include <astrocomm/core/tracking_system.h>
+#include <hydrogen/core/coordinate_system.h>
+#include <hydrogen/core/tracking_system.h>
 #include <memory>
 #include <atomic>
 #include <thread>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace telescope {
 
-using astrocomm::device::core::EnhancedDeviceBase;
-using astrocomm::core::CoordinateSystem;
-using astrocomm::core::TrackingMode;
-using astrocomm::core::PerformanceMeasurement;
-using astrocomm::core::MetricType;
+using hydrogen::device::core::EnhancedDeviceBase;
+using hydrogen::core::CoordinateSystem;
+using hydrogen::core::TrackingMode;
+using hydrogen::core::PerformanceMeasurement;
+using hydrogen::core::MetricType;
 
 /**
  * @brief Enhanced telescope device with comprehensive health monitoring
@@ -265,4 +265,4 @@ public:
 
 } // namespace telescope
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

@@ -5,7 +5,7 @@
 
 namespace http = boost::beast::http;
 
-namespace astrocomm {
+namespace hydrogen {
 
 DeviceBase::DeviceBase(const std::string &id, const std::string &type,
                        const std::string &mfr, const std::string &mdl)
@@ -350,4 +350,4 @@ void DeviceBase::sendPropertyChangedEvent(const std::string &property,
   sendEvent(event);
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

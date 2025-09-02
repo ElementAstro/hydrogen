@@ -1,10 +1,10 @@
-#include <astrocomm/server/mqtt_broker.h>
+#include <hydrogen/server/mqtt_broker.h>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-using namespace astrocomm::server;
-using namespace astrocomm::core;
+using namespace hydrogen::server;
+using namespace hydrogen::core;
 
 int main() {
     std::cout << "MQTT Broker Example" << std::endl;

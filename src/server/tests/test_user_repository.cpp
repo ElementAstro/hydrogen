@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
-#include "astrocomm/server/repositories/user_repository.h"
+#include "hydrogen/server/repositories/user_repository.h"
 #include <memory>
 #include <filesystem>
 
-using namespace astrocomm::server::repositories;
+using namespace hydrogen::server::repositories;
 
 class UserRepositoryTest : public ::testing::Test {
 protected:

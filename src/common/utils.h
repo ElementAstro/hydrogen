@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace astrocomm {
+namespace hydrogen {
 
 /**
  * @brief Generates a universally unique identifier (UUID)
@@ -79,4 +79,4 @@ parseIsoTimestamp(const std::string &timestamp);
 
 } // namespace string_utils
 
-} // namespace astrocomm
+} // namespace hydrogen

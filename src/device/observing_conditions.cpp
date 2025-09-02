@@ -8,7 +8,7 @@
 
 using json = nlohmann::json;
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 ObservingConditions::ObservingConditions(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
@@ -852,4 +852,4 @@ std::unique_ptr<ObservingConditions> createModernObservingConditions(const std::
 }
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

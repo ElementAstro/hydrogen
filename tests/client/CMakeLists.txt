@@ -20,9 +20,9 @@ target_link_libraries(test_refactored_components
     PRIVATE
         GTest::gtest
         GTest::gtest_main
-        AstroComm::Common
-        AstroComm::Client
-        AstroComm::Core
+        Hydrogen::Common
+        Hydrogen::Client
+        Hydrogen::Core
         test_utils
 )
 
@@ -31,9 +31,9 @@ target_link_libraries(test_comprehensive_coverage
     PRIVATE
         GTest::gtest
         GTest::gtest_main
-        AstroComm::Common
-        AstroComm::Client
-        AstroComm::Core
+        Hydrogen::Common
+        Hydrogen::Client
+        Hydrogen::Core
         test_utils
 )
 

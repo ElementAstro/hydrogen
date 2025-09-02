@@ -1,4 +1,4 @@
-#include "astrocomm/server/protocols/grpc/grpc_server.h"
+#include "hydrogen/server/protocols/grpc/grpc_server.h"
 #include <spdlog/spdlog.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -6,7 +6,7 @@
 #include <thread>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace protocols {
 namespace grpc {
@@ -50,7 +50,8 @@ public:
             // Set server options
             builder.SetMaxReceiveMessageSize(config_.maxMessageSize);
             builder.SetMaxSendMessageSize(config_.maxMessageSize);
-            builder.SetMaxConcurrentStreams(config_.maxConcurrentStreams);
+            // Note: SetMaxConcurrentStreams may not be available in all gRPC versions
+            // builder.SetMaxConcurrentStreams(config_.maxConcurrentStreams);
             
             // Register services (placeholder - would register actual gRPC services here)
             // builder.RegisterService(&communicationService_);
@@ -411,4 +412,4 @@ std::unique_ptr<IGrpcServer> GrpcServerFactory::createServer(const std::string& 
 } // namespace grpc
 } // namespace protocols
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

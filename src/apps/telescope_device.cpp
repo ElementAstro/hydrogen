@@ -2,11 +2,11 @@
 #include <string>
 
 int main(int argc, char* argv[]) {
-    std::cout << "AstroComm Telescope Device Application" << std::endl;
+    std::cout << "Hydrogen Telescope Device Application" << std::endl;
     std::cout << "=======================================" << std::endl;
     std::cout << "Device ID: telescope_01" << std::endl;
     std::cout << "Device Type: Telescope" << std::endl;
-    std::cout << "Manufacturer: AstroComm" << std::endl;
+    std::cout << "Manufacturer: Hydrogen" << std::endl;
     std::cout << "Model: Virtual Telescope v1.0" << std::endl;
     std::cout << std::endl;
     std::cout << "Telescope device is now running..." << std::endl;

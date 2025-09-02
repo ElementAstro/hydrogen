@@ -1,11 +1,11 @@
-#include "astrocomm/device/solver.h"
+#include "solver.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <random>
 #include <cmath>
 #include <chrono>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 /**
@@ -97,7 +97,7 @@ public:
             case DeviceStatus::DISCONNECTED: return "Disconnected";
             case DeviceStatus::IDLE: return "Idle";
             case DeviceStatus::BUSY: return "Solving";
-            case DeviceStatus::ERROR: return "Error";
+            case DeviceStatus::DEVICE_ERROR: return "Error";
             default: return "Unknown";
         }
     }
@@ -154,6 +154,32 @@ public:
         return solving_;
     }
 
+    // Additional device interface methods
+    bool connect(const std::string& host, uint16_t port) override {
+        // For solver, we can ignore host/port and just connect
+        return connect();
+    }
+
+    bool start() override {
+        return connect();
+    }
+
+    void stop() override {
+        disconnect();
+    }
+
+    void run() override {
+        // Main device loop - for solver this can be a simple wait loop
+        while (connected_) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+
+    bool registerDevice() override {
+        // For solver, registration is automatic on connect
+        return connected_;
+    }
+
     SolveResult getLastResult() const override {
         std::lock_guard<std::mutex> lock(resultMutex_);
         return lastResult_;
@@ -207,15 +233,27 @@ public:
     }
 
     // Star detection
-    bool setStarDetectionLimits(int minStars, int maxStars) override {
+    bool setStarLimits(int minStars, int maxStars) override {
         config_.minStars = minStars;
         config_.maxStars = maxStars;
         spdlog::debug("Solver star limits set to {}-{}: {}", minStars, maxStars, deviceId_);
         return true;
     }
 
+    bool setStarDetectionLimits(int minStars, int maxStars) override {
+        return setStarLimits(minStars, maxStars);
+    }
+
     std::pair<int, int> getStarDetectionLimits() const override {
         return {config_.minStars, config_.maxStars};
+    }
+
+    int getMinStars() const override {
+        return config_.minStars;
+    }
+
+    int getMaxStars() const override {
+        return config_.maxStars;
     }
 
     bool setPixelScale(double arcsecPerPixel) override {
@@ -281,6 +319,33 @@ public:
         loadedIndexes_.push_back(indexPath);
         spdlog::info("Index loaded: {} for solver {}", indexPath, deviceId_);
         return true;
+    }
+
+    bool unloadIndex(const std::string& indexPath) override {
+        if (solving_) {
+            spdlog::error("Cannot unload index while solving: {}", deviceId_);
+            return false;
+        }
+
+        auto it = std::find(loadedIndexes_.begin(), loadedIndexes_.end(), indexPath);
+        if (it != loadedIndexes_.end()) {
+            loadedIndexes_.erase(it);
+            spdlog::info("Index unloaded: {} for solver {}", indexPath, deviceId_);
+            return true;
+        }
+
+        spdlog::warn("Index not found for unloading: {} for solver {}", indexPath, deviceId_);
+        return false;
+    }
+
+    void clearIndexes() override {
+        if (solving_) {
+            spdlog::error("Cannot clear indexes while solving: {}", deviceId_);
+            return;
+        }
+
+        loadedIndexes_.clear();
+        spdlog::info("All indexes cleared: {}", deviceId_);
     }
 
     void unloadAllIndexes() override {
@@ -477,4 +542,4 @@ std::unique_ptr<ISolver> SolverFactory::createSolver(const std::string& deviceId
 }
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

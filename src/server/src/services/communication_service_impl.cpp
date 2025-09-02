@@ -1,13 +1,13 @@
-#include "astrocomm/server/services/communication_service.h"
-#include "astrocomm/server/core/service_registry.h"
-#include "astrocomm/server/core/server_interface.h"
+#include "hydrogen/server/services/communication_service.h"
+#include "hydrogen/server/core/service_registry.h"
+#include "hydrogen/server/core/server_interface.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <random>
 #include <iomanip>
 #include <sstream>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace services {
 
@@ -18,7 +18,7 @@ class CommunicationServiceImpl : public core::BaseService, public ICommunication
 public:
     explicit CommunicationServiceImpl(const std::string& name = "CommunicationService")
         : core::BaseService(name, "1.0.0") {
-        description_ = "Communication routing service for AstroComm server";
+        description_ = "Communication routing service for Hydrogen server";
     }
 
     // IService implementation
@@ -192,7 +192,7 @@ public:
         return false;
     }
 
-    std::vector<DeliveryReceipt> getDeliveryReceipts(const std::string& messageId) const override {
+    std::vector<DeliveryReceipt> getDeliveryReceipts(const std::string& messageId = "") const override {
         std::lock_guard<std::mutex> lock(receiptsMutex_);
         
         std::vector<DeliveryReceipt> result;
@@ -694,4 +694,4 @@ bool CommunicationServiceFactory::isServiceSupported(const std::string& serviceN
 
 } // namespace services
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

@@ -3,7 +3,7 @@
 #include "../core/config_manager.h"
 #include <spdlog/spdlog.h>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace behaviors {
 
@@ -30,8 +30,7 @@ bool DeviceBehavior::initialize(std::shared_ptr<core::StateManager> stateManager
     stateManager_ = stateManager;
     configManager_ = configManager;
     
-    // 设置基础属性
-    setProperty("initialized", true);
+    // 设置基础属�?    setProperty("initialized", true);
     setProperty("running", false);
     
     initialized_ = true;
@@ -69,8 +68,7 @@ void DeviceBehavior::stop() {
 }
 
 void DeviceBehavior::update() {
-    // 基类默认实现为空，子类可以重写
-}
+    // 基类默认实现为空，子类可以重�?}
 
 bool DeviceBehavior::handleCommand(const std::string& command, 
                                   const json& parameters, 
@@ -152,4 +150,4 @@ std::string DeviceBehavior::getConfigName(const std::string& name) const {
 
 } // namespace behaviors
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

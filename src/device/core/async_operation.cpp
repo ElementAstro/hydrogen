@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iomanip>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace core {
 
@@ -323,4 +323,4 @@ void ASCOMAsyncMixin::cancelAllAsyncOperations() {
 
 } // namespace core
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

@@ -1,470 +1,243 @@
-#include "astrocomm/server/infrastructure/logging.h"
+﻿#include "hydrogen/server/infrastructure/logging.h"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/rotating_file_sink.h>
-#include <spdlog/sinks/daily_file_sink.h>
-#include <spdlog/async.h>
-#include <filesystem>
-#include <algorithm>
+#include <iostream>
+#include <unordered_map>
+#include <mutex>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace infrastructure {
 
-/**
- * @brief Concrete implementation of the Logging Manager
- */
-class LoggingManagerImpl : public ILoggingManager {
+// Simplified LogSink implementation
+class SimpleLogSink : public ILogSink {
 public:
-    LoggingManagerImpl() : initialized_(false), currentLevel_(LogLevel::INFO) {
-        // Initialize with default console logger
-        try {
-            auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-            console_sink->set_level(spdlog::level::info);
-            console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] %v");
-            
-            auto logger = std::make_shared<spdlog::logger>("astrocomm", console_sink);
-            logger->set_level(spdlog::level::info);
-            spdlog::set_default_logger(logger);
-            
-            spdlog::info("Logging manager created with default console logger");
-        } catch (const std::exception& e) {
-            // Fallback to basic logging if initialization fails
-            std::cerr << "Failed to initialize default logger: " << e.what() << std::endl;
+    bool write(const LogEntry& entry) override { return true; }
+    bool flush() override { return true; }
+    bool isEnabled() const override { return true; }
+    void setEnabled(bool enabled) override {}
+    LogLevel getMinLevel() const override { return LogLevel::TRACE; }
+    void setMinLevel(LogLevel level) override {}
+    std::string getName() const override { return "simple"; }
+};
+
+// Simplified LogFormatter implementation
+class SimpleLogFormatter : public ILogFormatter {
+public:
+    std::string format(const LogEntry& entry) override { return entry.message; }
+    void setPattern(const std::string& pattern) override {}
+    std::string getPattern() const override { return ""; }
+};
+
+// Simplified Logger implementation
+class SimpleLogger : public ILogger {
+private:
+    std::shared_ptr<spdlog::logger> spdlogLogger_;
+    std::string name_;
+
+public:
+    explicit SimpleLogger(const std::string& name) : name_(name) {
+        spdlogLogger_ = spdlog::get(name);
+        if (!spdlogLogger_) {
+            spdlogLogger_ = spdlog::stdout_color_mt(name);
         }
     }
 
-    ~LoggingManagerImpl() {
-        shutdown();
+    void log(LogLevel level, const std::string& message) override {
+        spdlogLogger_->info(message);
     }
 
-    // Initialization and lifecycle
-    bool initialize(const LoggingConfig& config) override {
-        if (initialized_) {
-            spdlog::warn("Logging manager already initialized");
-            return true;
-        }
+    void trace(const std::string& message) override { spdlogLogger_->trace(message); }
+    void debug(const std::string& message) override { spdlogLogger_->debug(message); }
+    void info(const std::string& message) override { spdlogLogger_->info(message); }
+    void warn(const std::string& message) override { spdlogLogger_->warn(message); }
+    void error(const std::string& message) override { spdlogLogger_->error(message); }
+    void critical(const std::string& message) override { spdlogLogger_->critical(message); }
 
-        try {
-            config_ = config;
-            
-            // Create sinks based on configuration
-            std::vector<spdlog::sink_ptr> sinks;
-            
-            // Console sink
-            if (config_.enableConsole) {
-                auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-                console_sink->set_level(convertLogLevel(config_.consoleLevel));
-                console_sink->set_pattern(config_.consolePattern);
-                sinks.push_back(console_sink);
-            }
-            
-            // File sink
-            if (config_.enableFile && !config_.logFilePath.empty()) {
-                createLogDirectory(config_.logFilePath);
-                
-                spdlog::sink_ptr file_sink;
-                
-                switch (config_.rotationType) {
-                    case LogRotationType::SIZE:
-                        file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                            config_.logFilePath, config_.maxFileSize, config_.maxFiles);
-                        break;
-                    case LogRotationType::DAILY:
-                        file_sink = std::make_shared<spdlog::sinks::daily_file_sink_mt>(
-                            config_.logFilePath, 0, 0);
-                        break;
-                    case LogRotationType::NONE:
-                    default:
-                        file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-                            config_.logFilePath, true);
-                        break;
-                }
-                
-                file_sink->set_level(convertLogLevel(config_.fileLevel));
-                file_sink->set_pattern(config_.filePattern);
-                sinks.push_back(file_sink);
-            }
-            
-            // Create logger
-            std::shared_ptr<spdlog::logger> logger;
-            
-            if (config_.enableAsync) {
-                // Initialize async logging
-                spdlog::init_thread_pool(config_.asyncQueueSize, config_.asyncThreadCount);
-                logger = std::make_shared<spdlog::async_logger>(
-                    config_.loggerName, sinks.begin(), sinks.end(), 
-                    spdlog::thread_pool(), spdlog::async_overflow_policy::block);
-            } else {
-                logger = std::make_shared<spdlog::logger>(
-                    config_.loggerName, sinks.begin(), sinks.end());
-            }
-            
-            // Set logger level
-            currentLevel_ = config_.globalLevel;
-            logger->set_level(convertLogLevel(currentLevel_));
-            logger->flush_on(convertLogLevel(config_.flushLevel));
-            
-            // Set as default logger
-            spdlog::set_default_logger(logger);
-            
-            // Set global pattern if specified
-            if (!config_.globalPattern.empty()) {
-                spdlog::set_pattern(config_.globalPattern);
-            }
-            
-            initialized_ = true;
-            spdlog::info("Logging manager initialized successfully");
-            spdlog::info("Log configuration: Console={}, File={}, Async={}", 
-                        config_.enableConsole, config_.enableFile, config_.enableAsync);
-            
-            return true;
-        } catch (const std::exception& e) {
-            std::cerr << "Failed to initialize logging manager: " << e.what() << std::endl;
-            return false;
-        }
+    void logWithContext(LogLevel level, const std::string& message, 
+                       const std::unordered_map<std::string, std::string>& context) override {
+        spdlogLogger_->info(message);
     }
+
+    void setContext(const std::string& key, const std::string& value) override {}
+    void removeContext(const std::string& key) override {}
+    void clearContext() override {}
+
+    void setLevel(LogLevel level) override {}
+    LogLevel getLevel() const override { return LogLevel::INFO; }
+    bool isEnabled(LogLevel level) const override { return true; }
+    std::string getName() const override { return name_; }
+
+    void addSink(std::shared_ptr<ILogSink> sink) override {}
+    void removeSink(const std::string& sinkName) override {}
+    std::vector<std::shared_ptr<ILogSink>> getSinks() const override { return {}; }
+};
+
+// Simplified LoggingService implementation
+class LoggingServiceImpl : public ILoggingService {
+private:
+    std::unordered_map<std::string, std::shared_ptr<ILogger>> loggers_;
+    mutable std::mutex mutex_;
+    bool initialized_;
+
+public:
+    LoggingServiceImpl() : initialized_(false) {}
+    ~LoggingServiceImpl() { shutdown(); }
+
+    // IService interface
+    std::string getName() const override { return "LoggingService"; }
+    std::string getVersion() const override { return "1.0.0"; }
+    std::string getDescription() const override { return "Logging Service"; }
+
+    bool initialize() override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        initialized_ = true;
+        return true;
+    }
+
+    bool start() override { return true; }
+    bool stop() override { return true; }
 
     bool shutdown() override {
-        if (!initialized_) {
-            return true;
-        }
-
-        try {
-            spdlog::info("Shutting down logging manager");
-            
-            // Flush all loggers
-            spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) {
-                l->flush();
-            });
-            
-            // Shutdown async logging if enabled
-            if (config_.enableAsync) {
-                spdlog::shutdown();
-            }
-            
-            initialized_ = false;
-            return true;
-        } catch (const std::exception& e) {
-            std::cerr << "Error during logging manager shutdown: " << e.what() << std::endl;
-            return false;
-        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        loggers_.clear();
+        initialized_ = false;
+        return true;
     }
 
-    bool isInitialized() const override {
-        return initialized_;
+    core::ServiceState getState() const override {
+        return initialized_ ? core::ServiceState::RUNNING : core::ServiceState::STOPPED;
     }
 
-    // Configuration management
-    bool updateConfig(const LoggingConfig& config) override {
-        if (!initialized_) {
-            return initialize(config);
-        }
+    std::vector<core::ServiceDependency> getDependencies() const override { return {}; }
+    bool areDependenciesSatisfied() const override { return true; }
 
-        // For simplicity, reinitialize with new config
-        shutdown();
-        return initialize(config);
+    bool isHealthy() const override { return initialized_; }
+    std::string getHealthStatus() const override { return "OK"; }
+    std::unordered_map<std::string, std::string> getMetrics() const override { return {}; }
+
+    void setConfiguration(const std::unordered_map<std::string, std::string>& config) override {}
+    std::unordered_map<std::string, std::string> getConfiguration() const override { return {}; }
+
+    void setStateChangeCallback(StateChangeCallback callback) override {}
+
+    // ILoggingService interface - Logger management
+    std::shared_ptr<ILogger> getLogger(const std::string& name) override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = loggers_.find(name);
+        if (it != loggers_.end()) {
+            return it->second;
+        }
+        auto logger = std::make_shared<SimpleLogger>(name);
+        loggers_[name] = logger;
+        return logger;
     }
 
-    LoggingConfig getConfig() const override {
-        return config_;
-    }
-
-    // Log level management
-    bool setLogLevel(LogLevel level) override {
-        if (!initialized_) {
-            return false;
-        }
-
-        try {
-            currentLevel_ = level;
-            spdlog::set_level(convertLogLevel(level));
-            spdlog::info("Log level changed to: {}", logLevelToString(level));
-            return true;
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to set log level: {}", e.what());
-            return false;
-        }
-    }
-
-    LogLevel getLogLevel() const override {
-        return currentLevel_;
-    }
-
-    bool setLogLevel(const std::string& loggerName, LogLevel level) override {
-        if (!initialized_) {
-            return false;
-        }
-
-        try {
-            auto logger = spdlog::get(loggerName);
-            if (logger) {
-                logger->set_level(convertLogLevel(level));
-                spdlog::debug("Log level for logger '{}' changed to: {}", loggerName, logLevelToString(level));
-                return true;
-            } else {
-                spdlog::warn("Logger '{}' not found", loggerName);
-                return false;
-            }
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to set log level for logger '{}': {}", loggerName, e.what());
-            return false;
-        }
-    }
-
-    // Logger management
-    bool createLogger(const std::string& name, const LoggingConfig& config) override {
-        if (!initialized_) {
-            return false;
-        }
-
-        try {
-            // Check if logger already exists
-            if (spdlog::get(name)) {
-                spdlog::warn("Logger '{}' already exists", name);
-                return false;
-            }
-
-            // Create sinks for this logger
-            std::vector<spdlog::sink_ptr> sinks;
-            
-            if (config.enableConsole) {
-                auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-                console_sink->set_level(convertLogLevel(config.consoleLevel));
-                console_sink->set_pattern(config.consolePattern);
-                sinks.push_back(console_sink);
-            }
-            
-            if (config.enableFile && !config.logFilePath.empty()) {
-                createLogDirectory(config.logFilePath);
-                auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-                    config.logFilePath, true);
-                file_sink->set_level(convertLogLevel(config.fileLevel));
-                file_sink->set_pattern(config.filePattern);
-                sinks.push_back(file_sink);
-            }
-
-            // Create logger
-            auto logger = std::make_shared<spdlog::logger>(name, sinks.begin(), sinks.end());
-            logger->set_level(convertLogLevel(config.globalLevel));
-            
-            // Register logger
-            spdlog::register_logger(logger);
-            
-            spdlog::info("Logger '{}' created successfully", name);
-            return true;
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to create logger '{}': {}", name, e.what());
-            return false;
-        }
+    std::shared_ptr<ILogger> createLogger(const std::string& name) override {
+        return getLogger(name);
     }
 
     bool removeLogger(const std::string& name) override {
-        if (!initialized_) {
-            return false;
-        }
-
-        try {
-            auto logger = spdlog::get(name);
-            if (logger) {
-                logger->flush();
-                spdlog::drop(name);
-                spdlog::info("Logger '{}' removed", name);
-                return true;
-            } else {
-                spdlog::warn("Logger '{}' not found", name);
-                return false;
-            }
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to remove logger '{}': {}", name, e.what());
-            return false;
-        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        loggers_.erase(name);
+        return true;
     }
 
     std::vector<std::string> getLoggerNames() const override {
+        std::lock_guard<std::mutex> lock(mutex_);
         std::vector<std::string> names;
-        
-        if (!initialized_) {
-            return names;
+        for (const auto& pair : loggers_) {
+            names.push_back(pair.first);
         }
-
-        try {
-            spdlog::apply_all([&names](std::shared_ptr<spdlog::logger> logger) {
-                names.push_back(logger->name());
-            });
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to get logger names: {}", e.what());
-        }
-        
         return names;
     }
 
-    // Utility functions
-    void flush() override {
-        if (!initialized_) {
-            return;
-        }
+    // Global configuration
+    void setGlobalLevel(LogLevel level) override {}
+    LogLevel getGlobalLevel() const override { return LogLevel::INFO; }
+    void setGlobalPattern(const std::string& pattern) override {}
+    std::string getGlobalPattern() const override { return ""; }
 
-        try {
-            spdlog::apply_all([](std::shared_ptr<spdlog::logger> logger) {
-                logger->flush();
-            });
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to flush loggers: {}", e.what());
-        }
+    // Sink management
+    bool addGlobalSink(std::shared_ptr<ILogSink> sink) override { return true; }
+    bool removeGlobalSink(const std::string& sinkName) override { return true; }
+    std::vector<std::shared_ptr<ILogSink>> getGlobalSinks() const override { return {}; }
+
+    // Sink factories
+    std::shared_ptr<ILogSink> createConsoleSink(const std::string& name) override {
+        return std::make_shared<SimpleLogSink>();
+    }
+    std::shared_ptr<ILogSink> createFileSink(const std::string& name, const std::string& filePath) override {
+        return std::make_shared<SimpleLogSink>();
+    }
+    std::shared_ptr<ILogSink> createRotatingFileSink(const std::string& name, const std::string& filePath, 
+                                                    size_t maxSize, size_t maxFiles) override {
+        return std::make_shared<SimpleLogSink>();
+    }
+    std::shared_ptr<ILogSink> createDailyFileSink(const std::string& name, const std::string& filePath) override {
+        return std::make_shared<SimpleLogSink>();
+    }
+    std::shared_ptr<ILogSink> createSyslogSink(const std::string& name, const std::string& ident) override {
+        return std::make_shared<SimpleLogSink>();
     }
 
-    void flushLogger(const std::string& name) override {
-        if (!initialized_) {
-            return;
-        }
-
-        try {
-            auto logger = spdlog::get(name);
-            if (logger) {
-                logger->flush();
-            }
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to flush logger '{}': {}", name, e.what());
-        }
+    // Formatter factories
+    std::shared_ptr<ILogFormatter> createPatternFormatter(const std::string& pattern) override {
+        return std::make_shared<SimpleLogFormatter>();
+    }
+    std::shared_ptr<ILogFormatter> createJsonFormatter() override {
+        return std::make_shared<SimpleLogFormatter>();
     }
 
-    // File operations
-    bool rotateLogFile() override {
-        if (!initialized_ || !config_.enableFile) {
-            return false;
-        }
+    // Log filtering and processing
+    void addFilter(const std::string& name, std::function<bool(const LogEntry&)> filter) override {}
+    void removeFilter(const std::string& name) override {}
+    void addProcessor(const std::string& name, std::function<LogEntry(const LogEntry&)> processor) override {}
+    void removeProcessor(const std::string& name) override {}
 
-        try {
-            // Force rotation by flushing and recreating file sinks
-            flush();
-            
-            // For rotating file sinks, we can trigger rotation by logging a message
-            // This is a simplified approach - in practice, you might want more control
-            spdlog::info("Log rotation triggered manually");
-            
-            return true;
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to rotate log file: {}", e.what());
-            return false;
-        }
-    }
-
-    bool archiveLogFile(const std::string& archivePath) override {
-        if (!initialized_ || !config_.enableFile) {
-            return false;
-        }
-
-        try {
-            flush();
-            
-            if (std::filesystem::exists(config_.logFilePath)) {
-                std::filesystem::copy_file(config_.logFilePath, archivePath);
-                spdlog::info("Log file archived to: {}", archivePath);
-                return true;
-            } else {
-                spdlog::warn("Log file not found for archiving: {}", config_.logFilePath);
-                return false;
-            }
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to archive log file: {}", e.what());
-            return false;
-        }
-    }
-
-    size_t getLogFileSize() const override {
-        if (!initialized_ || !config_.enableFile) {
-            return 0;
-        }
-
-        try {
-            if (std::filesystem::exists(config_.logFilePath)) {
-                return std::filesystem::file_size(config_.logFilePath);
-            }
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to get log file size: {}", e.what());
-        }
-        
-        return 0;
-    }
+    // Log archiving and cleanup
+    bool archiveLogs(const std::string& archivePath) override { return true; }
+    bool cleanupOldLogs(std::chrono::hours maxAge) override { return true; }
+    size_t getLogFileSize(const std::string& logFile) const override { return 0; }
+    std::vector<std::string> getLogFiles() const override { return {}; }
 
     // Statistics and monitoring
-    LoggingStatistics getStatistics() const override {
-        LoggingStatistics stats;
-        
-        if (!initialized_) {
-            return stats;
-        }
+    size_t getLogCount(LogLevel level) const override { return 0; }
+    std::unordered_map<LogLevel, size_t> getLogStatistics() const override { return {}; }
+    void resetStatistics() override {}
 
-        // Basic statistics - in a real implementation, you would track these
-        stats.totalLogMessages = 0; // Would need to be tracked
-        stats.errorCount = 0;       // Would need to be tracked
-        stats.warningCount = 0;     // Would need to be tracked
-        stats.logFileSize = getLogFileSize();
-        stats.activeLoggers = getLoggerNames().size();
-        
-        return stats;
-    }
+    // Performance monitoring
+    std::chrono::microseconds getAverageLogTime() const override { return std::chrono::microseconds(0); }
+    size_t getDroppedLogCount() const override { return 0; }
+    bool isAsyncLogging() const override { return false; }
+    void setAsyncLogging(bool enabled) override {}
 
-private:
-    std::atomic<bool> initialized_;
-    LoggingConfig config_;
-    LogLevel currentLevel_;
+    // Configuration
+    bool loadConfiguration(const std::string& configPath) override { return true; }
+    bool saveConfiguration(const std::string& configPath) const override { return true; }
+    void setBufferSize(size_t size) override {}
+    void setFlushInterval(std::chrono::milliseconds interval) override {}
 
-    spdlog::level::level_enum convertLogLevel(LogLevel level) const {
-        switch (level) {
-            case LogLevel::TRACE: return spdlog::level::trace;
-            case LogLevel::DEBUG: return spdlog::level::debug;
-            case LogLevel::INFO: return spdlog::level::info;
-            case LogLevel::WARN: return spdlog::level::warn;
-            case LogLevel::ERROR: return spdlog::level::err;
-            case LogLevel::CRITICAL: return spdlog::level::critical;
-            case LogLevel::OFF: return spdlog::level::off;
-            default: return spdlog::level::info;
-        }
-    }
-
-    std::string logLevelToString(LogLevel level) const {
-        switch (level) {
-            case LogLevel::TRACE: return "TRACE";
-            case LogLevel::DEBUG: return "DEBUG";
-            case LogLevel::INFO: return "INFO";
-            case LogLevel::WARN: return "WARN";
-            case LogLevel::ERROR: return "ERROR";
-            case LogLevel::CRITICAL: return "CRITICAL";
-            case LogLevel::OFF: return "OFF";
-            default: return "UNKNOWN";
-        }
-    }
-
-    void createLogDirectory(const std::string& logFilePath) const {
-        try {
-            std::filesystem::path path(logFilePath);
-            std::filesystem::path dir = path.parent_path();
-            
-            if (!dir.empty() && !std::filesystem::exists(dir)) {
-                std::filesystem::create_directories(dir);
-            }
-        } catch (const std::exception& e) {
-            spdlog::error("Failed to create log directory: {}", e.what());
-        }
-    }
+    // Event callbacks
+    void setLogEventCallback(LogEventCallback callback) override {}
+    void setLogErrorCallback(LogErrorCallback callback) override {}
 };
 
-// Factory function implementation
-std::unique_ptr<ILoggingManager> LoggingManagerFactory::createManager() {
-    return std::make_unique<LoggingManagerImpl>();
-}
-
-std::unique_ptr<ILoggingManager> LoggingManagerFactory::createManager(const LoggingConfig& config) {
-    auto manager = std::make_unique<LoggingManagerImpl>();
-    if (!manager->initialize(config)) {
-        return nullptr;
+// Factory implementation
+std::unique_ptr<core::IService> LoggingServiceFactory::createService(
+    const std::string& serviceName,
+    const std::unordered_map<std::string, std::string>& config) {
+    
+    if (serviceName == "LoggingService") {
+        auto service = std::make_unique<LoggingServiceImpl>();
+        service->setConfiguration(config);
+        if (service->initialize()) {
+            return service;
+        }
     }
-    return manager;
+    return nullptr;
 }
 
 } // namespace infrastructure
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

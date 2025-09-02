@@ -13,7 +13,7 @@ namespace beast = boost::beast;
 #undef ERROR
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 
 MessageProcessor::MessageProcessor(ConnectionManager* connectionManager)
     : connectionManager(connectionManager), running(false),
@@ -327,4 +327,4 @@ void MessageProcessor::updateStats(size_t sent, size_t received, size_t processe
   processingErrors += errors;
 }
 
-} // namespace astrocomm
+} // namespace hydrogen

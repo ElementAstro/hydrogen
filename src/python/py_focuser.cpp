@@ -5,19 +5,19 @@
 #include <spdlog/spdlog.h>
 
 namespace py = pybind11;
-using namespace astrocomm;
+using namespace hydrogen;
 
 // 创建一个用于Python继承的派生类
 class PyFocuser : public Focuser {
 public:
-  // 使用与基类相同的构造函数
+  // 使用与基类相同的构造函�?
   using Focuser::Focuser;
 
-  // 为Python覆盖提供虚函数
+  // 为Python覆盖提供虚函�?
   bool start() override {
     PYBIND11_OVERRIDE(bool,    // 返回类型
                       Focuser, // 父类
-                      start,   // 调用的函数
+                      start,   // 调用的函�?
                                /* 参数列表为空 */
     );
   }
@@ -25,7 +25,7 @@ public:
   void stop() override {
     PYBIND11_OVERRIDE(void,    // 返回类型
                       Focuser, // 父类
-                      stop,    // 调用的函数
+                      stop,    // 调用的函�?
                                /* 参数列表为空 */
     );
   }
@@ -33,7 +33,7 @@ public:
   json getDeviceInfo() const override {
     PYBIND11_OVERRIDE(json,          // 返回类型
                       Focuser,       // 父类
-                      getDeviceInfo, // 调用的函数
+                      getDeviceInfo, // 调用的函�?
                                      /* 参数列表为空 */
     );
   }
@@ -42,7 +42,7 @@ public:
   bool moveAbsolute(int position, bool synchronous = false) override {
     PYBIND11_OVERRIDE(bool,                 // 返回类型
                       Focuser,              // 父类
-                      moveAbsolute,         // 调用的函数
+                      moveAbsolute,         // 调用的函�?
                       position, synchronous // 参数
     );
   }
@@ -50,7 +50,7 @@ public:
   bool moveRelative(int steps, bool synchronous = false) override {
     PYBIND11_OVERRIDE(bool,              // 返回类型
                       Focuser,           // 父类
-                      moveRelative,      // 调用的函数
+                      moveRelative,      // 调用的函�?
                       steps, synchronous // 参数
     );
   }
@@ -58,7 +58,7 @@ public:
   bool abort() override {
     PYBIND11_OVERRIDE(bool,    // 返回类型
                       Focuser, // 父类
-                      abort,   // 调用的函数
+                      abort,   // 调用的函�?
                                /* 参数列表为空 */
     );
   }
@@ -66,7 +66,7 @@ public:
   bool setMaxPosition(int maxPos) override {
     PYBIND11_OVERRIDE(bool,           // 返回类型
                       Focuser,        // 父类
-                      setMaxPosition, // 调用的函数
+                      setMaxPosition, // 调用的函�?
                       maxPos          // 参数
     );
   }
@@ -74,7 +74,7 @@ public:
   bool setSpeed(int speedValue) override {
     PYBIND11_OVERRIDE(bool,      // 返回类型
                       Focuser,   // 父类
-                      setSpeed,  // 调用的函数
+                      setSpeed,  // 调用的函�?
                       speedValue // 参数
     );
   }
@@ -82,7 +82,7 @@ public:
   bool setBacklash(int backlashValue) override {
     PYBIND11_OVERRIDE(bool,         // 返回类型
                       Focuser,      // 父类
-                      setBacklash,  // 调用的函数
+                      setBacklash,  // 调用的函�?
                       backlashValue // 参数
     );
   }
@@ -90,7 +90,7 @@ public:
   bool setStepMode(StepMode mode) override {
     PYBIND11_OVERRIDE(bool,        // 返回类型
                       Focuser,     // 父类
-                      setStepMode, // 调用的函数
+                      setStepMode, // 调用的函�?
                       mode         // 参数
     );
   }
@@ -99,7 +99,7 @@ public:
                                   double coefficient = 0.0) override {
     PYBIND11_OVERRIDE(bool,                       // 返回类型
                       Focuser,                    // 父类
-                      setTemperatureCompensation, // 调用的函数
+                      setTemperatureCompensation, // 调用的函�?
                       enabled, coefficient        // 参数
     );
   }
@@ -108,7 +108,7 @@ public:
                       const std::string &description = "") override {
     PYBIND11_OVERRIDE(bool,             // 返回类型
                       Focuser,          // 父类
-                      saveFocusPoint,   // 调用的函数
+                      saveFocusPoint,   // 调用的函�?
                       name, description // 参数
     );
   }
@@ -117,7 +117,7 @@ public:
                         bool synchronous = false) override {
     PYBIND11_OVERRIDE(bool,             // 返回类型
                       Focuser,          // 父类
-                      moveToSavedPoint, // 调用的函数
+                      moveToSavedPoint, // 调用的函�?
                       name, synchronous // 参数
     );
   }
@@ -125,7 +125,7 @@ public:
   json getSavedFocusPoints() const override {
     PYBIND11_OVERRIDE(json,                // 返回类型
                       Focuser,             // 父类
-                      getSavedFocusPoints, // 调用的函数
+                      getSavedFocusPoints, // 调用的函�?
                                            /* 参数列表为空 */
     );
   }
@@ -134,7 +134,7 @@ public:
                       bool useExistingCurve = false) override {
     PYBIND11_OVERRIDE(bool,                                     // 返回类型
                       Focuser,                                  // 父类
-                      startAutoFocus,                           // 调用的函数
+                      startAutoFocus,                           // 调用的函�?
                       startPos, endPos, steps, useExistingCurve // 参数
     );
   }
@@ -142,7 +142,7 @@ public:
   json getFocusCurveData() const override {
     PYBIND11_OVERRIDE(json,              // 返回类型
                       Focuser,           // 父类
-                      getFocusCurveData, // 调用的函数
+                      getFocusCurveData, // 调用的函�?
                                          /* 参数列表为空 */
     );
   }
@@ -150,7 +150,7 @@ public:
   bool saveConfiguration(const std::string &filePath) const override {
     PYBIND11_OVERRIDE(bool,              // 返回类型
                       Focuser,           // 父类
-                      saveConfiguration, // 调用的函数
+                      saveConfiguration, // 调用的函�?
                       filePath           // 参数
     );
   }
@@ -158,7 +158,7 @@ public:
   bool loadConfiguration(const std::string &filePath) override {
     PYBIND11_OVERRIDE(bool,              // 返回类型
                       Focuser,           // 父类
-                      loadConfiguration, // 调用的函数
+                      loadConfiguration, // 调用的函�?
                       filePath           // 参数
     );
   }
@@ -168,7 +168,7 @@ public:
   void updateLoop() override {
     PYBIND11_OVERRIDE(void,       // 返回类型
                       Focuser,    // 父类
-                      updateLoop, // 调用的函数
+                      updateLoop, // 调用的函�?
                                   /* 参数列表为空 */
     );
   }
@@ -176,7 +176,7 @@ public:
   double calculateFocusMetric(int position) override {
     PYBIND11_OVERRIDE(double,               // 返回类型
                       Focuser,              // 父类
-                      calculateFocusMetric, // 调用的函数
+                      calculateFocusMetric, // 调用的函�?
                       position              // 参数
     );
   }
@@ -184,7 +184,7 @@ public:
   void performAutoFocus() override {
     PYBIND11_OVERRIDE(void,             // 返回类型
                       Focuser,          // 父类
-                      performAutoFocus, // 调用的函数
+                      performAutoFocus, // 调用的函�?
                                         /* 参数列表为空 */
     );
   }
@@ -192,7 +192,7 @@ public:
   int applyTemperatureCompensation(int currentPosition) override {
     PYBIND11_OVERRIDE(int,                          // 返回类型
                       Focuser,                      // 父类
-                      applyTemperatureCompensation, // 调用的函数
+                      applyTemperatureCompensation, // 调用的函�?
                       currentPosition               // 参数
     );
   }
@@ -265,13 +265,13 @@ void register_focuser_bindings(py::module &m) {
               } catch (const py::error_already_set &e) {
                 SPDLOG_ERROR("Python error in focus metric callback: {}",
                              e.what());
-                return 0.0; // 默认返回值
+                return 0.0; // 默认返回�?
               }
             });
           },
           py::arg("callback"), "Set focus metric evaluation callback");
 
-  // Python扩展类 - 允许在Python中创建更专业化的设备
+  // Python扩展�?- 允许在Python中创建更专业化的设备
   py::class_<PyFocuser, Focuser, std::shared_ptr<PyFocuser>>(m, "PyFocuser")
       .def(py::init<const std::string &, const std::string &,
                     const std::string &>(),

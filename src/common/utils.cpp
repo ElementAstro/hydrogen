@@ -12,7 +12,7 @@
 #include <regex>
 #endif
 
-namespace astrocomm {
+namespace hydrogen {
 
 std::string generateUuid() {
   static std::random_device rd;
@@ -136,4 +136,4 @@ parseIsoTimestamp(const std::string &timestamp) {
 
 } // namespace string_utils
 
-} // namespace astrocomm
+} // namespace hydrogen

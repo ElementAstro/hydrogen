@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 
 using json = nlohmann::json;
@@ -31,11 +31,8 @@ struct FilterInfo {
 };
 
 /**
- * @brief 滤镜轮设备实现
- *
- * 基于新架构的滤镜轮实现，使用MovableBehavior提供移动控制功能。
- * 支持多种制造商的滤镜轮设备，提供统一的控制接口。
- */
+ * @brief 滤镜轮设备实�? *
+ * 基于新架构的滤镜轮实现，使用MovableBehavior提供移动控制功能�? * 支持多种制造商的滤镜轮设备，提供统一的控制接口�? */
 class FilterWheel : public core::ModernDeviceBase, 
                     public interfaces::IFilterWheel {
 public:
@@ -67,8 +64,7 @@ public:
   }
 
   /**
-   * @brief 获取支持的型号列表
-   */
+   * @brief 获取支持的型号列�?   */
   static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
     if (manufacturer == "ZWO") return {"EFW", "EFW-Mini", "EFW-7x36"};
     if (manufacturer == "QHY") return {"CFW2-US", "CFW3-US", "CFW3-L"};
@@ -78,8 +74,7 @@ public:
     return {"Generic Filter Wheel"};
   }
 
-  // 实现IMovable接口（委托给MovableBehavior）
-  bool moveToPosition(int position) override;
+  // 实现IMovable接口（委托给MovableBehavior�?  bool moveToPosition(int position) override;
   bool moveRelative(int steps) override;
   bool stopMovement() override;
   bool home() override;
@@ -209,8 +204,7 @@ private:
   void initializeFilterWheelBehaviors();
 
   /**
-   * @brief 滤镜轮移动行为实现
-   */
+   * @brief 滤镜轮移动行为实�?   */
   class FilterWheelMovableBehavior : public behaviors::MovableBehavior {
   public:
     explicit FilterWheelMovableBehavior(FilterWheel* filterWheel);
@@ -238,8 +232,7 @@ private:
   // 行为组件指针
   FilterWheelMovableBehavior* movableBehavior_;
 
-  // 滤镜轮参数
-  std::atomic<int> filterCount_;
+  // 滤镜轮参�?  std::atomic<int> filterCount_;
   std::atomic<double> wheelDiameter_;
 
   // 滤镜信息
@@ -256,8 +249,7 @@ private:
 };
 
 /**
- * @brief 滤镜轮工厂
- */
+ * @brief 滤镜轮工�? */
 class FilterWheelFactory : public core::TypedDeviceFactory<FilterWheel> {
 public:
   FilterWheelFactory(const std::string& manufacturer = "Generic", 
@@ -266,4 +258,4 @@ public:
 };
 
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

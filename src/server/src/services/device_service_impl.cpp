@@ -1,12 +1,12 @@
-#include "astrocomm/server/services/device_service.h"
-#include "astrocomm/server/core/service_registry.h"
+#include "hydrogen/server/services/device_service.h"
+#include "hydrogen/server/core/service_registry.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <random>
 #include <iomanip>
 #include <sstream>
 
-namespace astrocomm {
+namespace hydrogen {
 namespace server {
 namespace services {
 
@@ -17,7 +17,7 @@ class DeviceServiceImpl : public core::BaseService, public IDeviceService {
 public:
     explicit DeviceServiceImpl(const std::string& name = "DeviceService")
         : core::BaseService(name, "1.0.0") {
-        description_ = "Device management service for AstroComm server";
+        description_ = "Device management service for Hydrogen server";
     }
 
 
@@ -785,4 +785,4 @@ bool DeviceServiceFactory::isServiceSupported(const std::string& serviceName) co
 
 } // namespace services
 } // namespace server
-} // namespace astrocomm
+} // namespace hydrogen

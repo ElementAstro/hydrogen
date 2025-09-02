@@ -15,7 +15,7 @@
 #include "protocol_bridge.h"
 #include "integration_manager.h"
 
-namespace astrocomm {
+namespace hydrogen {
 namespace device {
 namespace interfaces {
 
@@ -182,22 +182,22 @@ public:
  * @brief Ultra-simple macros for one-line compatibility enabling
  */
 #define ENABLE_ASCOM_INDI_COMPATIBILITY(device, deviceId) \
-    astrocomm::device::interfaces::compatibility::enableAutomaticCompatibility(device, deviceId, true, true)
+    hydrogen::device::interfaces::compatibility::enableAutomaticCompatibility(device, deviceId, true, true)
 
 #define ENABLE_ASCOM_COMPATIBILITY(device, deviceId) \
-    astrocomm::device::interfaces::compatibility::enableAutomaticCompatibility(device, deviceId, true, false)
+    hydrogen::device::interfaces::compatibility::enableAutomaticCompatibility(device, deviceId, true, false)
 
 #define ENABLE_INDI_COMPATIBILITY(device, deviceId) \
-    astrocomm::device::interfaces::compatibility::enableAutomaticCompatibility(device, deviceId, false, true)
+    hydrogen::device::interfaces::compatibility::enableAutomaticCompatibility(device, deviceId, false, true)
 
 #define DISABLE_COMPATIBILITY(deviceId) \
-    astrocomm::device::interfaces::compatibility::disableAutomaticCompatibility(deviceId)
+    hydrogen::device::interfaces::compatibility::disableAutomaticCompatibility(deviceId)
 
 #define INIT_COMPATIBILITY_SYSTEM() \
-    astrocomm::device::interfaces::compatibility::initializeCompatibilitySystem()
+    hydrogen::device::interfaces::compatibility::initializeCompatibilitySystem()
 
 #define SHUTDOWN_COMPATIBILITY_SYSTEM() \
-    astrocomm::device::interfaces::compatibility::shutdownCompatibilitySystem()
+    hydrogen::device::interfaces::compatibility::shutdownCompatibilitySystem()
 
 /**
  * @brief Example usage patterns
@@ -237,4 +237,4 @@ public:
 
 } // namespace interfaces
 } // namespace device
-} // namespace astrocomm
+} // namespace hydrogen

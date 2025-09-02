@@ -10,7 +10,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace astrocomm {
+namespace hydrogen {
 
 namespace beast = boost::beast;
 namespace websocket = beast::websocket;
@@ -52,44 +52,44 @@ public:
   // 获取设备信息JSON
   virtual json getDeviceInfo() const;
 
-  // 设置属性值
+  // 设置属性�?
   virtual void setProperty(const std::string &property, const json &value);
 
-  // 获取属性值
+  // 获取属性�?
   virtual json getProperty(const std::string &property) const;
 
-  // 注册命令处理器
+  // 注册命令处理�?
   using CommandHandler =
       std::function<void(const CommandMessage &, ResponseMessage &)>;
   void registerCommandHandler(const std::string &command,
                               CommandHandler handler);
 
 protected:
-  // 处理收到的消息
+  // 处理收到的消�?
   virtual void handleMessage(const std::string &message);
 
   // 处理命令消息
   virtual void handleCommandMessage(const CommandMessage &cmd);
 
-  // 发送响应消息
+  // 发送响应消�?
   virtual void sendResponse(const ResponseMessage &response);
 
   // 发送事件通知
   virtual void sendEvent(const EventMessage &event);
 
-  // 发送属性变更事件
+  // 发送属性变更事�?
   virtual void sendPropertyChangedEvent(const std::string &property,
                                         const json &value,
                                         const json &previousValue);
 
-  // 状态和属性管理
+  // 状态和属性管�?
   std::string deviceId;
   std::string deviceType;
   std::string manufacturer;
   std::string model;
   std::string firmwareVersion;
 
-  // 属性存储
+  // 属性存�?
   mutable std::mutex propertiesMutex;
   std::unordered_map<std::string, json> properties;
   std::vector<std::string> capabilities;
@@ -100,8 +100,8 @@ protected:
   bool connected;
   bool running;
 
-  // 命令处理器
+  // 命令处理�?
   std::unordered_map<std::string, CommandHandler> commandHandlers;
 };
 
-} // namespace astrocomm
+} // namespace hydrogen
