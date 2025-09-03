@@ -1,8 +1,12 @@
 #include "hydrogen/server/protocols/grpc/grpc_server.h"
 #include <spdlog/spdlog.h>
+
+#ifdef HYDROGEN_HAS_GRPC
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
+#endif
+
 #include <thread>
 #include <chrono>
 
@@ -11,6 +15,7 @@ namespace server {
 namespace protocols {
 namespace grpc {
 
+#ifdef HYDROGEN_HAS_GRPC
 /**
  * @brief Concrete implementation of the gRPC Server
  */
@@ -408,6 +413,27 @@ std::unique_ptr<IGrpcServer> GrpcServerFactory::createServer(const std::string& 
     
     return std::make_unique<GrpcServerImpl>(config);
 }
+
+// GrpcServerFactory implementation
+std::unique_ptr<IGrpcServer> GrpcServerFactory::createServer(const GrpcServerConfig& config) {
+    return std::make_unique<GrpcServerImpl>(config);
+}
+
+#else // HYDROGEN_HAS_GRPC
+
+// Stub implementation when gRPC is not available
+std::unique_ptr<IGrpcServer> createGrpcServer(const GrpcServerConfig& config) {
+    spdlog::warn("gRPC support is not enabled. Cannot create gRPC server.");
+    return nullptr;
+}
+
+// GrpcServerFactory stub implementation
+std::unique_ptr<IGrpcServer> GrpcServerFactory::createServer(const GrpcServerConfig& config) {
+    spdlog::warn("gRPC support is not enabled. Cannot create gRPC server.");
+    return nullptr;
+}
+
+#endif // HYDROGEN_HAS_GRPC
 
 } // namespace grpc
 } // namespace protocols

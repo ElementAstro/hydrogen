@@ -1,3 +1,8 @@
+---
+title: API Reference
+description: Complete API documentation for Hydrogen's unified architecture
+---
+
 # Hydrogen API Reference
 
 This document provides a comprehensive reference for the Hydrogen Unified Architecture C++ API.
@@ -507,4 +512,4 @@ HYDROGEN_PERFORMANCE_TEST(MyTest, DevicePerformance) {
 }
 ```
 
-For more detailed examples, see the [examples directory](../examples/) and the [Unified Architecture Guide](UNIFIED_ARCHITECTURE.md).
+For more detailed examples, see the [examples directory](../examples/) and the [Unified Architecture Guide](../architecture/unified-architecture.md).

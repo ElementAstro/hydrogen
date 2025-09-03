@@ -345,10 +345,11 @@ private:
 std::unique_ptr<core::IService> HealthServiceFactory::createService(
     const std::string& serviceName,
     const std::unordered_map<std::string, std::string>& config) {
-    // TODO: Fix abstract class issue before enabling instantiation
-    // if (serviceName == "health") {
-    //     return std::make_unique<HealthServiceImpl>();
-    // }
+    // TODO: Complete HealthServiceImpl implementation before enabling instantiation
+    // The HealthServiceImpl class is currently abstract and missing some method implementations
+    if (serviceName == "HealthService") {
+        spdlog::warn("HealthService creation requested but implementation is incomplete");
+    }
     return nullptr;
 }
 

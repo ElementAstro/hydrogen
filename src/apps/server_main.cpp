@@ -1,4 +1,4 @@
-#include <hydrogen/server.h>
+#include <hydrogen/server/server.h>
 #include <filesystem>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -11,29 +11,29 @@
 using namespace hydrogen::server;
 namespace fs = std::filesystem;
 
-// 信号处理相关
+// Signal handling
 std::atomic<bool> running = true;
 void signalHandler(int signum) {
-    spdlog::info("接收到信�?{}, 准备关闭服务�?, signum);
+    spdlog::info("Received signal {}, shutting down server...", signum);
     running = false;
 }
 
-// 显示帮助信息
+// Show help information
 void showHelp() {
-    std::cout << "Device Server 使用方法:" << std::endl;
-    std::cout << "--port <port>          指定服务器监听端�?(默认: 8000)" << std::endl;
-    std::cout << "--config <path>        指定配置文件目录路径" << std::endl;
-    std::cout << "--log-level <level>    设置日志级别 (trace/debug/info/warn/error/critical)" << std::endl;
-    std::cout << "--log-dir <path>       指定日志文件保存目录" << std::endl;
-    std::cout << "--enable-access-control 启用访问控制" << std::endl;
-    std::cout << "--enable-command-queue  启用命令队列" << std::endl;
-    std::cout << "--heartbeat <seconds>   设置心跳间隔秒数 (默认: 30)" << std::endl;
-    std::cout << "--help                  显示此帮助信�? << std::endl;
+    std::cout << "Device Server Usage:" << std::endl;
+    std::cout << "--port <port>          Specify server listening port (default: 8000)" << std::endl;
+    std::cout << "--config <path>        Specify configuration file directory path" << std::endl;
+    std::cout << "--log-level <level>    Set log level (trace/debug/info/warn/error/critical)" << std::endl;
+    std::cout << "--log-dir <path>       Specify log file save directory" << std::endl;
+    std::cout << "--enable-access-control Enable access control" << std::endl;
+    std::cout << "--enable-command-queue  Enable command queue" << std::endl;
+    std::cout << "--heartbeat <seconds>   Set heartbeat interval seconds (default: 30)" << std::endl;
+    std::cout << "--help                  Show this help information" << std::endl;
 }
 
 // 设置日志系统
 void setupLogging(const std::string& logLevel, const std::string& logDir) {
-    // 创建控制台日�?
+    // 创建控制台日�?
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     
     std::vector<spdlog::sink_ptr> sinks {console_sink};
@@ -79,7 +79,7 @@ void setupLogging(const std::string& logLevel, const std::string& logDir) {
         logger->set_level(spdlog::level::critical);
     }
     
-    // 设置为全局默认日志�?
+    // 设置为全局默认日志�?
     spdlog::set_default_logger(logger);
     
     // 设置日志模式
@@ -92,16 +92,16 @@ void setupLogging(const std::string& logLevel, const std::string& logDir) {
 void printBanner() {
     std::cout << "\n";
     std::cout << "  ╔══════════════════════════════════════════════════════════╗\n";
-    std::cout << "  �?                                                         ║\n";
-    std::cout << "  �?       Astro Device Communication Protocol Server        ║\n";
-    std::cout << "  �?                                                         ║\n";
-    std::cout << "  �?         Modern JSON-based Device Control Server         ║\n";
-    std::cout << "  �?                                                         ║\n";
+    std::cout << "  �?                                                         ║\n";
+    std::cout << "  �?       Astro Device Communication Protocol Server        ║\n";
+    std::cout << "  �?                                                         ║\n";
+    std::cout << "  �?         Modern JSON-based Device Control Server         ║\n";
+    std::cout << "  �?                                                         ║\n";
     std::cout << "  ╚══════════════════════════════════════════════════════════╝\n\n";
 }
 
 int main(int argc, char *argv[]) {
-    // 解析命令行参�?
+    // 解析命令行参�?
     uint16_t port = 8000;
     std::string configPath;
     std::string logLevel = "info";
@@ -141,12 +141,12 @@ int main(int argc, char *argv[]) {
             try {
                 heartbeatInterval = std::stoi(argv[++i]);
                 if (heartbeatInterval < 5) {
-                    std::cerr << "警告: 心跳间隔太短，最小为5�? << std::endl;
+                    std::cerr << "警告: 心跳间隔太短，最小为5�? << std::endl;
                     heartbeatInterval = 5;
                 }
             }
             catch (const std::exception& e) {
-                std::cerr << "无效的心跳间�? " << argv[i] << std::endl;
+                std::cerr << "无效的心跳间�? " << argv[i] << std::endl;
                 return 1;
             }
         }
@@ -167,10 +167,10 @@ int main(int argc, char *argv[]) {
     std::signal(SIGTERM, signalHandler);
     
     try {
-        // 创建设备服务�?
+        // 创建设备服务�?
         DeviceServer server(port);
         
-        // 配置服务�?
+        // 配置服务�?
         if (!configPath.empty()) {
             // 确保配置目录存在
             fs::create_directories(configPath);
@@ -187,13 +187,13 @@ int main(int argc, char *argv[]) {
         // 设置命令队列
         server.setCommandQueueEnabled(enableCommandQueue);
         
-        // 显示服务器配�?
+        // 显示服务器配�?
         spdlog::info("设备服务器已启动: ");
         spdlog::info("  - 监听端口: {}", port);
-        spdlog::info("  - 配置目录: {}", configPath.empty() ? "未设�? : configPath);
-        spdlog::info("  - 访问控制: {}", enableAccessControl ? "已启�? : "未启�?);
-        spdlog::info("  - 命令队列: {}", enableCommandQueue ? "已启�? : "未启�?);
-        spdlog::info("  - 心跳间隔: {}�?, heartbeatInterval);
+        spdlog::info("  - 配置目录: {}", configPath.empty() ? "未设�? : configPath);
+        spdlog::info("  - 访问控制: {}", enableAccessControl ? "已启�? : "未启�?);
+        spdlog::info("  - 命令队列: {}", enableCommandQueue ? "已启�? : "未启�?);
+        spdlog::info("  - 心跳间隔: {}�?, heartbeatInterval);
         spdlog::info("  - 日志级别: {}", logLevel);
         
         // 启动一个线程运行服务器
@@ -201,16 +201,16 @@ int main(int argc, char *argv[]) {
             server.start();
         });
         
-        // 主线程监控运行状�?
+        // 主线程监控运行状�?
         while (running) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
         
-        // 停止服务�?
-        spdlog::info("正在停止设备服务�?..");
+        // 停止服务�?
+        spdlog::info("正在停止设备服务�?..");
         server.stop();
         
-        // 等待服务器线程完�?
+        // 等待服务器线程完�?
         if (serverThread.joinable()) {
             serverThread.join();
         }
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
         spdlog::info("设备服务器已安全关闭");
     }
     catch (const std::exception& e) {
-        spdlog::error("服务器错�? {}", e.what());
+        spdlog::error("服务器错�? {}", e.what());
         return 1;
     }
     

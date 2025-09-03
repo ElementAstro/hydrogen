@@ -208,6 +208,29 @@ void DeviceManager::updateDeviceInfo(const std::string& deviceId, const json& de
     return;
   }
 
+  // Validate device info has required fields
+  if (!deviceInfo.contains("id") || !deviceInfo.contains("type")) {
+    spdlog::warn("Attempted to update device {} with missing required fields (id, type)", deviceId);
+    return;
+  }
+
+  // Validate that the ID in the device info matches the provided ID (if present)
+  if (deviceInfo.contains("id") && !deviceInfo["id"].is_string()) {
+    spdlog::warn("Attempted to update device {} with non-string ID field", deviceId);
+    return;
+  }
+
+  if (deviceInfo.contains("id") && deviceInfo["id"].get<std::string>().empty()) {
+    spdlog::warn("Attempted to update device {} with empty ID field", deviceId);
+    return;
+  }
+
+  // Validate type field
+  if (!deviceInfo["type"].is_string() || deviceInfo["type"].get<std::string>().empty()) {
+    spdlog::warn("Attempted to update device {} with invalid type field", deviceId);
+    return;
+  }
+
   std::lock_guard<std::mutex> lock(devicesMutex);
   devices[deviceId] = deviceInfo;
   spdlog::debug("Updated device info for: {}", deviceId);

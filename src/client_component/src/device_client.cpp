@@ -1,6 +1,8 @@
 #include <hydrogen/client/device_client.h>
 #include <hydrogen/core/utils.h>
+#ifdef HYDROGEN_HAS_WEBSOCKETS
 #include <hydrogen/core/unified_websocket_error_handler.h>
+#endif
 #include <atomic>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -292,6 +294,7 @@ void DeviceClient::messageThreadFunction() {
             handleMessage(messageJson);
         } catch (const beast::system_error& se) {
             if (running && connected) {
+#ifdef HYDROGEN_HAS_WEBSOCKETS
                 // Use unified error handling
                 auto errorHandler = hydrogen::core::UnifiedWebSocketErrorRegistry::getInstance().getGlobalHandler();
                 if (errorHandler) {
@@ -310,7 +313,9 @@ void DeviceClient::messageThreadFunction() {
                         std::this_thread::sleep_for(retryDelay);
                         connect(lastHost, lastPort);
                     }
-                } else {
+                } else
+#endif
+                {
                     // Fallback to original behavior
                     connected = false;
                     if (connectionCallback) {
@@ -326,6 +331,7 @@ void DeviceClient::messageThreadFunction() {
             break;
         } catch (const std::exception& e) {
             if (running && connected) {
+#ifdef HYDROGEN_HAS_WEBSOCKETS
                 // Use unified error handling for generic exceptions
                 auto errorHandler = hydrogen::core::UnifiedWebSocketErrorRegistry::getInstance().getGlobalHandler();
                 if (errorHandler) {
@@ -343,7 +349,9 @@ void DeviceClient::messageThreadFunction() {
                         std::this_thread::sleep_for(retryDelay);
                         connect(lastHost, lastPort);
                     }
-                } else {
+                } else
+#endif
+                {
                     // Fallback to original behavior
                     connected = false;
                     if (connectionCallback) {

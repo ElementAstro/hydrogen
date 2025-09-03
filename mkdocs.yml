@@ -1,0 +1,140 @@
+site_name: Hydrogen Documentation
+site_description: Modern astronomical device communication protocol and framework
+site_url: https://hydrogen-project.github.io/hydrogen
+repo_url: https://github.com/ElementAstro/hydrogen
+repo_name: ElementAstro/hydrogen
+edit_uri: edit/master/docs/
+
+# Theme configuration
+theme:
+  name: material
+  language: en
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - search.highlight
+    - search.share
+    - search.suggest
+    - content.code.copy
+    - content.code.select
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+
+# Navigation structure
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Build System: getting-started/build-system.md
+  - User Guide:
+    - Examples Guide: user-guide/examples-guide.md
+    - Migration Guide: user-guide/migration-guide.md
+    - Troubleshooting: user-guide/troubleshooting.md
+  - Architecture:
+    - Unified Architecture: architecture/unified-architecture.md
+    - Device Architecture: architecture/device-architecture.md
+    - Multi-Protocol Communication: architecture/multi-protocol-communication.md
+    - Multi-Protocol Guide: architecture/multi-protocol-guide.md
+  - API Reference:
+    - API Documentation: reference/api-reference.md
+    - Current Communication Protocols: reference/current-communication-protocols.md
+    - Protocol Integration Points: reference/protocol-integration-points.md
+  - Compatibility:
+    - Automatic Compatibility Guide: compatibility/automatic-compatibility-guide.md
+    - ASCOM/INDI Compatibility: compatibility/ascom-indi-compatibility.md
+    - Automatic Compatibility System: compatibility/automatic-compatibility-system.md
+  - Development:
+    - Implementation Summary: development/implementation-summary.md
+    - Client Refactoring Plan: development/client-refactoring-plan.md
+    - Refactoring Summary: development/refactoring-summary.md
+    - Documentation Update Summary: development/documentation-update-summary.md
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+
+# Markdown extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: ElementAstro
+      repo: hydrogen
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/mkdocs.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Extra configuration
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ElementAstro/hydrogen
+      name: GitHub Repository
+  version:
+    provider: mike
+    default: latest
+
+# Copyright
+copyright: Copyright &copy; 2024 ElementAstro - Hydrogen Project

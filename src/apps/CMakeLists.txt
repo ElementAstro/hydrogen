@@ -11,18 +11,18 @@ if(PkgConfig_FOUND)
     pkg_check_modules(FMT QUIET fmt)
 endif()
 
-# Server application (temporarily disabled due to Crow/ASIO compatibility issues)
-# add_executable(astro_server server_main.cpp)
-# target_link_libraries(astro_server PRIVATE Hydrogen::Server Hydrogen::Core ${FMT_LIBRARIES})
-# if(WIN32)
-#     target_link_libraries(astro_server PRIVATE ws2_32)
-# endif()
+# Server application
+add_executable(astro_server simple_server.cpp)
+target_link_libraries(astro_server PRIVATE Hydrogen::Core ${FMT_LIBRARIES})
+if(WIN32)
+    target_link_libraries(astro_server PRIVATE ws2_32)
+endif()
 
-# Set target properties (temporarily disabled)
-# set_target_properties(astro_server PROPERTIES
-#     CXX_STANDARD 17
-#     CXX_STANDARD_REQUIRED ON
-# )
+# Set target properties
+set_target_properties(astro_server PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+)
 
 # Client application
 add_executable(astro_client client_app.cpp)
@@ -116,7 +116,7 @@ set_target_properties(astro_switch PROPERTIES
 
 # Installation rules for applications
 install(TARGETS
-    # astro_server  # Temporarily disabled
+    astro_server
     astro_client
     astro_telescope
     astro_camera

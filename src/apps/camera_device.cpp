@@ -22,11 +22,11 @@ void signalHandler(int sig) {
 
 void printBanner() {
   std::cout << "\n";
-  std::cout << "  ╔══════════════════════════════════════════════════════╗\n";
-  std::cout << "  �?                                                     ║\n";
-  std::cout << "  �?          Camera Device Simulator                    ║\n";
-  std::cout << "  �?                                                     ║\n";
-  std::cout << "  ╚══════════════════════════════════════════════════════╝\n\n";
+  std::cout << "  +======================================================+\n";
+  std::cout << "  |                                                     |\n";
+  std::cout << "  |          Camera Device Simulator                    |\n";
+  std::cout << "  |                                                     |\n";
+  std::cout << "  +======================================================+\n\n";
 }
 
 int main(int argc, char *argv[]) {

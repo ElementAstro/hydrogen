@@ -1,5 +1,7 @@
 #include "client/connection_manager.h"
+#ifdef HYDROGEN_HAS_WEBSOCKETS
 #include <hydrogen/core/unified_websocket_error_handler.h>
+#endif
 #include <boost/asio/connect.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -67,6 +69,7 @@ bool ConnectionManager::connect(const std::string& host, uint16_t port) {
 
     // Connect to server
     auto ep = boost::asio::connect(ws->next_layer(), results);
+    (void)ep; // Suppress unused variable warning
 
     // Set WebSocket handshake options
     std::string host_port = host + ":" + std::to_string(port);
@@ -97,6 +100,7 @@ bool ConnectionManager::connect(const std::string& host, uint16_t port) {
   } catch (const beast::system_error& se) {
     spdlog::error("Connection error: {}", se.what());
 
+#ifdef HYDROGEN_HAS_WEBSOCKETS
     // Use unified error handling
     auto errorHandler = hydrogen::core::UnifiedWebSocketErrorRegistry::getInstance().getGlobalHandler();
     if (errorHandler) {
@@ -104,6 +108,7 @@ bool ConnectionManager::connect(const std::string& host, uint16_t port) {
         se.code(), "ConnectionManager", "connect");
       errorHandler->handleError(error);
     }
+#endif
 
     // Update connection state
     bool wasConnected = connected.load();
@@ -121,6 +126,7 @@ bool ConnectionManager::connect(const std::string& host, uint16_t port) {
   } catch (const std::exception& e) {
     spdlog::error("Connection error: {}", e.what());
 
+#ifdef HYDROGEN_HAS_WEBSOCKETS
     // Use unified error handling for generic exceptions
     auto errorHandler = hydrogen::core::UnifiedWebSocketErrorRegistry::getInstance().getGlobalHandler();
     if (errorHandler) {
@@ -128,6 +134,7 @@ bool ConnectionManager::connect(const std::string& host, uint16_t port) {
         e, "ConnectionManager", "connect");
       errorHandler->handleError(error);
     }
+#endif
 
     // Update connection state
     bool wasConnected = connected.load();

@@ -57,7 +57,7 @@ struct ConfigSourceInfo {
  * Provides centralized configuration management with support for multiple sources,
  * hierarchical configurations, hot reloading, and validation.
  */
-class IConfigManager : public core::IService {
+class IConfigManager : public virtual core::IService {
 public:
     virtual ~IConfigManager() = default;
 
@@ -185,7 +185,7 @@ public:
  * Provides a concrete implementation of the configuration manager interface
  * with support for multiple sources and hierarchical configurations.
  */
-class ConfigManager : public core::BaseService, public IConfigManager {
+class ConfigManager : public core::BaseService, public virtual IConfigManager {
 public:
     explicit ConfigManager(const std::string& name = "ConfigManager");
     virtual ~ConfigManager() = default;

@@ -27,11 +27,11 @@ std::unique_ptr<DeviceClient> client;
 void printBanner() {
   std::cout << Color::BOLD << Color::CYAN;
   std::cout << "\n";
-  std::cout << "  ╔══════════════════════════════════════════════════════╗\n";
-  std::cout << "  ║                                                      ║\n";
-  std::cout << "  ║          Astronomy Device Control Client             ║\n";
-  std::cout << "  ║                                                      ║\n";
-  std::cout << "  ╚══════════════════════════════════════════════════════╝\n\n";
+  std::cout << "  +======================================================+\n";
+  std::cout << "  |                                                      |\n";
+  std::cout << "  |          Astronomy Device Control Client             |\n";
+  std::cout << "  |                                                      |\n";
+  std::cout << "  +======================================================+\n\n";
   std::cout << Color::RESET;
 }
 

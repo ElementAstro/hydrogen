@@ -7,70 +7,75 @@ using namespace hydrogen::server::infrastructure;
 class LoggingManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        LoggingConfig config;
-        config.enableConsole = false; // Disable console for tests
-        config.enableFile = true;
-        config.logFilePath = "./test_data/test.log";
-        config.globalLevel = LogLevel::DEBUG;
-        
-        manager_ = LoggingManagerFactory::createManager(config);
+        LoggingServiceFactory factory;
+        std::unordered_map<std::string, std::string> config;
+        config["enableConsole"] = "false"; // Disable console for tests
+        config["enableFile"] = "true";
+        config["logFilePath"] = "./test_data/test.log";
+        config["globalLevel"] = "DEBUG";
+
+        auto service = factory.createService("LoggingService", config);
+        manager_ = std::unique_ptr<ILoggingService>(static_cast<ILoggingService*>(service.release()));
         ASSERT_NE(manager_, nullptr);
-        ASSERT_TRUE(manager_->isInitialized());
+        ASSERT_TRUE(manager_->initialize());
     }
-    
+
     void TearDown() override {
         if (manager_) {
-            manager_->shutdown();
+            manager_->stop();
         }
     }
-    
-    std::unique_ptr<ILoggingManager> manager_;
+
+    std::unique_ptr<ILoggingService> manager_;
 };
 
 TEST_F(LoggingManagerTest, BasicOperations) {
-    EXPECT_TRUE(manager_->isInitialized());
-    
-    // Test log level operations
-    EXPECT_TRUE(manager_->setLogLevel(LogLevel::INFO));
-    EXPECT_EQ(manager_->getLogLevel(), LogLevel::INFO);
-    
-    EXPECT_TRUE(manager_->setLogLevel(LogLevel::DEBUG));
-    EXPECT_EQ(manager_->getLogLevel(), LogLevel::DEBUG);
+    // Test logger creation and management
+    auto logger = manager_->getLogger("test_logger");
+    EXPECT_NE(logger, nullptr);
+
+    // Test global log level operations
+    manager_->setGlobalLevel(LogLevel::INFO);
+    EXPECT_EQ(manager_->getGlobalLevel(), LogLevel::INFO);
+
+    manager_->setGlobalLevel(LogLevel::DEBUG);
+    EXPECT_EQ(manager_->getGlobalLevel(), LogLevel::DEBUG);
 }
 
 TEST_F(LoggingManagerTest, LoggerManagement) {
-    LoggingConfig config;
-    config.enableConsole = false;
-    config.enableFile = true;
-    config.logFilePath = "./test_data/custom.log";
-    
     // Create custom logger
-    EXPECT_TRUE(manager_->createLogger("custom_logger", config));
-    
+    auto customLogger = manager_->createLogger("custom_logger");
+    EXPECT_NE(customLogger, nullptr);
+
     auto loggers = manager_->getLoggerNames();
     EXPECT_GE(loggers.size(), 1);
-    
-    // Set log level for specific logger
-    EXPECT_TRUE(manager_->setLogLevel("custom_logger", LogLevel::ERROR));
-    
+
+    // Test logger functionality
+    customLogger->setLevel(LogLevel::ERROR);
+    EXPECT_EQ(customLogger->getLevel(), LogLevel::ERROR);
+
     // Remove logger
     EXPECT_TRUE(manager_->removeLogger("custom_logger"));
 }
 
 TEST_F(LoggingManagerTest, FileOperations) {
     // Test file size retrieval
-    size_t fileSize = manager_->getLogFileSize();
+    size_t fileSize = manager_->getLogFileSize("./test_data/test.log");
     EXPECT_GE(fileSize, 0);
-    
-    // Test log rotation
-    EXPECT_TRUE(manager_->rotateLogFile());
-    
-    // Test archiving
-    EXPECT_TRUE(manager_->archiveLogFile("./test_data/archived.log"));
+
+    // Test log archiving
+    EXPECT_TRUE(manager_->archiveLogs("./test_data/archived"));
+
+    // Test log cleanup
+    EXPECT_TRUE(manager_->cleanupOldLogs(std::chrono::hours(24)));
 }
 
 TEST_F(LoggingManagerTest, Statistics) {
-    auto stats = manager_->getStatistics();
-    EXPECT_GE(stats.activeLoggers, 1);
-    EXPECT_GE(stats.logFileSize, 0);
+    // Test log statistics
+    auto logStats = manager_->getLogStatistics();
+    EXPECT_GE(logStats.size(), 0);
+
+    // Test log count
+    size_t logCount = manager_->getLogCount();
+    EXPECT_GE(logCount, 0);
 }

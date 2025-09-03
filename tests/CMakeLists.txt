@@ -63,12 +63,6 @@ endif()
 # Core component tests
 add_subdirectory(core)
 
-# Device component tests (TODO: implement)
-# add_subdirectory(device)
-
-# Server component tests (TODO: implement)
-# add_subdirectory(server)
-
 # Client component tests
 add_subdirectory(client)
 
@@ -82,7 +76,5 @@ add_custom_target(run_all_tests
         core_tests
         client_tests
         integration_tests
-        # device_tests
-        # server_tests
     COMMENT "Running all Hydrogen tests"
 )

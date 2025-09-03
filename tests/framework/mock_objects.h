@@ -7,6 +7,7 @@
 #include <vector>
 #include <functional>
 #include <chrono>
+#include <thread>
 
 namespace hydrogen {
 namespace testing {

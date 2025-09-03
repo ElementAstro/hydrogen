@@ -161,7 +161,10 @@ protected:
      * @return 命令是否被处�?     */
     virtual bool handleDeviceCommand(const std::string& command,
                                    const json& parameters,
-                                   json& result) { return false; }
+                                   json& result) {
+        (void)command; (void)parameters; (void)result;
+        return false;
+    }
 
     /**
      * @brief 更新设备状态（定期调用�?     */

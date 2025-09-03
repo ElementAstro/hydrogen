@@ -1,3 +1,8 @@
+---
+title: Unified Architecture
+description: Deep dive into Hydrogen's unified architecture design and core components
+---
+
 # Hydrogen Unified Architecture
 
 ## Overview
@@ -411,4 +416,4 @@ If you're migrating from legacy components:
    - Review configuration merge order
    - Use configuration builder for complex setups
 
-For more detailed troubleshooting, see the [Troubleshooting Guide](TROUBLESHOOTING.md).
+For more detailed troubleshooting, see the [Troubleshooting Guide](../user-guide/troubleshooting.md).

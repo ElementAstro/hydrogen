@@ -69,6 +69,10 @@ private:
     mutable std::atomic<int> totalSent{0};
     mutable std::atomic<int> totalDelivered{0};
     mutable std::atomic<int> totalFailed{0};
+
+    // Retry parameters
+    int maxRetries_{3};
+    int retryIntervalMs_{100};
 };
 
 } // namespace hydrogen

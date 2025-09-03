@@ -227,7 +227,7 @@ public:
 std::unique_ptr<core::IService> LoggingServiceFactory::createService(
     const std::string& serviceName,
     const std::unordered_map<std::string, std::string>& config) {
-    
+
     if (serviceName == "LoggingService") {
         auto service = std::make_unique<LoggingServiceImpl>();
         service->setConfiguration(config);
@@ -236,6 +236,14 @@ std::unique_ptr<core::IService> LoggingServiceFactory::createService(
         }
     }
     return nullptr;
+}
+
+std::vector<std::string> LoggingServiceFactory::getSupportedServices() const {
+    return {"LoggingService"};
+}
+
+bool LoggingServiceFactory::isServiceSupported(const std::string& serviceName) const {
+    return serviceName == "LoggingService";
 }
 
 } // namespace infrastructure

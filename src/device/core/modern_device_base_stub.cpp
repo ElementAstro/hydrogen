@@ -9,12 +9,12 @@ ModernDeviceBase::ModernDeviceBase(const std::string& deviceId,
                                  const std::string& deviceType,
                                  const std::string& manufacturer,
                                  const std::string& model)
-    : deviceId_(deviceId)
+    : updateRunning_(false)
+    , updateInterval_(1000)
+    , deviceId_(deviceId)
     , deviceType_(deviceType)
     , manufacturer_(manufacturer)
-    , model_(model)
-    , updateRunning_(false)
-    , updateInterval_(1000) {
+    , model_(model) {
     SPDLOG_INFO("ModernDeviceBase created: {} ({})", deviceId_, deviceType_);
 }
 
@@ -73,11 +73,14 @@ bool ModernDeviceBase::isRunning() const {
 }
 
 bool ModernDeviceBase::setConfig(const std::string& name, const json& value) {
+    (void)name;    // Suppress unused parameter warning
+    (void)value;   // Suppress unused parameter warning
     SPDLOG_DEBUG("Config {} set for device {}: {}", name, deviceId_, value.dump());
     return true; // Stub implementation
 }
 
 json ModernDeviceBase::getConfig(const std::string& name) const {
+    (void)name;    // Suppress unused parameter warning
     SPDLOG_DEBUG("Config {} requested for device {}", name, deviceId_);
     return json{}; // Stub implementation
 }
@@ -95,11 +98,14 @@ bool ModernDeviceBase::loadConfig() {
 }
 
 bool ModernDeviceBase::setProperty(const std::string& property, const json& value) {
+    (void)property; // Suppress unused parameter warning
+    (void)value;    // Suppress unused parameter warning
     SPDLOG_DEBUG("Property {} set for device {}: {}", property, deviceId_, value.dump());
     return true; // Stub implementation
 }
 
 json ModernDeviceBase::getProperty(const std::string& property) const {
+    (void)property; // Suppress unused parameter warning
     SPDLOG_DEBUG("Property {} requested for device {}", property, deviceId_);
     return json{}; // Stub implementation
 }
@@ -123,6 +129,7 @@ bool ModernDeviceBase::addBehavior(std::unique_ptr<behaviors::DeviceBehavior> be
 }
 
 bool ModernDeviceBase::handleCommand(const std::string& command, const json& parameters, json& result) {
+    (void)parameters; // Suppress unused parameter warning
     // Basic command handling
     if (command == "getInfo") {
         result = getDeviceInfo();
@@ -131,7 +138,7 @@ bool ModernDeviceBase::handleCommand(const std::string& command, const json& par
         result["capabilities"] = getCapabilities();
         return true;
     }
-    
+
     return false; // Command not handled
 }
 

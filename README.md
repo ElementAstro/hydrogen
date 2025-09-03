@@ -4,45 +4,71 @@
 [![Build Status](https://github.com/hydrogen-project/hydrogen/workflows/CI/badge.svg)](https://github.com/hydrogen-project/hydrogen/actions)
 [![Documentation](https://img.shields.io/badge/docs-hydrogen--project.github.io-blue)](https://hydrogen-project.github.io/hydrogen)
 
-Modern astronomical device communication protocol and framework designed for seamless integration with astronomical equipment including cameras, focusers, filter wheels, telescopes, and more.
+**Modern astronomical device communication protocol and framework** designed for seamless integration with astronomical equipment. Hydrogen provides **automatic ASCOM/INDI compatibility**, **multi-protocol communication**, and a **unified device architecture** for professional astronomical applications.
+
+## 🚀 Key Differentiators
+
+### 🔄 Automatic ASCOM/INDI Compatibility
+
+- **Zero-Code Protocol Support**: Any device automatically becomes ASCOM and INDI compatible
+- **Transparent Protocol Access**: Same device accessible through multiple protocols simultaneously
+- **Real-time Synchronization**: Property changes propagate across all protocols automatically
+- **Professional Integration**: Seamlessly integrate with existing observatory software
+
+### 🌐 Multi-Protocol Communication Architecture
+
+- **Simultaneous Protocols**: WebSocket, gRPC, MQTT, ZeroMQ, HTTP support concurrently
+- **Automatic Protocol Selection**: Intelligent fallback and load balancing
+- **Protocol Converters**: Seamless message format conversion between protocols
+- **Performance Optimization**: Connection pooling and circuit breaker patterns
+
+### 🎯 Unified Device Architecture
+
+- **Single API**: One interface for all device types and communication protocols
+- **Modular Behaviors**: Composable device behaviors (movement, temperature control, etc.)
+- **Component-Based Design**: Reusable components across different device types
+- **Dynamic Configuration**: Runtime device configuration and behavior modification
 
 ## 🌟 Features
 
 ### Core Architecture
 
 - **Modern C++ Design**: Built with C++17/20 standards and modern CMake practices
-- **Cross-Platform**: Supports Windows, macOS, and Linux
-- **Modular Architecture**: Component-based design for maximum flexibility
-- **Multiple Package Managers**: Support for both Conan and vcpkg
-- **Python Bindings**: Full Python API for scripting and automation
+- **Cross-Platform**: Supports Windows, macOS, and Linux with native performance
+- **Modular Architecture**: Component-based design for maximum flexibility and reusability
+- **Multiple Package Managers**: Support for vcpkg, Conan, with FetchContent fallback
+- **Python Bindings**: Complete Python API with automatic compatibility system
 
 ### Unified Client System
 
-- **Unified Device Client**: Single interface for all device types and protocols
-- **Unified Connection Manager**: Centralized connection handling with circuit breakers
-- **Unified Configuration**: Comprehensive configuration management with validation
-- **Unified Error Handling**: Standardized error handling across all components
+- **UnifiedDeviceClient**: Single interface for all device types and protocols
+- **UnifiedConnectionManager**: Centralized connection handling with circuit breakers and failover
+- **Unified Configuration**: Comprehensive configuration management with validation and environment support
+- **Unified Error Handling**: Standardized error handling and recovery across all components
 
-### Protocol Support
+### Advanced Protocol Support
 
-- **Multi-Protocol**: HTTP/WebSocket, gRPC, MQTT, ZeroMQ support
-- **Protocol Converters**: Automatic message format conversion
-- **Error Mapping**: Consistent error handling across protocols
-- **Connection Pooling**: Efficient connection management and reuse
+- **Multi-Protocol Communication**: WebSocket, gRPC, MQTT, ZeroMQ, HTTP, TCP, UDP support
+- **Protocol Bridges**: Automatic ASCOM COM interface and INDI XML property system integration
+- **Message Transformation**: Automatic message format conversion between protocols
+- **Error Mapping**: Consistent error handling and recovery across all protocols
+- **Connection Management**: Advanced connection pooling, load balancing, and failover
 
-### Device Support
+### Comprehensive Device Support
 
-- **Comprehensive Device Support**: Cameras, Telescopes, Focusers, Filter Wheels, Domes, and more
-- **Automatic ASCOM/INDI Compatibility**: Zero-code protocol support
-- **Device Discovery**: Automatic device detection and registration
-- **Real-time Monitoring**: Live device status and performance metrics
+- **Complete Device Coverage**: Cameras, Telescopes, Focusers, Filter Wheels, Domes, Weather Stations, and more
+- **Automatic Protocol Compatibility**: Every device automatically supports ASCOM and INDI protocols
+- **Device Discovery**: Automatic device detection, registration, and health monitoring
+- **Real-time Monitoring**: Live device status, performance metrics, and telemetry
+- **Behavior Composition**: Modular device behaviors for movement, temperature control, and more
 
-### Testing Framework
+### Enterprise-Grade Testing
 
-- **Comprehensive Testing**: Unit, Integration, Performance, and Stress testing
-- **Mock Objects**: Complete mock framework for all components
-- **Performance Benchmarking**: Built-in performance measurement and analysis
-- **Test Data Management**: Automated test data generation and validation
+- **Comprehensive Test Suite**: 200+ tests covering all framework components
+- **Multi-Level Testing**: Unit, Integration, Performance, and End-to-End testing
+- **Mock Framework**: Complete mock objects for all components and protocols
+- **Performance Benchmarking**: Built-in performance measurement and analysis tools
+- **Automated Validation**: Continuous integration with cross-platform testing
 
 ## 🚀 Quick Start
 
@@ -77,9 +103,27 @@ cmake --build --preset conan-default
 
 ## 📖 Documentation
 
+### Core Documentation
+
+- **[API Reference](docs/API_REFERENCE.md)**: Complete C++ and Python API documentation
 - **[Build System Guide](docs/BUILD_SYSTEM.md)**: Comprehensive build system documentation
 - **[Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md)**: Technical implementation details
-- **[API Documentation](https://hydrogen-project.github.io/hydrogen)**: Complete API reference
+
+### Feature Guides
+
+- **[Multi-Protocol Communication](docs/MULTI_PROTOCOL_GUIDE.md)**: Guide to using multiple communication protocols
+- **[Automatic ASCOM/INDI Compatibility](docs/AUTOMATIC_COMPATIBILITY_GUIDE.md)**: Zero-code protocol compatibility system
+- **[Device Architecture](docs/DEVICE_ARCHITECTURE_GUIDE.md)**: Modular device system and behaviors
+- **[Python Bindings](python/README.md)**: Complete Python API with examples
+- **[Examples Guide](docs/EXAMPLES_GUIDE.md)**: Comprehensive guide to all available examples
+- **[Migration Guide](docs/MIGRATION_GUIDE.md)**: Guide for upgrading from older versions
+
+### Advanced Topics
+
+- **[Protocol Integration](docs/protocol_integration_points.md)**: Protocol implementation details
+- **[Unified Architecture](docs/UNIFIED_ARCHITECTURE.md)**: System architecture overview
+- **[Test Coverage](tests/TEST_COVERAGE_SUMMARY.md)**: Comprehensive testing documentation
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)**: Common issues and solutions
 
 ## 🔧 Development
 

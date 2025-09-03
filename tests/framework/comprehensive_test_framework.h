@@ -145,7 +145,7 @@ private:
     std::vector<std::string> tempDirectories_;
     
     std::chrono::high_resolution_clock::time_point timerStart_;
-    std::mutex timerMutex_;
+    mutable std::mutex timerMutex_;
     
     mutable std::mt19937 randomGenerator_;
     

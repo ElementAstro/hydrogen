@@ -431,6 +431,26 @@ std::unique_ptr<IErrorHandler> createErrorHandler() {
     return std::make_unique<ErrorHandlerImpl>();
 }
 
+// ErrorHandlerFactory implementation
+std::unique_ptr<core::IService> ErrorHandlerFactory::createService(
+    const std::string& serviceName,
+    const std::unordered_map<std::string, std::string>& config) {
+    // TODO: Complete ErrorHandlerImpl implementation before enabling instantiation
+    // The ErrorHandlerImpl class may be missing some method implementations
+    if (serviceName == "ErrorHandler") {
+        spdlog::warn("ErrorHandler creation requested but implementation may be incomplete");
+    }
+    return nullptr;
+}
+
+std::vector<std::string> ErrorHandlerFactory::getSupportedServices() const {
+    return {"ErrorHandler"};
+}
+
+bool ErrorHandlerFactory::isServiceSupported(const std::string& serviceName) const {
+    return serviceName == "ErrorHandler";
+}
+
 } // namespace infrastructure
 } // namespace server
 } // namespace hydrogen

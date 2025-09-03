@@ -1,4 +1,9 @@
-# Hydrogen Build System Documentation
+---
+title: Installation & Build System
+description: Complete guide to installing and building Hydrogen with multiple package managers
+---
+
+# Installation & Build System
 
 ## Overview
 

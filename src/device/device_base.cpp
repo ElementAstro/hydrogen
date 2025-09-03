@@ -28,6 +28,7 @@ bool DeviceBase::connect(const std::string &host, uint16_t port) {
 
     // Connect to the server
     auto ep = net::connect(ws->next_layer(), results);
+    (void)ep; // Suppress unused variable warning
 
     // Set up the websocket handshake
     std::string host_port = host + ":" + std::to_string(port);

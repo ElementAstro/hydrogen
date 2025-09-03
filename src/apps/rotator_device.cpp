@@ -1,103 +1,117 @@
-#include "common/logger.h"
-#include "device/rotator.h"
+/**
+ * @file rotator_device.cpp
+ * @brief Stub implementation for rotator device application
+ * 
+ * This is a placeholder application demonstrating the concept of a rotator device.
+ * The actual implementation requires the Rotator class to be fully implemented.
+ */
+
 #include <csignal>
 #include <iostream>
 #include <string>
+#include <memory>
+#include <thread>
+#include <chrono>
 
-using namespace hydrogen;
-using namespace hydrogen::device;
+// Stub implementation for rotator device
+class RotatorDeviceStub {
+public:
+    bool connect(const std::string& host, uint16_t port) {
+        std::cout << "Connecting to " << host << ":" << port << " (stub)" << std::endl;
+        return true;
+    }
+    
+    bool registerDevice() {
+        std::cout << "Registering device (stub)" << std::endl;
+        return true;
+    }
+    
+    bool start() {
+        std::cout << "Starting rotator device (stub)" << std::endl;
+        running_ = true;
+        return true;
+    }
+    
+    void stop() {
+        std::cout << "Stopping rotator device (stub)" << std::endl;
+        running_ = false;
+    }
+    
+    void disconnect() {
+        std::cout << "Disconnecting rotator device (stub)" << std::endl;
+    }
+    
+    bool isRunning() const { return running_; }
+    
+private:
+    bool running_ = false;
+};
 
-// 全局设备实例
-std::unique_ptr<Rotator> rotatorDevice;
+// Global device instance
+std::unique_ptr<RotatorDeviceStub> rotatorDevice;
 
-// 信号处理
-void signalHandler(int sig) {
-  logInfo("Received signal " + std::to_string(sig) + ", shutting down...",
-          "Main");
-  if (rotatorDevice) {
-    rotatorDevice->stop();
-    rotatorDevice->disconnect();
-  }
+void signalHandler(int signal) {
+    std::cout << "Received signal " << signal << ", shutting down gracefully..." << std::endl;
+    if (rotatorDevice) {
+        rotatorDevice->stop();
+        rotatorDevice->disconnect();
+    }
+    exit(0);
 }
 
-void printBanner() {
-  std::cout << "\n";
-  std::cout << "  ╔══════════════════════════════════════════════════════╗\n";
-  std::cout << "  �?                                                     ║\n";
-  std::cout << "  �?          Rotator Device Simulator                   ║\n";
-  std::cout << "  �?                                                     ║\n";
-  std::cout << "  ╚══════════════════════════════════════════════════════╝\n\n";
-}
+int main(int argc, char* argv[]) {
+    // Set up signal handlers
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
 
-int main(int argc, char *argv[]) {
-  // 设置信号处理
-  std::signal(SIGINT, signalHandler);
-  std::signal(SIGTERM, signalHandler);
+    std::cout << "Hydrogen Rotator Device Starting..." << std::endl;
+    std::cout << "This is a stub implementation - full functionality not available." << std::endl;
 
-  // 显示欢迎信息
-  printBanner();
-
-  // 初始化日�?
-  initLogger("rotator.log", LogLevel::INFO);
-
-  // 解析命令行参�?
-  std::string host = "localhost";
-  uint16_t port = 8000;
-  std::string deviceId = "rotator-main";
-
-  if (argc > 1)
-    host = argv[1];
-  if (argc > 2) {
     try {
-      port = static_cast<uint16_t>(std::stoi(argv[2]));
-    } catch (const std::exception &e) {
-      std::cerr << "Invalid port number: " << argv[2] << std::endl;
-      return 1;
+        // Create rotator device instance
+        rotatorDevice = std::make_unique<RotatorDeviceStub>();
+
+        // Connect to server
+        std::string serverHost = "localhost";
+        uint16_t serverPort = 8080;
+        
+        if (argc >= 2) {
+            serverHost = argv[1];
+        }
+        if (argc >= 3) {
+            serverPort = static_cast<uint16_t>(std::stoi(argv[2]));
+        }
+
+        if (!rotatorDevice->connect(serverHost, serverPort)) {
+            std::cerr << "Failed to connect to server " << serverHost << ":" << serverPort << std::endl;
+            return 1;
+        }
+
+        // Register device
+        if (!rotatorDevice->registerDevice()) {
+            std::cerr << "Device registration failed" << std::endl;
+            return 1;
+        }
+
+        // Start device
+        if (!rotatorDevice->start()) {
+            std::cerr << "Device startup failed" << std::endl;
+            return 1;
+        }
+
+        std::cout << "Rotator device started and connected to " << serverHost << ":" << serverPort << std::endl;
+        std::cout << "Press Ctrl+C to stop device..." << std::endl;
+
+        // Keep running
+        while (rotatorDevice && rotatorDevice->isRunning()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
     }
-  }
-  if (argc > 3)
-    deviceId = argv[3];
 
-  std::cout << "Connecting to server at " << host << ":" << port << std::endl;
-  std::cout << "Device ID: " << deviceId << std::endl;
-
-  try {
-    // 创建旋转器设�?
-    rotatorDevice =
-        std::make_unique<Rotator>(deviceId, "Optec", "Pyxis Field Rotator");
-
-    // 连接到服务器
-    if (!rotatorDevice->connect(host, port)) {
-      logCritical("Failed to connect to server", "Main");
-      std::cerr << "Failed to connect to server" << std::endl;
-      return 1;
-    }
-
-    // 注册设备
-    if (!rotatorDevice->registerDevice()) {
-      logCritical("Failed to register device", "Main");
-      std::cerr << "Failed to register device" << std::endl;
-      return 1;
-    }
-
-    // 启动设备
-    if (!rotatorDevice->start()) {
-      logCritical("Failed to start device", "Main");
-      std::cerr << "Failed to start device" << std::endl;
-      return 1;
-    }
-
-    std::cout << "Rotator device started and registered successfully"
-              << std::endl;
-    std::cout << "Press Ctrl+C to exit" << std::endl;
-
-    // 运行消息循环
-    rotatorDevice->run();
-  } catch (const std::exception &e) {
-    logCritical("Error: " + std::string(e.what()), "Main");
-    std::cerr << "Error: " << e.what() << std::endl;
-    return 1;
-  }
-
-  return 0;
+    std::cout << "Rotator device shutdown complete" << std::endl;
+    return 0;
 }

@@ -4,8 +4,10 @@
 #include <thread>
 #include <chrono>
 #include <future>
+#include <nlohmann/json.hpp>
 
-using namespace astrocomm;
+using namespace hydrogen;
+using json = nlohmann::json;
 
 /**
  * Integration tests to verify the refactored DeviceClient maintains

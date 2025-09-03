@@ -95,6 +95,26 @@ std::string ConfigManager::resolveKey(const std::string& key, const std::string&
     return category + "." + key;
 }
 
+// ConfigManagerFactory implementation
+std::unique_ptr<core::IService> ConfigManagerFactory::createService(
+    const std::string& serviceName,
+    const std::unordered_map<std::string, std::string>& config) {
+    // TODO: Complete ConfigManager implementation before enabling instantiation
+    // The ConfigManager class is currently abstract and missing many method implementations
+    if (serviceName == "ConfigManager") {
+        spdlog::warn("ConfigManager creation requested but implementation is incomplete");
+    }
+    return nullptr;
+}
+
+std::vector<std::string> ConfigManagerFactory::getSupportedServices() const {
+    return {"ConfigManager"};
+}
+
+bool ConfigManagerFactory::isServiceSupported(const std::string& serviceName) const {
+    return serviceName == "ConfigManager";
+}
+
 } // namespace infrastructure
 } // namespace server
 } // namespace hydrogen
