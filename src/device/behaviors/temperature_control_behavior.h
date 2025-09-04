@@ -235,7 +235,8 @@ protected:
     std::atomic<double> minTemperature_;
     std::atomic<double> maxTemperature_;
     
-    // 控制状�?    std::atomic<TemperatureControlState> controlState_;
+    // Control state
+    std::atomic<TemperatureControlState> controlState_;
     std::atomic<TemperatureControlMode> controlMode_;
     std::atomic<double> controlPower_;
     

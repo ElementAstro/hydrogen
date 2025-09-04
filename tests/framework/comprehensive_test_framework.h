@@ -323,34 +323,13 @@ private:
     class TestClass : public hydrogen::testing::ComprehensiveTestFixture
 
 #define HYDROGEN_PERFORMANCE_TEST(TestClass, TestName) \
-    TEST_F(TestClass, TestName) { \
-        if (!getConfig().enablePerformanceTesting) { \
-            GTEST_SKIP() << "Performance testing disabled"; \
-        } \
-        startTimer(); \
-        /* Test implementation */ \
-        stopTimer(); \
-        measurePerformance([this]() { /* Test code */ }, #TestName); \
-    }
+    TEST_F(TestClass, TestName)
 
 #define HYDROGEN_INTEGRATION_TEST(TestClass, TestName) \
-    TEST_F(TestClass, TestName) { \
-        if (!getConfig().enableIntegrationTesting) { \
-            GTEST_SKIP() << "Integration testing disabled"; \
-        } \
-        skipIfNetworkUnavailable(); \
-        /* Test implementation */ \
-    }
+    TEST_F(TestClass, TestName)
 
 #define HYDROGEN_STRESS_TEST(TestClass, TestName) \
-    TEST_F(TestClass, TestName) { \
-        if (!getConfig().enableStressTesting) { \
-            GTEST_SKIP() << "Stress testing disabled"; \
-        } \
-        runStressTest([this](int iteration) { \
-            /* Test implementation */ \
-        }, getConfig().stressTestIterations); \
-    }
+    TEST_F(TestClass, TestName)
 
 #define EXPECT_WITHIN_TIMEOUT(condition, timeout) \
     expectWithinTimeout([&]() { return condition; }, timeout)

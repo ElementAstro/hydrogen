@@ -6,6 +6,11 @@
 #include <iomanip>
 #include <sstream>
 
+// Fix Windows header pollution
+#ifdef ERROR
+#undef ERROR
+#endif
+
 namespace hydrogen {
 namespace server {
 namespace services {

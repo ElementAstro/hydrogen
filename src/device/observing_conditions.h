@@ -3,6 +3,7 @@
 #include "core/modern_device_base.h"
 #include "interfaces/device_interface.h"
 #include "core/async_operation.h"
+#include <nlohmann/json.hpp>
 #include <atomic>
 #include <thread>
 #include <mutex>
@@ -10,6 +11,8 @@
 #include <memory>
 #include <unordered_map>
 #include <chrono>
+
+using json = nlohmann::json;
 
 namespace hydrogen {
 namespace device {
@@ -22,7 +25,6 @@ namespace device {
  */
 class ObservingConditions : public core::ModernDeviceBase,
                             public interfaces::IObservingConditions,
-                            public interfaces::IStateful,
                             public core::ASCOMAsyncMixin {
 public:
     /**
@@ -143,12 +145,40 @@ private:
         std::chrono::system_clock::time_point lastUpdate;
         std::vector<std::pair<std::chrono::system_clock::time_point, double>> history;
         bool enabled;
+
         double calibrationOffset;
         double calibrationScale;
         std::string description;
-        
-        SensorData() : currentValue(0.0), averageValue(0.0), enabled(true), 
-                      calibrationOffset(0.0), calibrationScale(1.0) {}
+
+        // Constructor to properly initialize atomic members
+        SensorData() : currentValue(0.0), averageValue(0.0), lastUpdate(std::chrono::system_clock::now()),
+                      enabled(true), calibrationOffset(0.0), calibrationScale(1.0) {}
+
+        // Copy constructor (needed for containers)
+        SensorData(const SensorData& other)
+            : currentValue(other.currentValue.load())
+            , averageValue(other.averageValue.load())
+            , lastUpdate(other.lastUpdate)
+            , history(other.history)
+            , enabled(other.enabled)
+            , calibrationOffset(other.calibrationOffset)
+            , calibrationScale(other.calibrationScale)
+            , description(other.description) {}
+
+        // Assignment operator (needed for containers)
+        SensorData& operator=(const SensorData& other) {
+            if (this != &other) {
+                currentValue.store(other.currentValue.load());
+                averageValue.store(other.averageValue.load());
+                lastUpdate = other.lastUpdate;
+                history = other.history;
+                enabled = other.enabled;
+                calibrationOffset = other.calibrationOffset;
+                calibrationScale = other.calibrationScale;
+                description = other.description;
+            }
+            return *this;
+        }
     };
 
     std::unordered_map<std::string, SensorData> sensors_;
@@ -178,7 +208,7 @@ private:
     // Safety and alerts
     std::atomic<bool> safeToObserve_;
     std::vector<std::string> activeAlerts_;
-    std::mutex alertsMutex_;
+    mutable std::mutex alertsMutex_;
 
     // Capabilities
     std::unordered_map<std::string, bool> sensorCapabilities_;

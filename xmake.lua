@@ -175,6 +175,7 @@ end
 -- Boost libraries
 add_requires("boost", {optional = true, configs = {
     system = true,
+    asio = true,
     algorithm = true,
     smart_ptr = true,
     type_traits = true,

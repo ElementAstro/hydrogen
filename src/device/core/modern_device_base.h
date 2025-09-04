@@ -60,6 +60,21 @@ public:
     json getAllProperties() const override;
     std::vector<std::string> getCapabilities() const override;
 
+    // 实现IDevice接口
+    std::string getName() const override;
+    std::string getDescription() const override;
+    std::string getDriverInfo() const override;
+    std::string getDriverVersion() const override;
+    int getInterfaceVersion() const override;
+    std::vector<std::string> getSupportedActions() const override;
+    bool isConnecting() const override;
+    interfaces::DeviceState getDeviceState() const override;
+    std::string action(const std::string& actionName, const std::string& actionParameters) override;
+    void commandBlind(const std::string& command, bool raw) override;
+    bool commandBool(const std::string& command, bool raw) override;
+    std::string commandString(const std::string& command, bool raw) override;
+    void setupDialog() override;
+
     /**
      * @brief 添加行为组件
      * @param behavior 行为组件

@@ -9,12 +9,12 @@ ModernDeviceBase::ModernDeviceBase(const std::string& deviceId,
                                  const std::string& deviceType,
                                  const std::string& manufacturer,
                                  const std::string& model)
-    : deviceId_(deviceId)
+    : updateRunning_(false)
+    , updateInterval_(1000)
+    , deviceId_(deviceId)
     , deviceType_(deviceType)
     , manufacturer_(manufacturer)
-    , model_(model)
-    , updateRunning_(false)
-    , updateInterval_(1000) {
+    , model_(model) {
     SPDLOG_INFO("ModernDeviceBase created: {} ({})", deviceId_, deviceType_);
 }
 
@@ -72,12 +72,12 @@ bool ModernDeviceBase::isRunning() const {
     return true; // Stub implementation
 }
 
-bool ModernDeviceBase::setConfig(const std::string& name, const json& value) {
+bool ModernDeviceBase::setConfig([[maybe_unused]] const std::string& name, [[maybe_unused]] const json& value) {
     SPDLOG_DEBUG("Config {} set for device {}: {}", name, deviceId_, value.dump());
     return true; // Stub implementation
 }
 
-json ModernDeviceBase::getConfig(const std::string& name) const {
+json ModernDeviceBase::getConfig([[maybe_unused]] const std::string& name) const {
     SPDLOG_DEBUG("Config {} requested for device {}", name, deviceId_);
     return json{}; // Stub implementation
 }
@@ -94,12 +94,12 @@ bool ModernDeviceBase::loadConfig() {
     return true; // Stub implementation
 }
 
-bool ModernDeviceBase::setProperty(const std::string& property, const json& value) {
+bool ModernDeviceBase::setProperty([[maybe_unused]] const std::string& property, [[maybe_unused]] const json& value) {
     SPDLOG_DEBUG("Property {} set for device {}: {}", property, deviceId_, value.dump());
     return true; // Stub implementation
 }
 
-json ModernDeviceBase::getProperty(const std::string& property) const {
+json ModernDeviceBase::getProperty([[maybe_unused]] const std::string& property) const {
     SPDLOG_DEBUG("Property {} requested for device {}", property, deviceId_);
     return json{}; // Stub implementation
 }
@@ -122,7 +122,7 @@ bool ModernDeviceBase::addBehavior(std::unique_ptr<behaviors::DeviceBehavior> be
     return true; // Stub implementation - just accept and ignore
 }
 
-bool ModernDeviceBase::handleCommand(const std::string& command, const json& parameters, json& result) {
+bool ModernDeviceBase::handleCommand(const std::string& command, [[maybe_unused]] const json& parameters, json& result) {
     // Basic command handling
     if (command == "getInfo") {
         result = getDeviceInfo();
@@ -138,6 +138,74 @@ bool ModernDeviceBase::handleCommand(const std::string& command, const json& par
 bool ModernDeviceBase::registerDevice() {
     SPDLOG_INFO("Device {} registered", deviceId_);
     return true; // Stub implementation
+}
+
+// ============================================================================
+// IDevice Interface Implementation
+// ============================================================================
+
+std::string ModernDeviceBase::getName() const {
+    return deviceId_;
+}
+
+std::string ModernDeviceBase::getDescription() const {
+    return deviceType_ + " device manufactured by " + manufacturer_;
+}
+
+std::string ModernDeviceBase::getDriverInfo() const {
+    return "Hydrogen Modern Device Driver v1.0";
+}
+
+std::string ModernDeviceBase::getDriverVersion() const {
+    return "1.0.0";
+}
+
+int ModernDeviceBase::getInterfaceVersion() const {
+    return 3; // ASCOM interface version 3
+}
+
+std::vector<std::string> ModernDeviceBase::getSupportedActions() const {
+    return {"connect", "disconnect", "getProperty", "setProperty"};
+}
+
+bool ModernDeviceBase::isConnecting() const {
+    return false; // Stub implementation
+}
+
+interfaces::DeviceState ModernDeviceBase::getDeviceState() const {
+    return interfaces::DeviceState::IDLE; // Default state
+}
+
+std::string ModernDeviceBase::action(const std::string& actionName, const std::string& actionParameters) {
+    // Basic action implementation
+    (void)actionName;      // Suppress unused parameter warning
+    (void)actionParameters; // Suppress unused parameter warning
+    return "{}"; // Return empty JSON
+}
+
+void ModernDeviceBase::commandBlind(const std::string& command, bool raw) {
+    // Blind command implementation (no response expected)
+    (void)command; // Suppress unused parameter warning
+    (void)raw;     // Suppress unused parameter warning
+}
+
+bool ModernDeviceBase::commandBool(const std::string& command, bool raw) {
+    // Boolean command implementation
+    (void)command; // Suppress unused parameter warning
+    (void)raw;     // Suppress unused parameter warning
+    return true;   // Default success
+}
+
+std::string ModernDeviceBase::commandString(const std::string& command, bool raw) {
+    // String command implementation
+    (void)command; // Suppress unused parameter warning
+    (void)raw;     // Suppress unused parameter warning
+    return "";     // Default empty response
+}
+
+void ModernDeviceBase::setupDialog() {
+    // Setup dialog implementation (stub)
+    SPDLOG_INFO("Setup dialog for device {}", deviceId_);
 }
 
 } // namespace core

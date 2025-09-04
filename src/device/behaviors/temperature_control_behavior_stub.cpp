@@ -10,13 +10,14 @@ TemperatureControlBehavior::TemperatureControlBehavior(const std::string& /*devi
     , currentTemperature_(20.0)
     , targetTemperature_(20.0)
     , ambientTemperature_(20.0)
-    , controlMode_(TemperatureControlMode::MANUAL)
     , minTemperature_(-50.0)
     , maxTemperature_(50.0)
+    , controlState_(TemperatureControlState::IDLE)
+    , controlMode_(TemperatureControlMode::MANUAL)
+    , controlPower_(0.0)
     , pidKp_(1.0)
     , pidKi_(0.1)
-    , pidKd_(0.01)
-    , controlPower_(0.0) {
+    , pidKd_(0.01) {
     SPDLOG_DEBUG("TemperatureControlBehavior created for device {}", deviceId_);
 }
 

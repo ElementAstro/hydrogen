@@ -127,7 +127,7 @@ void Camera::initializeCameraBehaviors() {
 }
 
 // ICamera interface implementation
-void Camera::startExposure(double duration, bool light) {
+void Camera::startExposure(double duration, [[maybe_unused]] bool light) {
     if (exposureInProgress_) {
         SPDLOG_WARN("Camera {} exposure already in progress", getDeviceId());
         return;

@@ -6,6 +6,7 @@
 #include <sstream>
 #include <regex>
 #include <optional>
+#include <deque>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 

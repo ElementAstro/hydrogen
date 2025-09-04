@@ -9,9 +9,9 @@ namespace device {
 
 Guider::Guider(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
     : ModernDeviceBase(deviceId, "GUIDER", manufacturer, model)
+    , isGuiding_(false)
     , guiderState_(static_cast<int>(GuiderState::DISCONNECTED))
     , calibrationState_(static_cast<int>(CalibrationState::IDLE))
-    , isGuiding_(false)
     , isCalibrated_(false)
     , isDithering_(false)
     , rmsError_(0.0)
@@ -175,7 +175,7 @@ bool Guider::executeStopGuide() {
     return true;
 }
 
-bool Guider::performCalibration(int steps, int duration) {
+bool Guider::performCalibration([[maybe_unused]] int steps, [[maybe_unused]] int duration) {
     SPDLOG_DEBUG("Guider {} executing calibration with {} steps, {} ms duration", getDeviceId(), steps, duration);
     
     // Simulate calibration process
@@ -371,7 +371,7 @@ bool Guider::guide(GuideDirection direction, int duration) {
     return executeGuide(direction, duration);
 }
 
-bool Guider::guideAsync(GuideDirection direction, int duration, const std::string& sessionId) {
+bool Guider::guideAsync(GuideDirection direction, int duration, [[maybe_unused]] const std::string& sessionId) {
     if (!isConnected()) {
         return false;
     }
@@ -565,7 +565,7 @@ void Guider::getBacklashCompensation(int& raPulse, int& decPulse, int& raSteps, 
     decSteps = 0;
 }
 
-bool Guider::executeGuide(GuideDirection direction, int duration) {
+bool Guider::executeGuide([[maybe_unused]] GuideDirection direction, int duration) {
     if (!isConnected() || !guideOutputEnabled_) {
         return false;
     }

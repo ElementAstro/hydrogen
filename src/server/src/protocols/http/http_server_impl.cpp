@@ -5,6 +5,14 @@
 #include <iomanip>
 #include <sstream>
 
+// Fix Windows header pollution
+#ifdef ERROR
+#undef ERROR
+#endif
+#ifdef CONST
+#undef CONST
+#endif
+
 namespace hydrogen {
 namespace server {
 namespace protocols {

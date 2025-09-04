@@ -3,11 +3,14 @@
 #include "core/modern_device_base.h"
 #include "interfaces/device_interface.h"
 #include "core/async_operation.h"
+#include <nlohmann/json.hpp>
 #include <atomic>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <memory>
+
+using json = nlohmann::json;
 
 namespace hydrogen {
 namespace device {

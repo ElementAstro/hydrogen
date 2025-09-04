@@ -60,8 +60,8 @@ struct TelescopeCoordinates {
 };
 
 /**
- * @brief 望远镜设备实�? *
- * 基于新架构的望远镜实现，提供完整的望远镜控制功能�? * 支持多种制造商的望远镜设备，提供统一的控制接口�? */
+ * @brief 望远镜设备实�? *
+ * 基于新架构的望远镜实现，提供完整的望远镜控制功能�? * 支持多种制造商的望远镜设备，提供统一的控制接口�? */
 class Telescope : public core::ModernDeviceBase, 
                   public interfaces::ITelescope {
 public:
@@ -93,7 +93,7 @@ public:
   }
 
   /**
-   * @brief 获取支持的型号列�?   */
+   * @brief 获取支持的型号列�?   */
   static std::vector<std::string> getSupportedModels(const std::string& manufacturer) {
     if (manufacturer == "Celestron") return {"NexStar Evolution", "CGX", "CGX-L", "AVX"};
     if (manufacturer == "Meade") return {"LX200", "LX600", "LX850", "ETX"};
@@ -103,16 +103,114 @@ public:
     return {"Generic Telescope"};
   }
 
-  // 实现ITelescope接口
-  bool slewToCoordinates(double ra, double dec) override;
-  bool syncToCoordinates(double ra, double dec) override;
-  bool stopSlewing() override;
-  bool isSlewing() const override;
+  // Implement ITelescope interface - Coordinate properties
+  double getRightAscension() const override;
+  double getDeclination() const override;
+  double getAltitude() const override;
+  double getAzimuth() const override;
+  double getTargetRightAscension() const override;
+  void setTargetRightAscension(double value) override;
+  double getTargetDeclination() const override;
+  void setTargetDeclination(double value) override;
+
+  // Slewing methods
+  void slewToCoordinates(double ra, double dec) override;
+  void slewToCoordinatesAsync(double ra, double dec) override;
+  void slewToTarget() override;
+  void slewToTargetAsync() override;
+  void slewToAltAz(double altitude, double azimuth) override;
+  void slewToAltAzAsync(double altitude, double azimuth) override;
+  void abortSlew() override;
+  bool getSlewing() const override;
+
+  // Synchronization
+  void syncToCoordinates(double ra, double dec) override;
+  void syncToTarget() override;
+  void syncToAltAz(double altitude, double azimuth) override;
+
+  // Capabilities
+  bool getCanSlew() const override;
+  bool getCanSlewAsync() const override;
+  bool getCanSlewAltAz() const override;
+  bool getCanSlewAltAzAsync() const override;
+  bool getCanSync() const override;
+  bool getCanSyncAltAz() const override;
+  bool getCanPark() const override;
+  bool getCanUnpark() const override;
+  bool getCanFindHome() const override;
+  bool getCanSetPark() const override;
+  bool getCanSetTracking() const override;
+  bool getCanSetGuideRates() const override;
+  bool getCanSetRightAscensionRate() const override;
+  bool getCanSetDeclinationRate() const override;
+  bool getCanSetPierSide() const override;
+  bool getCanPulseGuide() const override;
+
+  // Tracking
+  bool getTracking() const override;
+  void setTracking(bool value) override;
+  interfaces::DriveRate getTrackingRate() const override;
+  void setTrackingRate(interfaces::DriveRate value) override;
+  std::vector<interfaces::DriveRate> getTrackingRates() const override;
+  double getRightAscensionRate() const override;
+  void setRightAscensionRate(double value) override;
+  double getDeclinationRate() const override;
+  void setDeclinationRate(double value) override;
+
+  // Parking and homing
+  void park() override;
+  void unpark() override;
+  bool getAtPark() const override;
+  void setPark() override;
+  void findHome() override;
+  bool getAtHome() const override;
+
+  // Guide rates and pulse guiding
+  double getGuideRateRightAscension() const override;
+  void setGuideRateRightAscension(double value) override;
+  double getGuideRateDeclination() const override;
+  void setGuideRateDeclination(double value) override;
+  void pulseGuide(interfaces::GuideDirection direction, int duration) override;
+  bool getIsPulseGuiding() const override;
+
+  // Site information
+  double getSiteLatitude() const override;
+  void setSiteLatitude(double value) override;
+  double getSiteLongitude() const override;
+  void setSiteLongitude(double value) override;
+  double getSiteElevation() const override;
+  void setSiteElevation(double value) override;
+  double getSiderealTime() const override;
+  std::chrono::system_clock::time_point getUTCDate() const override;
+  void setUTCDate(const std::chrono::system_clock::time_point& value) override;
+
+  // Pier side and alignment
+  interfaces::PierSide getSideOfPier() const override;
+  void setSideOfPier(interfaces::PierSide value) override;
+  interfaces::PierSide getDestinationSideOfPier(double ra, double dec) const override;
+  interfaces::AlignmentMode getAlignmentMode() const override;
+  int getEquatorialSystem() const override;
+  double getFocalLength() const override;
+  double getApertureArea() const override;
+  double getApertureDiameter() const override;
+  bool getDoesRefraction() const override;
+  void setDoesRefraction(bool value) override;
+
+  // Axis control
+  bool canMoveAxis(int axis) const override;
+  std::vector<interfaces::Rate> axisRates(int axis) const override;
+  void moveAxis(int axis, double rate) override;
+
+  // Slew settle time
+  double getSlewSettleTime() const override;
+  void setSlewSettleTime(double value) override;
+
+  // Additional convenience methods
   void getCurrentCoordinates(double& ra, double& dec) const override;
+  bool slewToCoordinatesSync(double ra, double dec) override;
+  bool syncToCoordinatesSync(double ra, double dec) override;
+  bool stopSlewingSync() override;
   bool setTrackingMode(bool enabled) override;
-  bool isTracking() const override;
-  bool park() override;
-  bool isParked() const override;
 
   // ==== 扩展功能接口（向后兼容） ====
 
@@ -121,10 +219,7 @@ public:
    */
   virtual void gotoPosition(double ra, double dec);
 
-  /**
-   * @brief Set tracking (向后兼容)
-   */
-  virtual void setTracking(bool enabled);
+  // setTracking is already declared above in ITelescope interface
 
   /**
    * @brief Set slew rate (向后兼容)
@@ -136,7 +231,7 @@ public:
    */
   virtual void abort();
 
-  // ==== 新架构扩展功�?====
+  // ==== 新架构扩展功�?====
 
   /**
    * @brief Set mount type
@@ -238,10 +333,7 @@ public:
    */
   virtual bool home();
 
-  /**
-   * @brief Unpark telescope
-   */
-  virtual bool unpark();
+  // unpark is already declared above in ITelescope interface
 
   /**
    * @brief Get pier side
@@ -293,7 +385,8 @@ private:
   void slewThreadFunction();
 
 private:
-  // 望远镜参�?  MountType mountType_;
+  // 望远镜参数
+  MountType mountType_;
   TrackingMode trackingMode_;
   SlewSpeed slewSpeed_;
   
@@ -308,7 +401,8 @@ private:
   std::atomic<double> siteLongitude_;
   std::atomic<double> siteElevation_;
   
-  // 状态信�?  std::atomic<bool> isSlewing_;
+  // 状态信息
+  std::atomic<bool> isSlewing_;
   std::atomic<bool> isTracking_;
   std::atomic<bool> isParked_;
   std::atomic<bool> isAligned_;
@@ -331,7 +425,7 @@ private:
 };
 
 /**
- * @brief 望远镜工�? */
+ * @brief 望远镜工�? */
 class TelescopeFactory : public core::TypedDeviceFactory<Telescope> {
 public:
   TelescopeFactory(const std::string& manufacturer = "Generic", 

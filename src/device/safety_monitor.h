@@ -3,6 +3,7 @@
 #include "core/modern_device_base.h"
 #include "interfaces/device_interface.h"
 #include "core/async_operation.h"
+#include <nlohmann/json.hpp>
 #include <atomic>
 #include <thread>
 #include <mutex>
@@ -11,6 +12,8 @@
 #include <vector>
 #include <functional>
 #include <chrono>
+
+using json = nlohmann::json;
 
 namespace hydrogen {
 namespace device {
@@ -23,7 +26,6 @@ namespace device {
  */
 class SafetyMonitor : public core::ModernDeviceBase,
                       public interfaces::ISafetyMonitor,
-                      public interfaces::IStateful,
                       public core::ASCOMAsyncMixin {
 public:
     /**
@@ -170,21 +172,21 @@ private:
 
     // Safety conditions
     std::vector<std::unique_ptr<SafetyCondition>> safetyConditions_;
-    std::mutex conditionsMutex_;
+    mutable std::mutex conditionsMutex_;
     
     // Callbacks
     SafetyCallback safetyCallback_;
     EmergencyCallback emergencyCallback_;
-    std::mutex callbackMutex_;
-    
+    mutable std::mutex callbackMutex_;
+
     // Emergency shutdown devices
     std::vector<std::string> emergencyDevices_;
-    std::mutex emergencyDevicesMutex_;
+    mutable std::mutex emergencyDevicesMutex_;
     
     // Alerts and logging
     std::vector<std::string> activeAlerts_;
     std::vector<std::string> unsafeConditions_;
-    std::mutex alertsMutex_;
+    mutable std::mutex alertsMutex_;
     
     // Threading
     std::thread monitorThread_;
@@ -196,9 +198,9 @@ private:
     std::condition_variable monitorCV_;
     std::condition_variable emergencyCV_;
     std::condition_variable alertCV_;
-    std::mutex monitorMutex_;
-    std::mutex emergencyMutex_;
-    std::mutex alertMutex_;
+    mutable std::mutex monitorMutex_;
+    mutable std::mutex emergencyMutex_;
+    mutable std::mutex alertMutex_;
 
     // Emergency state management
     std::atomic<bool> emergencyTriggered_;

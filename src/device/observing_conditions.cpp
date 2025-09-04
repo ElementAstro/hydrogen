@@ -23,19 +23,19 @@ ObservingConditions::ObservingConditions(const std::string& deviceId, const std:
     , safeToObserve_(true) {
     
     // Initialize sensor data
-    sensors_["CloudCover"] = SensorData();
-    sensors_["DewPoint"] = SensorData();
-    sensors_["Humidity"] = SensorData();
-    sensors_["Pressure"] = SensorData();
-    sensors_["RainRate"] = SensorData();
-    sensors_["SkyBrightness"] = SensorData();
-    sensors_["SkyQuality"] = SensorData();
-    sensors_["SkyTemperature"] = SensorData();
-    sensors_["StarFWHM"] = SensorData();
-    sensors_["Temperature"] = SensorData();
-    sensors_["WindDirection"] = SensorData();
-    sensors_["WindGust"] = SensorData();
-    sensors_["WindSpeed"] = SensorData();
+    sensors_.emplace("CloudCover", SensorData());
+    sensors_.emplace("DewPoint", SensorData());
+    sensors_.emplace("Humidity", SensorData());
+    sensors_.emplace("Pressure", SensorData());
+    sensors_.emplace("RainRate", SensorData());
+    sensors_.emplace("SkyBrightness", SensorData());
+    sensors_.emplace("SkyQuality", SensorData());
+    sensors_.emplace("SkyTemperature", SensorData());
+    sensors_.emplace("StarFWHM", SensorData());
+    sensors_.emplace("Temperature", SensorData());
+    sensors_.emplace("WindDirection", SensorData());
+    sensors_.emplace("WindGust", SensorData());
+    sensors_.emplace("WindSpeed", SensorData());
     
     initializeSensorDescriptions();
     initializeManufacturerSpecific();

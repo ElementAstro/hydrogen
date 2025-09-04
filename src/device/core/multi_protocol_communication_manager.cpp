@@ -3,6 +3,18 @@
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <thread>
+#include <memory>
+#include <string>
+#include <mutex>
+#include <chrono>
+
+// Fix Windows header pollution
+#ifdef ERROR
+#undef ERROR
+#endif
+#ifdef CONST
+#undef CONST
+#endif
 
 namespace hydrogen {
 namespace device {

@@ -428,7 +428,7 @@ bool Focuser::handleDeviceCommand(const ::std::string& command, const json& para
     }
     else if (command == "MOVE_RELATIVE") {
         int steps = parameters.value("steps", 0);
-        bool sync = parameters.value("synchronous", false);
+        [[maybe_unused]] bool sync = parameters.value("synchronous", false);
         result["success"] = moveRelative(steps);
         return true;
     }
@@ -656,19 +656,19 @@ bool Focuser::setSpeed(int speed) {
     return true;
 }
 
-bool Focuser::setStepMode(StepMode mode) {
+bool Focuser::setStepMode([[maybe_unused]] StepMode mode) {
     // Step mode implementation
     SPDLOG_DEBUG("Focuser {} step mode set to {}", getDeviceId(), static_cast<int>(mode));
     return true;
 }
 
-bool Focuser::saveFocusPoint(const std::string& name, const std::string& description) {
+bool Focuser::saveFocusPoint([[maybe_unused]] const std::string& name, [[maybe_unused]] const std::string& description) {
     // Save focus point implementation
     SPDLOG_DEBUG("Focuser {} saved focus point '{}': {}", getDeviceId(), name, description);
     return true;
 }
 
-bool Focuser::moveToSavedPoint(const std::string& name, bool synchronous) {
+bool Focuser::moveToSavedPoint([[maybe_unused]] const std::string& name, bool synchronous) {
     // Move to saved point implementation
     SPDLOG_DEBUG("Focuser {} moving to saved point '{}'", getDeviceId(), name);
     return moveAbsolute(5000, synchronous); // Default position
@@ -679,7 +679,7 @@ json Focuser::getSavedFocusPoints() const {
     return json::array(); // Empty array for stub implementation
 }
 
-bool Focuser::startAutoFocus(int startPosition, int endPosition, int stepSize, bool useTemperatureCompensation) {
+bool Focuser::startAutoFocus([[maybe_unused]] int startPosition, [[maybe_unused]] int endPosition, [[maybe_unused]] int stepSize, bool useTemperatureCompensation) {
     // Auto focus implementation
     SPDLOG_DEBUG("Focuser {} starting auto focus from {} to {} with step size {}",
                  getDeviceId(), startPosition, endPosition, stepSize);
@@ -692,13 +692,13 @@ json Focuser::getFocusCurveData() const {
     return json::array(); // Empty array for stub implementation
 }
 
-bool Focuser::saveConfiguration(const std::string& filename) const {
+bool Focuser::saveConfiguration([[maybe_unused]] const std::string& filename) const {
     // Save configuration implementation
     SPDLOG_DEBUG("Focuser {} saving configuration to '{}'", getDeviceId(), filename);
     return true;
 }
 
-bool Focuser::loadConfiguration(const std::string& filename) {
+bool Focuser::loadConfiguration([[maybe_unused]] const std::string& filename) {
     // Load configuration implementation
     SPDLOG_DEBUG("Focuser {} loading configuration from '{}'", getDeviceId(), filename);
     return true;
@@ -709,7 +709,7 @@ void Focuser::updateLoop() {
     updateDevice();
 }
 
-void Focuser::sendMoveCompletedEvent(const std::string& eventData) {
+void Focuser::sendMoveCompletedEvent([[maybe_unused]] const std::string& eventData) {
     // Send move completed event
     SPDLOG_DEBUG("Focuser {} move completed: {}", getDeviceId(), eventData);
 }

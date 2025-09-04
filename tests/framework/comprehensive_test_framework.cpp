@@ -292,10 +292,10 @@ json ComprehensiveTestFixture::generateTestData(const std::string& schema) {
 
 std::vector<uint8_t> ComprehensiveTestFixture::generateRandomData(size_t size) {
     std::vector<uint8_t> data(size);
-    std::uniform_int_distribution<uint8_t> dist(0, 255);
-    
+    std::uniform_int_distribution<int> dist(0, 255);
+
     for (auto& byte : data) {
-        byte = dist(randomGenerator_);
+        byte = static_cast<uint8_t>(dist(randomGenerator_));
     }
     
     return data;

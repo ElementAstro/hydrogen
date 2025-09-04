@@ -12,9 +12,9 @@ target("test_utils")
     set_kind("static")
     set_languages("cxx17")
     
-    add_files("tests/utils/simple_helpers.cpp")
-    
-    add_includedirs("tests/utils", "src")
+    add_files("../tests/utils/simple_helpers.cpp")
+
+    add_includedirs("../tests/utils", "../src")
     add_packages("gtest")
 target_end()
 
@@ -22,10 +22,10 @@ target("hydrogen_test_framework")
     set_kind("static")
     set_languages("cxx17")
     
-    add_files("tests/framework/comprehensive_test_framework.cpp")
-    add_files("tests/framework/mock_objects.cpp")
-    
-    add_includedirs("tests/framework", "src", "src/core/include", "src/client_component/include")
+    add_files("../tests/framework/comprehensive_test_framework.cpp")
+    add_files("../tests/framework/mock_objects.cpp")
+
+    add_includedirs("../tests/framework", "../src", "../src/core/include", "../src/client_component/include")
     add_packages("gtest", "nlohmann_json")
     add_deps("hydrogen_core", "test_utils")
     
@@ -43,11 +43,15 @@ target("core_tests")
     set_kind("binary")
     set_languages("cxx17")
     
-    add_files("tests/core/**.cpp")
-    
-    add_includedirs("src", "tests/framework")
-    add_packages("gtest")
+    add_files("../tests/core/**.cpp")
+
+    add_includedirs("../src", "../tests/framework")
+    add_packages("gtest", "nlohmann_json", "boost", "fmt")
     add_deps("hydrogen_core", "hydrogen_test_framework")
+
+    if has_config("logging") then
+        add_packages("spdlog")
+    end
     
     -- Register as test
     add_tests("core_tests")
@@ -57,11 +61,15 @@ target("client_tests")
     set_kind("binary")
     set_languages("cxx17")
     
-    add_files("tests/client/**.cpp")
-    
-    add_includedirs("src", "tests/framework")
-    add_packages("gtest")
+    add_files("../tests/client/**.cpp")
+
+    add_includedirs("../src", "../tests/framework")
+    add_packages("gtest", "boost", "nlohmann_json", "fmt")
     add_deps("hydrogen_client", "hydrogen_test_framework")
+
+    if has_config("logging") then
+        add_packages("spdlog")
+    end
     
     -- Register as test
     add_tests("client_tests")
@@ -71,9 +79,9 @@ target("server_tests")
     set_kind("binary")
     set_languages("cxx17")
     
-    add_files("tests/server/**.cpp")
-    
-    add_includedirs("src", "tests/framework")
+    add_files("../tests/server/**.cpp")
+
+    add_includedirs("../src", "../tests/framework")
     add_packages("gtest")
     add_deps("hydrogen_server", "hydrogen_test_framework")
     
@@ -85,11 +93,15 @@ target("device_tests")
     set_kind("binary")
     set_languages("cxx17")
     
-    add_files("tests/device/**.cpp")
-    
-    add_includedirs("src", "tests/framework")
-    add_packages("gtest")
+    add_files("../tests/device/**.cpp")
+
+    add_includedirs("../src", "../tests/framework")
+    add_packages("gtest", "nlohmann_json", "boost", "fmt")
     add_deps("hydrogen_device", "hydrogen_test_framework")
+
+    if has_config("logging") then
+        add_packages("spdlog")
+    end
     
     -- Register as test
     add_tests("device_tests")
@@ -103,9 +115,9 @@ target("integration_tests")
     set_kind("binary")
     set_languages("cxx17")
     
-    add_files("tests/integration/**.cpp")
-    
-    add_includedirs("src", "tests/framework")
+    add_files("../tests/integration/**.cpp")
+
+    add_includedirs("../src", "../tests/framework")
     add_packages("gtest")
     add_deps("hydrogen", "hydrogen_test_framework")
     
@@ -117,11 +129,15 @@ target("comprehensive_tests")
     set_kind("binary")
     set_languages("cxx17")
     
-    add_files("tests/comprehensive/**.cpp")
-    
-    add_includedirs("src", "tests/framework")
-    add_packages("gtest")
+    add_files("../tests/comprehensive/**.cpp")
+
+    add_includedirs("../src", "../tests/framework")
+    add_packages("gtest", "nlohmann_json", "boost", "fmt")
     add_deps("hydrogen", "hydrogen_test_framework")
+
+    if has_config("logging") then
+        add_packages("spdlog")
+    end
     
     -- Register as test
     add_tests("comprehensive_tests")
@@ -135,11 +151,15 @@ target("performance_tests")
     set_kind("binary")
     set_languages("cxx17")
     
-    add_files("tests/performance/**.cpp")
-    
-    add_includedirs("src", "tests/framework")
-    add_packages("gtest")
+    add_files("../tests/performance/**.cpp")
+
+    add_includedirs("../src", "../tests/framework")
+    add_packages("gtest", "nlohmann_json", "boost", "fmt")
     add_deps("hydrogen", "hydrogen_test_framework")
+
+    if has_config("logging") then
+        add_packages("spdlog")
+    end
     
     -- Register as test
     add_tests("performance_tests")
@@ -149,9 +169,9 @@ target("protocol_tests")
     set_kind("binary")
     set_languages("cxx17")
     
-    add_files("tests/protocols/**.cpp")
-    
-    add_includedirs("src", "tests/framework")
+    add_files("../tests/protocols/**.cpp")
+
+    add_includedirs("../src", "../tests/framework")
     add_packages("gtest")
     add_deps("hydrogen", "hydrogen_test_framework")
     

@@ -15,13 +15,20 @@ add_library(hydrogen_device STATIC
     src/websocket_device.cpp
     src/telescope.cpp
     ${CMAKE_SOURCE_DIR}/src/device/device_base.cpp
-    # Temporarily exclude problematic core files
-    # ${CMAKE_SOURCE_DIR}/src/device/core/modern_device_base.cpp
-    # ${CMAKE_SOURCE_DIR}/src/device/core/device_manager.cpp
-    # Use stub implementations for core infrastructure
-    ${CMAKE_SOURCE_DIR}/src/device/core/modern_device_base_stub.cpp
+    # Include working core files (based on successful XMake build)
+    ${CMAKE_SOURCE_DIR}/src/device/core/modern_device_base.cpp
+    ${CMAKE_SOURCE_DIR}/src/device/core/multi_protocol_communication_manager.cpp
+    # Include behavior stub implementations (to avoid compilation issues)
     ${CMAKE_SOURCE_DIR}/src/device/behaviors/device_behavior_stub.cpp
     ${CMAKE_SOURCE_DIR}/src/device/behaviors/temperature_control_behavior_stub.cpp
+    ${CMAKE_SOURCE_DIR}/src/device/behaviors/movable_behavior_stub.cpp
+    # Exclude problematic files that have compilation issues
+    # ${CMAKE_SOURCE_DIR}/src/device/core/device_manager.cpp
+    # ${CMAKE_SOURCE_DIR}/src/device/core/communication_manager.cpp
+    # ${CMAKE_SOURCE_DIR}/src/device/core/config_manager.cpp
+    # ${CMAKE_SOURCE_DIR}/src/device/core/state_manager.cpp
+    # ${CMAKE_SOURCE_DIR}/src/device/core/async_operation.cpp
+    # ${CMAKE_SOURCE_DIR}/src/device/core/enhanced_device_base.cpp
     ${CMAKE_SOURCE_DIR}/src/common/message.cpp
     ${CMAKE_SOURCE_DIR}/src/common/utils.cpp
     ${CMAKE_SOURCE_DIR}/src/device/camera.cpp
