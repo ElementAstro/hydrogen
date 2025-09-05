@@ -21,6 +21,8 @@ enum class MessageFormat {
     MQTT,              // MQTT message format
     ZEROMQ,            // ZeroMQ message format
     HTTP_JSON,         // HTTP/WebSocket JSON format
+    STDIO,             // Standard input/output format
+    FIFO,              // Named pipe/FIFO format
     COMMUNICATION_SERVICE  // Server communication service format
 };
 
@@ -144,6 +146,26 @@ public:
  * @brief Communication Service transformer implementation
  */
 class CommunicationServiceTransformer : public ProtocolTransformer {
+public:
+    TransformationResult toProtocol(const Message& internalMessage) const override;
+    std::unique_ptr<Message> fromProtocol(const json& protocolMessage) const override;
+    std::unordered_map<std::string, std::string> getProtocolMetadata() const override;
+};
+
+/**
+ * @brief Stdio transformer implementation
+ */
+class StdioTransformer : public ProtocolTransformer {
+public:
+    TransformationResult toProtocol(const Message& internalMessage) const override;
+    std::unique_ptr<Message> fromProtocol(const json& protocolMessage) const override;
+    std::unordered_map<std::string, std::string> getProtocolMetadata() const override;
+};
+
+/**
+ * @brief FIFO transformer implementation
+ */
+class FifoTransformer : public ProtocolTransformer {
 public:
     TransformationResult toProtocol(const Message& internalMessage) const override;
     std::unique_ptr<Message> fromProtocol(const json& protocolMessage) const override;

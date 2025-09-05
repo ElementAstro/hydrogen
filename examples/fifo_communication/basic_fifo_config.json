@@ -1,0 +1,94 @@
+{
+  "pipeName": "hydrogen_fifo_basic",
+  "pipeDirectory": "/tmp",
+  "pipeType": 0,
+  "accessMode": 2,
+  "unixPipePath": "/tmp/hydrogen_fifo_basic",
+  "windowsPipePath": "\\\\.\\pipe\\hydrogen_fifo_basic",
+  
+  "framingMode": 2,
+  "customDelimiter": "\n",
+  "lineTerminator": "\n",
+  "messagePrefix": "",
+  "messageSuffix": "",
+  
+  "bufferSize": 8192,
+  "maxMessageSize": 1048576,
+  "readBufferSize": 4096,
+  "writeBufferSize": 4096,
+  "maxQueueSize": 1000,
+  
+  "connectTimeout": 5000,
+  "readTimeout": 1000,
+  "writeTimeout": 1000,
+  "reconnectDelay": 1000,
+  "keepAliveInterval": 30000,
+  
+  "maxReconnectAttempts": 5,
+  "enableAutoReconnect": true,
+  "enableKeepAlive": true,
+  "enableNonBlocking": false,
+  "enableBidirectional": true,
+  
+  "pipePermissions": 438,
+  "pipeOwner": "",
+  "pipeGroup": "",
+  
+  "windowsPipeInstances": 10,
+  "windowsOutBufferSize": 8192,
+  "windowsInBufferSize": 8192,
+  "windowsDefaultTimeout": 5000,
+  
+  "enableMessageValidation": true,
+  "enableMessageLogging": false,
+  "enableMessageTracing": false,
+  "enableBinaryMode": false,
+  "enableFlowControl": true,
+  "enableBackpressure": true,
+  
+  "compressionType": 0,
+  "compressionLevel": 6,
+  "compressionThreshold": 1024,
+  "enableCompressionForSmallMessages": false,
+  
+  "authMethod": 3,
+  "authToken": "",
+  "certificatePath": "",
+  "privateKeyPath": "",
+  "enableEncryption": false,
+  "encryptionKey": "",
+  
+  "enableCircuitBreaker": true,
+  "circuitBreakerThreshold": 5,
+  "circuitBreakerTimeout": 30000,
+  "enableRetryOnError": true,
+  "maxRetryAttempts": 3,
+  "retryDelay": 1000,
+  
+  "enablePerformanceMetrics": false,
+  "enableHealthChecking": true,
+  "healthCheckInterval": 10000,
+  "enableDebugLogging": false,
+  "logLevel": "INFO",
+  
+  "enableMultiplexing": false,
+  "maxConcurrentConnections": 1,
+  "enableMessagePrioritization": false,
+  "enableMessageDeduplication": false,
+  "deduplicationWindow": 5000,
+  
+  "enablePlatformOptimizations": true,
+  "useMemoryMappedFiles": false,
+  "enableZeroCopy": false,
+  "ioVectorSize": 16,
+  
+  "_comments": {
+    "pipeType": "0=UNIX_FIFO, 1=WINDOWS_NAMED_PIPE, 2=AUTO_DETECT",
+    "accessMode": "0=READ_ONLY, 1=WRITE_ONLY, 2=READ_WRITE, 3=DUPLEX",
+    "framingMode": "0=NEWLINE_DELIMITED, 1=LENGTH_PREFIXED, 2=JSON_LINES, 3=CUSTOM_DELIMITER, 4=BINARY_LENGTH_PREFIXED, 5=NULL_TERMINATED",
+    "compressionType": "0=NONE, 1=GZIP, 2=ZLIB, 3=LZ4, 4=SNAPPY",
+    "authMethod": "0=NONE, 1=TOKEN_BASED, 2=CERTIFICATE, 3=FILESYSTEM_PERMISSIONS, 4=WINDOWS_ACL",
+    "pipePermissions": "438 = 0666 in octal (read/write for all)",
+    "description": "Basic FIFO configuration for general-purpose communication with balanced settings for reliability and performance."
+  }
+}

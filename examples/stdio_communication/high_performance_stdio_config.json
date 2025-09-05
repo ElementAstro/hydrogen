@@ -1,0 +1,107 @@
+{
+  "stdio_config": {
+    "basic_settings": {
+      "enableLineBuffering": false,
+      "enableBinaryMode": false,
+      "readTimeout": 500,
+      "writeTimeout": 500,
+      "bufferSize": 65536,
+      "lineTerminator": "\n",
+      "enableEcho": false,
+      "enableFlush": true,
+      "encoding": "utf-8",
+      "enableErrorRedirection": true
+    },
+    "framing": {
+      "framingMode": "LENGTH_PREFIX",
+      "frameDelimiter": "\n",
+      "enableFrameEscaping": false,
+      "escapeSequence": "\\",
+      "maxFrameSize": 10485760
+    },
+    "compression": {
+      "enableCompression": true,
+      "compressionType": "LZ4",
+      "compressionLevel": 1,
+      "compressionThreshold": 512
+    },
+    "security": {
+      "enableAuthentication": false,
+      "authenticationMethod": "token",
+      "authToken": "",
+      "username": "",
+      "password": "",
+      "enableEncryption": false,
+      "encryptionKey": "",
+      "encryptionAlgorithm": "AES-256-GCM"
+    },
+    "connection_management": {
+      "enableHeartbeat": true,
+      "heartbeatInterval": 15000,
+      "heartbeatTimeout": 5000,
+      "enableReconnect": true,
+      "maxReconnectAttempts": 3,
+      "reconnectDelay": 500,
+      "maxReconnectDelay": 5000,
+      "enableBackoffStrategy": true
+    },
+    "flow_control": {
+      "enableFlowControl": true,
+      "sendBufferSize": 262144,
+      "receiveBufferSize": 262144,
+      "maxPendingMessages": 5000,
+      "enableBackpressure": true
+    },
+    "protocol_settings": {
+      "enableMessageValidation": true,
+      "enableMessageTransformation": true,
+      "enableMessageLogging": false,
+      "logLevel": "WARN",
+      "enableMetrics": true,
+      "enableTracing": false
+    },
+    "performance": {
+      "ioThreads": 4,
+      "enableNonBlockingIO": true,
+      "enableZeroCopy": false,
+      "readChunkSize": 16384,
+      "writeChunkSize": 16384
+    },
+    "error_handling": {
+      "enableErrorRecovery": true,
+      "maxConsecutiveErrors": 5,
+      "errorResetInterval": 60000,
+      "enableCircuitBreaker": true,
+      "circuitBreakerThreshold": 3,
+      "circuitBreakerTimeout": 30000
+    }
+  },
+  "server_config": {
+    "serverName": "HighPerformanceStdioServer",
+    "maxConcurrentClients": 1000,
+    "enableClientIsolation": true,
+    "workingDirectory": ".",
+    "allowedCommands": [],
+    "enableCommandFiltering": false,
+    "clientTimeout": 120000,
+    "enableAutoCleanup": true,
+    "cleanupInterval": 30000
+  },
+  "logging_config": {
+    "logLevel": 3,
+    "enableConsoleLogging": false,
+    "enableFileLogging": true,
+    "logFileName": "stdio_high_perf.log",
+    "maxFileSize": 52428800,
+    "maxFiles": 10,
+    "enableMessageTracing": false,
+    "enablePerformanceMetrics": true,
+    "enableDebugMode": false,
+    "logPattern": "[%Y-%m-%d %H:%M:%S.%e] [%l] %v",
+    "enableAsyncLogging": true,
+    "asyncQueueSize": 16384,
+    "enableJsonLogging": false,
+    "trackedClients": [],
+    "trackedMessageTypes": []
+  }
+}

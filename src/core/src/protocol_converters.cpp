@@ -479,6 +479,8 @@ std::vector<MessageFormat> ProtocolConverterFactory::getSupportedFormats() {
         MessageFormat::MQTT,
         MessageFormat::ZEROMQ,
         MessageFormat::PROTOBUF,
+        MessageFormat::STDIO,
+        MessageFormat::FIFO,
         MessageFormat::COMMUNICATION_SERVICE
     };
 }

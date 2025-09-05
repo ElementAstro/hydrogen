@@ -20,7 +20,9 @@ enum class CommunicationProtocol {
     GRPC,
     ZMQ_REQ_REP,
     ZMQ_PUB_SUB,
-    ZMQ_PUSH_PULL
+    ZMQ_PUSH_PULL,
+    STDIO,
+    FIFO
 };
 
 /**

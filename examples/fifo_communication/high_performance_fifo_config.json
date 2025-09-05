@@ -1,0 +1,111 @@
+{
+  "pipeName": "hydrogen_fifo_highperf",
+  "pipeDirectory": "/tmp",
+  "pipeType": 2,
+  "accessMode": 2,
+  "unixPipePath": "/tmp/hydrogen_fifo_highperf",
+  "windowsPipePath": "\\\\.\\pipe\\hydrogen_fifo_highperf",
+  
+  "framingMode": 4,
+  "customDelimiter": "\n",
+  "lineTerminator": "\n",
+  "messagePrefix": "",
+  "messageSuffix": "",
+  
+  "bufferSize": 65536,
+  "maxMessageSize": 10485760,
+  "readBufferSize": 32768,
+  "writeBufferSize": 32768,
+  "maxQueueSize": 10000,
+  
+  "connectTimeout": 2000,
+  "readTimeout": 100,
+  "writeTimeout": 100,
+  "reconnectDelay": 500,
+  "keepAliveInterval": 15000,
+  
+  "maxReconnectAttempts": 10,
+  "enableAutoReconnect": true,
+  "enableKeepAlive": true,
+  "enableNonBlocking": true,
+  "enableBidirectional": true,
+  
+  "pipePermissions": 438,
+  "pipeOwner": "",
+  "pipeGroup": "",
+  
+  "windowsPipeInstances": 50,
+  "windowsOutBufferSize": 65536,
+  "windowsInBufferSize": 65536,
+  "windowsDefaultTimeout": 2000,
+  
+  "enableMessageValidation": false,
+  "enableMessageLogging": false,
+  "enableMessageTracing": false,
+  "enableBinaryMode": true,
+  "enableFlowControl": true,
+  "enableBackpressure": true,
+  
+  "compressionType": 3,
+  "compressionLevel": 1,
+  "compressionThreshold": 512,
+  "enableCompressionForSmallMessages": false,
+  
+  "authMethod": 0,
+  "authToken": "",
+  "certificatePath": "",
+  "privateKeyPath": "",
+  "enableEncryption": false,
+  "encryptionKey": "",
+  
+  "enableCircuitBreaker": true,
+  "circuitBreakerThreshold": 10,
+  "circuitBreakerTimeout": 15000,
+  "enableRetryOnError": true,
+  "maxRetryAttempts": 5,
+  "retryDelay": 250,
+  
+  "enablePerformanceMetrics": true,
+  "enableHealthChecking": true,
+  "healthCheckInterval": 5000,
+  "enableDebugLogging": false,
+  "logLevel": "WARN",
+  
+  "enableMultiplexing": true,
+  "maxConcurrentConnections": 100,
+  "enableMessagePrioritization": true,
+  "enableMessageDeduplication": false,
+  "deduplicationWindow": 1000,
+  
+  "enablePlatformOptimizations": true,
+  "useMemoryMappedFiles": true,
+  "enableZeroCopy": true,
+  "ioVectorSize": 64,
+  
+  "_comments": {
+    "description": "High-performance FIFO configuration optimized for maximum throughput and minimal latency.",
+    "features": [
+      "Large buffers (64KB) for high throughput",
+      "Binary length-prefixed framing for efficiency",
+      "Non-blocking I/O for better concurrency",
+      "LZ4 compression for fast compression/decompression",
+      "Disabled validation for reduced overhead",
+      "Memory-mapped files and zero-copy optimizations",
+      "High connection limits for scalability",
+      "Reduced timeouts for faster response"
+    ],
+    "use_cases": [
+      "High-frequency trading systems",
+      "Real-time data streaming",
+      "Gaming servers",
+      "IoT data collection",
+      "Video/audio streaming"
+    ],
+    "trade_offs": [
+      "Higher memory usage due to large buffers",
+      "Reduced error checking for performance",
+      "May be less stable under extreme conditions",
+      "Requires more system resources"
+    ]
+  }
+}

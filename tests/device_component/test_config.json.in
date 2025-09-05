@@ -1,0 +1,70 @@
+{
+    "test_configuration": {
+        "version": "@PROJECT_VERSION@",
+        "build_type": "@CMAKE_BUILD_TYPE@",
+        "test_timeout_seconds": 300,
+        "benchmark_timeout_seconds": 600
+    },
+    "websocket_device_tests": {
+        "connection_timeout_ms": 1000,
+        "heartbeat_interval_ms": 5000,
+        "max_message_queue_size": 1000,
+        "test_server": {
+            "enabled": false,
+            "host": "localhost",
+            "port": 8080
+        }
+    },
+    "telescope_tests": {
+        "simulation_mode": true,
+        "update_interval_ms": 100,
+        "position_tolerance": 1e-6,
+        "observer_location": {
+            "latitude": 40.7128,
+            "longitude": -74.0060,
+            "elevation": 10
+        },
+        "coordinate_limits": {
+            "min_altitude": -90.0,
+            "max_altitude": 90.0,
+            "min_azimuth": 0.0,
+            "max_azimuth": 360.0
+        }
+    },
+    "performance_tests": {
+        "enabled": true,
+        "message_count": 10000,
+        "position_queries": 10000,
+        "metric_count": 100000,
+        "log_count": 50000,
+        "thread_count": 10,
+        "operations_per_thread": 100,
+        "performance_thresholds": {
+            "websocket_message_queuing_ops_per_sec": 50000,
+            "telescope_position_queries_per_sec": 10000,
+            "performance_monitor_metrics_per_sec": 1000000,
+            "device_logger_logs_per_sec": 50000
+        }
+    },
+    "logging_tests": {
+        "log_levels": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
+        "test_log_file": "test_device.log",
+        "console_logging": false,
+        "file_logging": true
+    },
+    "stress_tests": {
+        "enabled": true,
+        "duration_seconds": 60,
+        "concurrent_devices": 5,
+        "messages_per_second": 1000,
+        "memory_limit_mb": 100
+    },
+    "integration_tests": {
+        "enabled": false,
+        "real_hardware": false,
+        "simulation_server": {
+            "host": "localhost",
+            "port": 8081
+        }
+    }
+}

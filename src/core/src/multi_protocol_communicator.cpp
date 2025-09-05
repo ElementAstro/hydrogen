@@ -196,7 +196,7 @@ bool MultiProtocolDeviceCommunicator::addProtocol(CommunicationProtocol protocol
                 return true;
             }
 
-            case CommunicationProtocol::CUSTOM: { // Using CUSTOM for stdio
+            case CommunicationProtocol::STDIO: {
                 StdioConfig stdioConfig;
                 if (config.contains("enableLineBuffering")) stdioConfig.enableLineBuffering = config["enableLineBuffering"];
                 if (config.contains("enableBinaryMode")) stdioConfig.enableBinaryMode = config["enableBinaryMode"];
@@ -223,7 +223,7 @@ bool MultiProtocolDeviceCommunicator::addProtocol(CommunicationProtocol protocol
                             msg.payload = json{{"raw_message", message}};
                         }
                         msg.timestamp = std::chrono::system_clock::now();
-                        messageHandler_(msg, CommunicationProtocol::CUSTOM);
+                        messageHandler_(msg, CommunicationProtocol::STDIO);
                     }
                 });
 

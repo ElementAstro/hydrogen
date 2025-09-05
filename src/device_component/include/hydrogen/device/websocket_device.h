@@ -7,6 +7,7 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/http.hpp>
+#include <boost/asio/steady_timer.hpp>
 #endif
 #include <atomic>
 #include <memory>
@@ -15,6 +16,9 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
+#include <functional>
+#include <cstdint>
 
 namespace hydrogen {
 namespace device {
@@ -58,6 +62,33 @@ public:
     bool registerDevice() override;
 
     /**
+     * @brief Connect with timeout
+     * @param host Server hostname
+     * @param port Server port
+     * @param timeoutMs Connection timeout in milliseconds
+     * @return True if connected successfully
+     */
+    bool connect(const std::string& host, uint16_t port, uint32_t timeoutMs);
+
+    /**
+     * @brief Set connection timeout
+     * @param timeoutMs Timeout in milliseconds
+     */
+    void setConnectionTimeout(uint32_t timeoutMs);
+
+    /**
+     * @brief Set heartbeat interval
+     * @param intervalMs Heartbeat interval in milliseconds (0 to disable)
+     */
+    void setHeartbeatInterval(uint32_t intervalMs);
+
+    /**
+     * @brief Get connection statistics
+     * @return JSON object with connection stats
+     */
+    nlohmann::json getConnectionStats() const;
+
+    /**
      * @brief Run the device message loop
      * 
      * This method starts the message processing loop and should be called
@@ -82,6 +113,11 @@ protected:
     virtual void messageThreadFunction();
 
     /**
+     * @brief Heartbeat thread function
+     */
+    virtual void heartbeatThreadFunction();
+
+    /**
      * @brief Start the message processing thread
      */
     void startMessageThread();
@@ -92,29 +128,93 @@ protected:
     void stopMessageThread();
 
     /**
+     * @brief Start the heartbeat thread
+     */
+    void startHeartbeatThread();
+
+    /**
+     * @brief Stop the heartbeat thread
+     */
+    void stopHeartbeatThread();
+
+    /**
      * @brief Send a message through WebSocket
      * @param message Message to send
      * @return True if sent successfully
      */
     bool sendMessage(const std::string& message);
 
+    /**
+     * @brief Send a message through WebSocket with retry
+     * @param message Message to send
+     * @param maxRetries Maximum number of retries
+     * @return True if sent successfully
+     */
+    bool sendMessageWithRetry(const std::string& message, int maxRetries = 3);
+
+    /**
+     * @brief Handle connection error
+     * @param error Error message
+     */
+    virtual void handleConnectionError(const std::string& error);
+
+    /**
+     * @brief Attempt to reconnect
+     * @return True if reconnection successful
+     */
+    bool attemptReconnect();
+
+    /**
+     * @brief Update connection statistics
+     */
+    void updateConnectionStats();
+
 #ifdef HYDROGEN_HAS_WEBSOCKETS
     // WebSocket connection
     net::io_context ioc_;
     std::unique_ptr<websocket::stream<tcp::socket>> ws_;
+    std::unique_ptr<net::steady_timer> heartbeatTimer_;
 #endif
 
     // Connection details
     std::string serverHost_;
     uint16_t serverPort_;
+    uint32_t connectionTimeoutMs_;
+    uint32_t heartbeatIntervalMs_;
 
     // State management
     std::atomic<bool> running_;
     std::atomic<bool> connected_;
+    std::atomic<bool> reconnecting_;
 
     // Threading
     std::thread messageThread_;
+    std::thread heartbeatThread_;
     std::atomic<bool> messageThreadRunning_;
+    std::atomic<bool> heartbeatThreadRunning_;
+
+    // Connection statistics
+    mutable std::mutex statsMutex_;
+    struct ConnectionStats {
+        std::chrono::steady_clock::time_point connectionStartTime;
+        std::chrono::steady_clock::time_point lastMessageTime;
+        std::chrono::steady_clock::time_point lastHeartbeatTime;
+        uint64_t messagesSent;
+        uint64_t messagesReceived;
+        uint64_t reconnectAttempts;
+        uint64_t connectionErrors;
+        bool isConnected;
+    } connectionStats_;
+
+    // Message queue for thread-safe sending
+    std::queue<std::string> messageQueue_;
+    std::mutex messageQueueMutex_;
+    std::condition_variable messageQueueCondition_;
+
+    // Error handling
+    std::function<void(const std::string&)> errorCallback_;
+    int maxReconnectAttempts_;
+    uint32_t reconnectDelayMs_;
 };
 
 

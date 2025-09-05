@@ -5,7 +5,7 @@
 #include "client/device_manager.h"
 #include "client/command_executor.h"
 #include "client/subscription_manager.h"
-#include "client/device_client_refactored.h"
+#include "client/device_client.h"
 #include <thread>
 #include <chrono>
 #include <future>

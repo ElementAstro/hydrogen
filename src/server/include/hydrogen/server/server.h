@@ -26,6 +26,7 @@
 #include "protocols/grpc/grpc_server.h"
 #include "protocols/mqtt/mqtt_broker.h"
 #include "protocols/zmq/zmq_server.h"
+#include "protocols/stdio/stdio_protocol_handler.h"
 
 /**
  * @namespace hydrogen::server

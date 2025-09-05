@@ -13,14 +13,15 @@ include(${CMAKE_SOURCE_DIR}/cmake/HydrogenCompiler.cmake)
 add_library(hydrogen_client STATIC
     src/client.cpp
     src/device_client.cpp
-    # Refactored component files
+    # Client component files
     ../client/connection_manager.cpp
     ../client/message_processor.cpp
     ../client/device_manager.cpp
     ../client/command_executor.cpp
     ../client/subscription_manager.cpp
     ../client/message_queue_manager.cpp
-    ../client/device_client_refactored.cpp
+    ../client/device_client.cpp
+    # ../client/error_handler.cpp  # Temporarily disabled due to C++17 compatibility issues
 )
 
 # =============================================================================

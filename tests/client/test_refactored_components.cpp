@@ -5,7 +5,7 @@
 #include "client/device_manager.h"
 #include "client/command_executor.h"
 #include "client/subscription_manager.h"
-#include "client/device_client_refactored.h"
+#include "client/device_client.h"
 #include <thread>
 #include <chrono>
 
@@ -237,19 +237,19 @@ TEST_F(SubscriptionManagerTest, EventSubscription) {
     EXPECT_FALSE(subscriptionManager->isSubscribedToEvent("test-device", "status-change"));
 }
 
-// Test DeviceClientRefactored integration
-class DeviceClientRefactoredTest : public ::testing::Test {
+// Test DeviceClient integration
+class DeviceClientTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        client = std::make_unique<hydrogen::DeviceClientRefactored>();
+        client = std::make_unique<hydrogen::DeviceClient>();
     }
 
-    std::unique_ptr<hydrogen::DeviceClientRefactored> client;
+    std::unique_ptr<hydrogen::DeviceClient> client;
 };
 
-TEST_F(DeviceClientRefactoredTest, InitialState) {
+TEST_F(DeviceClientTest, InitialState) {
     EXPECT_FALSE(client->isConnected());
-    
+
     json status = client->getStatusInfo();
     EXPECT_TRUE(status.contains("connection"));
     EXPECT_TRUE(status.contains("devices"));
@@ -258,7 +258,7 @@ TEST_F(DeviceClientRefactoredTest, InitialState) {
     EXPECT_TRUE(status.contains("processing"));
 }
 
-TEST_F(DeviceClientRefactoredTest, ComponentAccess) {
+TEST_F(DeviceClientTest, ComponentAccess) {
     EXPECT_NE(client->getConnectionManager(), nullptr);
     EXPECT_NE(client->getMessageProcessor(), nullptr);
     EXPECT_NE(client->getDeviceManager(), nullptr);
@@ -266,7 +266,7 @@ TEST_F(DeviceClientRefactoredTest, ComponentAccess) {
     EXPECT_NE(client->getSubscriptionManager(), nullptr);
 }
 
-TEST_F(DeviceClientRefactoredTest, ConfigurationMethods) {
+TEST_F(DeviceClientTest, ConfigurationMethods) {
     // These should not throw
     EXPECT_NO_THROW(client->setAutoReconnect(false, 3000, 5));
     EXPECT_NO_THROW(client->setMessageRetryParams(3, 1000));

@@ -244,6 +244,9 @@ target("hydrogen_device")
         add_defines("HYDROGEN_HAS_SPDLOG", {public = true})
     end
 
+    -- Enable WebSocket support (Boost.Beast is included with Boost)
+    add_defines("HYDROGEN_HAS_WEBSOCKETS", {public = true})
+
     -- Platform-specific settings
     if is_plat("windows") then
         add_syslinks("ws2_32")

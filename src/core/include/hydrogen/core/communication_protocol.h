@@ -17,7 +17,9 @@ enum class CommunicationProtocol {
     MQTT = 3,
     ZMQ = 4,
     TCP = 5,
-    UDP = 6
+    UDP = 6,
+    STDIO = 7,
+    FIFO = 8
 };
 
 /**

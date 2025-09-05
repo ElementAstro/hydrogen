@@ -14,10 +14,16 @@ Telescope::Telescope(const std::string& deviceId, const std::string& manufacture
     : WebSocketDevice(deviceId, "telescope", manufacturer, model),
       currentRA_(0.0), currentDec_(0.0), currentAlt_(0.0), currentAz_(0.0),
       targetRA_(0.0), targetDec_(0.0),
-      observerLatitude_(0.0), observerLongitude_(0.0),
+      observerLatitude_(0.0), observerLongitude_(0.0), observerElevation_(0.0),
       tracking_(false), parked_(true), moving_(false), slewRate_(5),
-      updateThreadRunning_(false) {
-    
+      slewRateRA_(1.0), slewRateDec_(1.0), maxSlewRate_(5.0), minSlewRate_(0.1),
+      minAltitude_(-90.0), maxAltitude_(90.0), minAzimuth_(0.0), maxAzimuth_(360.0),
+      updateIntervalMs_(100.0), updateThreadRunning_(false),
+      maxHistorySize_(10), simulationMode_(true), simulationAccuracy_(1.0) {
+
+    lastUpdateTime_ = std::chrono::steady_clock::now();
+    slewStartTime_ = lastUpdateTime_;
+
     initializeTelescopeProperties();
     registerTelescopeCommands();
 }
@@ -44,24 +50,35 @@ void Telescope::gotoPosition(double ra, double dec) {
     if (parked_) {
         throw std::runtime_error("Telescope is parked");
     }
-    
+
+    // Validate coordinates
+    if (!areCoordinatesWithinLimits(ra, dec)) {
+        throw std::invalid_argument("Target coordinates are outside safe limits");
+    }
+
     {
         std::lock_guard<std::mutex> lock(positionMutex_);
         targetRA_ = ra;
         targetDec_ = dec;
+        slewStartTime_ = std::chrono::steady_clock::now();
     }
-    
+
     moving_ = true;
     setProperty("moving", true);
     setProperty("target_ra", ra);
     setProperty("target_dec", dec);
-    
+
+    // Calculate estimated slew time
+    double estimatedTime = calculateSlewTime(ra, dec);
+    setProperty("estimated_slew_time", estimatedTime);
+
     // Send event
     hydrogen::core::EventMessage event("goto_started");
     event.setDeviceId(getDeviceId());
     event.setProperties({
         {"target_ra", ra},
-        {"target_dec", dec}
+        {"target_dec", dec},
+        {"estimated_slew_time", estimatedTime}
     });
     sendEvent(event);
 }
@@ -287,55 +304,53 @@ void Telescope::registerTelescopeCommands() {
 
 void Telescope::updateLoop() {
     while (updateThreadRunning_ && running_) {
-        {
-            std::lock_guard<std::mutex> lock(positionMutex_);
-            
-            // Simulate movement towards target
-            if (moving_ && !parked_) {
-                double raError = targetRA_ - currentRA_;
-                double decError = targetDec_ - currentDec_;
-                
-                // Simple proportional movement
-                double moveRate = 0.1 * (slewRate_ + 1); // Faster for higher slew rates
-                
-                if (std::abs(raError) > 0.001 || std::abs(decError) > 0.001) {
-                    currentRA_ += raError * moveRate;
-                    currentDec_ += decError * moveRate;
-                    
-                    setProperty("ra", currentRA_);
-                    setProperty("dec", currentDec_);
+        auto currentTime = std::chrono::steady_clock::now();
+        auto deltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            currentTime - lastUpdateTime_).count();
+
+        if (deltaTime >= updateIntervalMs_) {
+            {
+                std::lock_guard<std::mutex> lock(positionMutex_);
+
+                // Update slewing position
+                if (moving_ && !parked_) {
+                    updateSlewingPosition();
+                }
+
+                // Simulate tracking (RA changes with time)
+                if (tracking_ && !parked_ && !moving_) {
+                    // Sidereal rate: approximately 15.041 arcseconds per second
+                    double siderealRate = 15.041 / 3600.0 / 15.0; // Convert to hours per second
+                    double timeStep = deltaTime / 1000.0; // Convert to seconds
+                    currentRA_ += siderealRate * timeStep;
+
+                    if (currentRA_ >= 24.0) {
+                        currentRA_ -= 24.0;
+                    } else if (currentRA_ < 0.0) {
+                        currentRA_ += 24.0;
+                    }
+
                     updateAltAz();
-                } else {
-                    // Reached target
-                    moving_ = false;
-                    setProperty("moving", false);
-                    
-                    hydrogen::core::EventMessage event("goto_complete");
-                    event.setDeviceId(getDeviceId());
-                    event.setProperties({
-                        {"ra", currentRA_},
-                        {"dec", currentDec_}
-                    });
-                    sendEvent(event);
+                }
+
+                // Update position history
+                PositionHistory historyEntry = {
+                    currentRA_, currentDec_, currentAlt_, currentAz_, currentTime
+                };
+                positionHistory_.push_back(historyEntry);
+
+                if (positionHistory_.size() > maxHistorySize_) {
+                    positionHistory_.erase(positionHistory_.begin());
                 }
             }
-            
-            // Simulate tracking (RA changes with time)
-            if (tracking_ && !parked_ && !moving_) {
-                // Sidereal rate: approximately 15 arcseconds per second
-                double siderealRate = 15.0 / 3600.0 / 15.0; // Convert to hours per second
-                currentRA_ += siderealRate;
-                
-                if (currentRA_ >= 24.0) {
-                    currentRA_ -= 24.0;
-                }
-                
-                setProperty("ra", currentRA_);
-                updateAltAz();
-            }
+
+            // Send position update if significant change
+            sendPositionUpdate();
+            lastUpdateTime_ = currentTime;
         }
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        // Sleep for a shorter interval to maintain responsiveness
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
@@ -395,11 +410,146 @@ void Telescope::stopUpdateThread() {
     if (!updateThreadRunning_) {
         return;
     }
-    
+
     updateThreadRunning_ = false;
-    
+
     if (updateThread_.joinable()) {
         updateThread_.join();
+    }
+}
+
+double Telescope::calculateAngularSeparation(double ra1, double dec1, double ra2, double dec2) const {
+    // Convert to radians
+    double ra1_rad = ra1 * M_PI / 12.0;
+    double dec1_rad = dec1 * M_PI / 180.0;
+    double ra2_rad = ra2 * M_PI / 12.0;
+    double dec2_rad = dec2 * M_PI / 180.0;
+
+    // Use spherical law of cosines
+    double cos_sep = std::sin(dec1_rad) * std::sin(dec2_rad) +
+                     std::cos(dec1_rad) * std::cos(dec2_rad) * std::cos(ra1_rad - ra2_rad);
+
+    // Clamp to valid range to avoid numerical errors
+    cos_sep = std::max(-1.0, std::min(1.0, cos_sep));
+
+    return std::acos(cos_sep) * 180.0 / M_PI;
+}
+
+double Telescope::calculateSlewTime(double targetRA, double targetDec) const {
+    double separation = calculateAngularSeparation(currentRA_, currentDec_, targetRA, targetDec);
+
+    // Estimate slew time based on current slew rate
+    double effectiveSlewRate = minSlewRate_ + (maxSlewRate_ - minSlewRate_) * (slewRate_ / 9.0);
+
+    return separation / effectiveSlewRate; // Time in seconds
+}
+
+bool Telescope::areCoordinatesWithinLimits(double ra, double dec) const {
+    // Check declination limits
+    if (dec < minAltitude_ || dec > maxAltitude_) {
+        return false;
+    }
+
+    // Convert to Alt/Az to check altitude limits
+    double lst = getCurrentLST();
+    double ha = lst - ra;
+    double lat_rad = observerLatitude_ * M_PI / 180.0;
+    double dec_rad = dec * M_PI / 180.0;
+    double ha_rad = ha * M_PI / 12.0;
+
+    double alt_rad = std::asin(std::sin(lat_rad) * std::sin(dec_rad) +
+                              std::cos(lat_rad) * std::cos(dec_rad) * std::cos(ha_rad));
+    double alt = alt_rad * 180.0 / M_PI;
+
+    return alt >= minAltitude_;
+}
+
+void Telescope::updateSlewingPosition() {
+    double raError = targetRA_ - currentRA_;
+    double decError = targetDec_ - currentDec_;
+
+    // Handle RA wrap-around
+    if (raError > 12.0) raError -= 24.0;
+    if (raError < -12.0) raError += 24.0;
+
+    double separation = std::sqrt(raError * raError * 225.0 + decError * decError); // Approximate
+
+    if (separation > 0.001) { // Still moving
+        // Calculate time-based movement
+        auto currentTime = std::chrono::steady_clock::now();
+        auto slewTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            currentTime - slewStartTime_).count() / 1000.0;
+
+        // Adaptive slew rate based on distance
+        double adaptiveRate = minSlewRate_;
+        if (separation > 1.0) {
+            adaptiveRate = maxSlewRate_ * (slewRate_ / 9.0);
+        } else {
+            // Slow down as we approach target
+            adaptiveRate = minSlewRate_ + (maxSlewRate_ - minSlewRate_) * separation;
+        }
+
+        double moveStep = adaptiveRate * (updateIntervalMs_ / 1000.0) / 15.0; // Convert to hours
+
+        // Move towards target
+        if (std::abs(raError) > moveStep) {
+            currentRA_ += (raError > 0 ? moveStep : -moveStep);
+        } else {
+            currentRA_ = targetRA_;
+        }
+
+        if (std::abs(decError) > moveStep * 15.0) { // Dec in degrees
+            currentDec_ += (decError > 0 ? moveStep * 15.0 : -moveStep * 15.0);
+        } else {
+            currentDec_ = targetDec_;
+        }
+
+        updateAltAz();
+
+    } else {
+        // Reached target
+        currentRA_ = targetRA_;
+        currentDec_ = targetDec_;
+        moving_ = false;
+        setProperty("moving", false);
+
+        hydrogen::core::EventMessage event("goto_complete");
+        event.setDeviceId(getDeviceId());
+        event.setProperties({
+            {"ra", currentRA_},
+            {"dec", currentDec_}
+        });
+        sendEvent(event);
+    }
+}
+
+void Telescope::sendPositionUpdate() {
+    static double lastSentRA = -999.0;
+    static double lastSentDec = -999.0;
+
+    // Only send update if position changed significantly
+    double raDiff = std::abs(currentRA_ - lastSentRA);
+    double decDiff = std::abs(currentDec_ - lastSentDec);
+
+    if (raDiff > 0.0001 || decDiff > 0.001) { // Threshold for significant change
+        setProperty("ra", currentRA_);
+        setProperty("dec", currentDec_);
+        setProperty("alt", currentAlt_);
+        setProperty("az", currentAz_);
+
+        lastSentRA = currentRA_;
+        lastSentDec = currentDec_;
+
+        // Send position update event
+        hydrogen::core::EventMessage event("position_update");
+        event.setDeviceId(getDeviceId());
+        event.setProperties({
+            {"ra", currentRA_},
+            {"dec", currentDec_},
+            {"alt", currentAlt_},
+            {"az", currentAz_}
+        });
+        sendEvent(event);
     }
 }
 

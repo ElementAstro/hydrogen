@@ -1,39 +1,41 @@
 #pragma once
 
-#include <hydrogen/core/message.h>
-#include <hydrogen/core/message_queue.h>
-#ifdef HYDROGEN_HAS_WEBSOCKETS
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/websocket.hpp>
-#endif
-#include <condition_variable>
-#include <functional>
-#include <map>
-#include <memory>
-#include <mutex>
 #include <nlohmann/json.hpp>
+#include <functional>
+#include <memory>
 #include <string>
-#include <boost/beast/core.hpp>
-#include <boost/beast/websocket.hpp>
-#include <boost/asio/connect.hpp>
-#include <boost/asio/ip/tcp.hpp>
+#include <vector>
+#include <cstdint>
+
+// Forward declarations for refactored components
+namespace hydrogen {
+class ConnectionManager;
+class MessageProcessor;
+class DeviceManager;
+class CommandExecutor;
+class SubscriptionManager;
+
+// Message classes forward declarations
+class Message;
+class CommandMessage;
+class ResponseMessage;
+class EventMessage;
+class DiscoveryRequestMessage;
+class DiscoveryResponseMessage;
+}
 
 namespace hydrogen {
 namespace client {
 
-namespace beast = boost::beast;
-namespace websocket = beast::websocket;
-namespace net = boost::asio;
-using tcp = net::ip::tcp;
 using json = nlohmann::json;
 
 /**
  * @class DeviceClient
- * @brief Client for communicating with astronomical device servers.
+ * @brief Optimized client for communicating with astronomical device servers.
  *
  * This class provides functionality to connect to device servers, discover devices,
- * and control astronomical equipment through a WebSocket connection.
+ * and control astronomical equipment. It uses a component-based architecture for
+ * better performance, maintainability, and error handling.
  */
 class DeviceClient {
 public:
@@ -120,7 +122,7 @@ public:
    * @param timeoutMs Timeout in milliseconds (default: 5000)
    * @return JSON response or null if timeout/error
    */
-  json sendMessage(std::shared_ptr<hydrogen::core::Message> message, int timeoutMs = 5000);
+  json sendMessage(std::shared_ptr<hydrogen::Message> message, int timeoutMs = 5000);
 
   /**
    * @brief Send a message asynchronously.
@@ -128,7 +130,7 @@ public:
    * @param message Message to send
    * @param callback Callback function to handle the response
    */
-  void sendMessageAsync(std::shared_ptr<hydrogen::core::Message> message,
+  void sendMessageAsync(std::shared_ptr<hydrogen::Message> message,
                        std::function<void(const json &)> callback);
 
   // Property and event subscription callbacks
@@ -201,54 +203,17 @@ public:
   void setAutoReconnect(bool enabled, int intervalMs = 5000);
 
 private:
-  // Internal methods
-  void startMessageThread();
-  void stopMessageThread();
-  void messageThreadFunction();
-  void handleMessage(const json &message);
-  void handleResponse(const json &response);
-  void handleEvent(const json &event);
-  void notifyPropertyChange(const std::string &deviceId, const std::string &property, const json &value);
-  void notifyEvent(const std::string &deviceId, const std::string &eventType, const json &data);
-  std::string generateMessageId();
+  // Core components
+  std::unique_ptr<hydrogen::ConnectionManager> connectionManager;
+  std::unique_ptr<hydrogen::MessageProcessor> messageProcessor;
+  std::unique_ptr<hydrogen::DeviceManager> deviceManager;
+  std::unique_ptr<hydrogen::CommandExecutor> commandExecutor;
+  std::unique_ptr<hydrogen::SubscriptionManager> subscriptionManager;
 
-  // WebSocket connection
-  net::io_context ioc;
-  std::unique_ptr<websocket::stream<tcp::socket>> ws;
-  bool connected;
-
-  // Device information cache
-  mutable std::mutex devicesMutex;
-  json devices;
-
-  // Message processing
-  std::mutex threadMutex;
-  std::thread message_thread;
-  bool running;
-
-  // Response waiting
-  std::mutex responseMutex;
-  std::condition_variable responseCV;
-  std::map<std::string, json> responses;
-
-  // Async callback handling
-  std::mutex callbacksMutex;
-  std::map<std::string, std::function<void(const json &)>> asyncCallbacks;
-
-  // Property and event subscriptions
-  std::mutex subscriptionsMutex;
-  std::map<std::string, std::map<std::string, PropertyCallback>>
-      propertySubscriptions;
-  std::map<std::string, std::map<std::string, EventCallback>>
-      eventSubscriptions;
-
-  // Connection management
-  std::function<void(bool)> connectionCallback;
-  std::string authToken;
-  bool autoReconnectEnabled;
-  int reconnectIntervalMs;
-  std::string lastHost;
-  uint16_t lastPort;
+  // Component initialization and setup
+  void initializeComponents();
+  void setupMessageHandlers();
+  void cleanupComponents();
 };
 
 } // namespace client

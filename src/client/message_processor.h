@@ -17,9 +17,9 @@ namespace hydrogen {
 using json = nlohmann::json;
 
 /**
- * @brief Handles message sending, receiving, parsing, and processing
- * 
- * This class is responsible for:
+ * @brief Basic message processor for standard use cases
+ *
+ * This class provides reliable message processing functionality:
  * - Sending messages through the WebSocket connection
  * - Receiving and parsing incoming messages
  * - Running the message processing loop

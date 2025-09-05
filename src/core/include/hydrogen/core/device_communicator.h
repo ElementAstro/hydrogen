@@ -32,6 +32,8 @@ enum class CommunicationProtocol {
     ZEROMQ,             // ZeroMQ high-performance messaging
     COAP,               // Constrained Application Protocol
     WEBRTC,             // WebRTC peer-to-peer communication
+    STDIO,              // Standard input/output communication
+    FIFO,               // Named pipe/FIFO communication
     CUSTOM              // Custom protocol
 };
 
@@ -141,6 +143,7 @@ struct TcpConfig {
 };
 
 struct StdioConfig {
+    // Basic I/O settings
     bool enableLineBuffering = true;
     bool enableBinaryMode = false;
     std::chrono::milliseconds readTimeout{1000};
@@ -151,6 +154,82 @@ struct StdioConfig {
     bool enableFlush = true;
     std::string encoding = "utf-8";
     bool enableErrorRedirection = true;  // Redirect stderr to stdout
+
+    // Message framing options
+    enum class FramingMode {
+        NONE,           // No framing, raw data
+        LENGTH_PREFIX,  // Length-prefixed messages
+        DELIMITER,      // Delimiter-separated messages
+        JSON_LINES,     // JSON lines format
+        CUSTOM          // Custom framing
+    };
+    FramingMode framingMode = FramingMode::DELIMITER;
+    std::string frameDelimiter = "\n";
+    bool enableFrameEscaping = false;
+    std::string escapeSequence = "\\";
+    size_t maxFrameSize = 1024 * 1024; // 1MB
+
+    // Compression settings
+    bool enableCompression = false;
+    enum class CompressionType {
+        NONE,
+        GZIP,
+        ZLIB,
+        LZ4
+    };
+    CompressionType compressionType = CompressionType::NONE;
+    int compressionLevel = 6; // 1-9 for gzip/zlib
+    size_t compressionThreshold = 1024; // Only compress messages larger than this
+
+    // Authentication and security
+    bool enableAuthentication = false;
+    std::string authenticationMethod = "token"; // "token", "basic", "custom"
+    std::string authToken;
+    std::string username;
+    std::string password;
+    bool enableEncryption = false;
+    std::string encryptionKey;
+    std::string encryptionAlgorithm = "AES-256-GCM";
+
+    // Connection management
+    bool enableHeartbeat = false;
+    std::chrono::milliseconds heartbeatInterval{30000};
+    std::chrono::milliseconds heartbeatTimeout{10000};
+    bool enableReconnect = true;
+    int maxReconnectAttempts = 5;
+    std::chrono::milliseconds reconnectDelay{1000};
+    std::chrono::milliseconds maxReconnectDelay{30000};
+    bool enableBackoffStrategy = true;
+
+    // Flow control
+    bool enableFlowControl = false;
+    size_t sendBufferSize = 64 * 1024; // 64KB
+    size_t receiveBufferSize = 64 * 1024; // 64KB
+    size_t maxPendingMessages = 1000;
+    bool enableBackpressure = true;
+
+    // Protocol-specific settings
+    bool enableMessageValidation = true;
+    bool enableMessageTransformation = true;
+    bool enableMessageLogging = false;
+    std::string logLevel = "INFO";
+    bool enableMetrics = false;
+    bool enableTracing = false;
+
+    // Performance tuning
+    int ioThreads = 1;
+    bool enableNonBlockingIO = false;
+    bool enableZeroCopy = false;
+    size_t readChunkSize = 4096;
+    size_t writeChunkSize = 4096;
+
+    // Error handling
+    bool enableErrorRecovery = true;
+    int maxConsecutiveErrors = 10;
+    std::chrono::milliseconds errorResetInterval{300000}; // 5 minutes
+    bool enableCircuitBreaker = false;
+    int circuitBreakerThreshold = 5;
+    std::chrono::milliseconds circuitBreakerTimeout{60000}; // 1 minute
 };
 
 /**

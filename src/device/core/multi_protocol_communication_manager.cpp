@@ -571,14 +571,14 @@ std::unique_ptr<MultiProtocolCommunicationManager> CommunicationManagerFactory::
     auto manager = std::make_unique<MultiProtocolCommunicationManager>(deviceId);
 
     MultiProtocolCommunicationManager::ProtocolConfiguration config;
-    config.protocol = CommunicationProtocol::CUSTOM; // Using CUSTOM for stdio
+    config.protocol = CommunicationProtocol::STDIO;
     config.config = manager->createStdioConfig();
     config.enabled = true;
     config.autoConnect = true;
     config.priority = 10;
 
     manager->addProtocol(config);
-    manager->setPrimaryProtocol(CommunicationProtocol::CUSTOM);
+    manager->setPrimaryProtocol(CommunicationProtocol::STDIO);
 
     return manager;
 }

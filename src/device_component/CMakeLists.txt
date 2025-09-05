@@ -11,9 +11,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/HydrogenCompiler.cmake)
 
 # Define the device library
 add_library(hydrogen_device STATIC
+    # Core device component files
     src/device.cpp
     src/websocket_device.cpp
     src/telescope.cpp
+    src/device_logger.cpp
+    src/performance_monitor.cpp
+
+    # Legacy device files (for compatibility)
     ${CMAKE_SOURCE_DIR}/src/device/device_base.cpp
     # Include working core files (based on successful XMake build)
     ${CMAKE_SOURCE_DIR}/src/device/core/modern_device_base.cpp

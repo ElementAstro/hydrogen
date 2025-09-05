@@ -1,0 +1,115 @@
+{
+  "pipeName": "hydrogen_fifo_secure",
+  "pipeDirectory": "/tmp",
+  "pipeType": 2,
+  "accessMode": 2,
+  "unixPipePath": "/tmp/hydrogen_fifo_secure",
+  "windowsPipePath": "\\\\.\\pipe\\hydrogen_fifo_secure",
+  
+  "framingMode": 2,
+  "customDelimiter": "\n",
+  "lineTerminator": "\n",
+  "messagePrefix": "SECURE:",
+  "messageSuffix": ":END",
+  
+  "bufferSize": 4096,
+  "maxMessageSize": 524288,
+  "readBufferSize": 2048,
+  "writeBufferSize": 2048,
+  "maxQueueSize": 500,
+  
+  "connectTimeout": 10000,
+  "readTimeout": 5000,
+  "writeTimeout": 5000,
+  "reconnectDelay": 2000,
+  "keepAliveInterval": 60000,
+  
+  "maxReconnectAttempts": 3,
+  "enableAutoReconnect": true,
+  "enableKeepAlive": true,
+  "enableNonBlocking": false,
+  "enableBidirectional": true,
+  
+  "pipePermissions": 384,
+  "pipeOwner": "hydrogen",
+  "pipeGroup": "hydrogen",
+  
+  "windowsPipeInstances": 5,
+  "windowsOutBufferSize": 4096,
+  "windowsInBufferSize": 4096,
+  "windowsDefaultTimeout": 10000,
+  
+  "enableMessageValidation": true,
+  "enableMessageLogging": true,
+  "enableMessageTracing": true,
+  "enableBinaryMode": false,
+  "enableFlowControl": true,
+  "enableBackpressure": true,
+  
+  "compressionType": 2,
+  "compressionLevel": 9,
+  "compressionThreshold": 256,
+  "enableCompressionForSmallMessages": true,
+  
+  "authMethod": 1,
+  "authToken": "secure_token_12345",
+  "certificatePath": "/etc/hydrogen/certs/fifo.crt",
+  "privateKeyPath": "/etc/hydrogen/certs/fifo.key",
+  "enableEncryption": true,
+  "encryptionKey": "AES256_ENCRYPTION_KEY_HERE",
+  
+  "enableCircuitBreaker": true,
+  "circuitBreakerThreshold": 3,
+  "circuitBreakerTimeout": 60000,
+  "enableRetryOnError": true,
+  "maxRetryAttempts": 2,
+  "retryDelay": 2000,
+  
+  "enablePerformanceMetrics": true,
+  "enableHealthChecking": true,
+  "healthCheckInterval": 30000,
+  "enableDebugLogging": true,
+  "logLevel": "DEBUG",
+  
+  "enableMultiplexing": false,
+  "maxConcurrentConnections": 5,
+  "enableMessagePrioritization": true,
+  "enableMessageDeduplication": true,
+  "deduplicationWindow": 30000,
+  
+  "enablePlatformOptimizations": false,
+  "useMemoryMappedFiles": false,
+  "enableZeroCopy": false,
+  "ioVectorSize": 8,
+  
+  "_comments": {
+    "description": "Security-focused FIFO configuration with authentication, encryption, and comprehensive logging.",
+    "security_features": [
+      "Token-based authentication",
+      "AES encryption for message content",
+      "Restrictive file permissions (0600 - owner only)",
+      "Message validation and integrity checking",
+      "Comprehensive audit logging",
+      "Message tracing for forensics",
+      "Limited connection count",
+      "Message deduplication to prevent replay attacks"
+    ],
+    "use_cases": [
+      "Financial systems",
+      "Healthcare applications",
+      "Government systems",
+      "Enterprise security applications",
+      "Compliance-required environments"
+    ],
+    "security_notes": [
+      "Change authToken to a strong, unique value",
+      "Store encryption keys securely (consider key management systems)",
+      "Regularly rotate authentication tokens and encryption keys",
+      "Monitor logs for suspicious activity",
+      "Ensure proper file system permissions",
+      "Use certificate-based auth for higher security"
+    ],
+    "pipePermissions": "384 = 0600 in octal (read/write for owner only)",
+    "performance_impact": "Security features may reduce performance compared to basic configuration"
+  }
+}

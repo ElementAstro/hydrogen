@@ -125,6 +125,8 @@ std::string BaseProtocolHandler::getProtocolName() const {
         case CommunicationProtocol::ZMQ_REQ_REP: return "ZMQ-REQ-REP";
         case CommunicationProtocol::ZMQ_PUB_SUB: return "ZMQ-PUB-SUB";
         case CommunicationProtocol::ZMQ_PUSH_PULL: return "ZMQ-PUSH-PULL";
+        case CommunicationProtocol::STDIO: return "STDIO";
+        case CommunicationProtocol::FIFO: return "FIFO";
         default: return "Unknown";
     }
 }

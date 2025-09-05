@@ -2,6 +2,9 @@
 #include <spdlog/spdlog.h>
 #include <chrono>
 #include <iomanip>
+#include <memory>
+#include <algorithm>
+#include <utility>
 #include <sstream>
 
 namespace hydrogen {
@@ -143,13 +146,19 @@ MessageFormat MessageTransformer::detectFormat(const json& message) const {
     if (message.contains("clientId") && message.contains("content") && message.contains("type")) {
         return MessageFormat::ZEROMQ;
     }
+    if (message.contains("device") && message.contains("type") && message.contains("payload")) {
+        return MessageFormat::STDIO;
+    }
+    if (message.contains("pipe") && message.contains("type") && message.contains("payload")) {
+        return MessageFormat::FIFO;
+    }
     if (message.contains("senderId") && message.contains("recipientId") && message.contains("messageType")) {
         return MessageFormat::COMMUNICATION_SERVICE;
     }
     if (message.contains("messageType") && message.contains("messageId")) {
         return MessageFormat::INTERNAL;
     }
-    
+
     return MessageFormat::HTTP_JSON; // Default fallback
 }
 
@@ -159,8 +168,10 @@ void MessageTransformer::initializeDefaultTransformers() {
     registerTransformer(MessageFormat::MQTT, std::make_unique<MqttTransformer>());
     registerTransformer(MessageFormat::ZEROMQ, std::make_unique<ZeroMqTransformer>());
     registerTransformer(MessageFormat::HTTP_JSON, std::make_unique<HttpJsonTransformer>());
+    registerTransformer(MessageFormat::STDIO, std::make_unique<StdioTransformer>());
+    registerTransformer(MessageFormat::FIFO, std::make_unique<FifoTransformer>());
     registerTransformer(MessageFormat::COMMUNICATION_SERVICE, std::make_unique<CommunicationServiceTransformer>());
-    
+
     spdlog::info("Initialized default message transformers");
 }
 
@@ -497,6 +508,258 @@ std::unordered_map<std::string, std::string> CommunicationServiceTransformer::ge
         {"encoding", "utf-8"},
         {"content_type", "application/json"}
     };
+}
+
+// StdioTransformer implementation
+TransformationResult StdioTransformer::toProtocol(const Message& internalMessage) const {
+    TransformationResult result;
+
+    try {
+        json stdioJson;
+
+        // Create a simplified stdio-friendly format
+        stdioJson["id"] = internalMessage.getMessageId();
+        stdioJson["device"] = internalMessage.getDeviceId();
+        stdioJson["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+
+        // Map message types to simple strings
+        switch (internalMessage.getMessageType()) {
+            case MessageType::COMMAND:
+                stdioJson["type"] = "command";
+                break;
+            case MessageType::RESPONSE:
+                stdioJson["type"] = "response";
+                break;
+            case MessageType::EVENT:
+                stdioJson["type"] = "event";
+                break;
+            case MessageType::ERR:
+                stdioJson["type"] = "error";
+                break;
+            default:
+                stdioJson["type"] = "message";
+        }
+
+        // Include the full message content as payload
+        json messagePayload;
+        messagePayload["messageType"] = static_cast<int>(internalMessage.getMessageType());
+        messagePayload["messageId"] = internalMessage.getMessageId();
+        messagePayload["deviceId"] = internalMessage.getDeviceId();
+        messagePayload["timestamp"] = internalMessage.getTimestamp();
+        messagePayload["originalMessageId"] = internalMessage.getOriginalMessageId();
+
+        stdioJson["payload"] = messagePayload;
+
+        // Add stdio-specific metadata
+        result.metadata["Content-Type"] = "application/json";
+        result.metadata["X-Protocol"] = "stdio";
+        result.metadata["X-Version"] = "1.0";
+        result.metadata["X-Encoding"] = "utf-8";
+
+        result.success = true;
+        result.transformedData = stdioJson;
+
+    } catch (const std::exception& e) {
+        result.success = false;
+        result.errorMessage = "StdioTransformer::toProtocol failed: " + std::string(e.what());
+    }
+
+    return result;
+}
+
+std::unique_ptr<Message> StdioTransformer::fromProtocol(const json& protocolMessage) const {
+    try {
+        auto message = std::make_unique<Message>();
+
+        // Extract the payload which contains the original internal message
+        if (protocolMessage.contains("payload") && protocolMessage["payload"].is_object()) {
+            json internalJson = protocolMessage["payload"];
+
+            // Reconstruct message from payload
+            if (internalJson.contains("messageId")) {
+                message->setMessageId(internalJson["messageId"].get<std::string>());
+            }
+
+            if (internalJson.contains("deviceId")) {
+                message->setDeviceId(internalJson["deviceId"].get<std::string>());
+            }
+
+            if (internalJson.contains("timestamp")) {
+                message->setTimestamp(internalJson["timestamp"].get<std::string>());
+            }
+
+            if (internalJson.contains("originalMessageId")) {
+                message->setOriginalMessageId(internalJson["originalMessageId"].get<std::string>());
+            }
+
+            if (internalJson.contains("messageType")) {
+                int typeInt = internalJson["messageType"].get<int>();
+                message->setMessageType(static_cast<MessageType>(typeInt));
+            }
+        } else {
+            // If no payload, try to construct from stdio format
+            if (protocolMessage.contains("id")) {
+                message->setMessageId(protocolMessage["id"].get<std::string>());
+            }
+
+            if (protocolMessage.contains("device")) {
+                message->setDeviceId(protocolMessage["device"].get<std::string>());
+            }
+
+            if (protocolMessage.contains("type")) {
+                std::string typeStr = protocolMessage["type"].get<std::string>();
+                if (typeStr == "command") {
+                    message->setMessageType(MessageType::COMMAND);
+                } else if (typeStr == "response") {
+                    message->setMessageType(MessageType::RESPONSE);
+                } else if (typeStr == "event") {
+                    message->setMessageType(MessageType::EVENT);
+                } else if (typeStr == "error") {
+                    message->setMessageType(MessageType::ERR);
+                } else {
+                    message->setMessageType(MessageType::COMMAND); // Default
+                }
+            }
+        }
+
+        return message;
+
+    } catch (const std::exception& e) {
+        spdlog::error("StdioTransformer::fromProtocol failed: {}", e.what());
+        return nullptr;
+    }
+}
+
+std::unordered_map<std::string, std::string> StdioTransformer::getProtocolMetadata() const {
+    return {
+        {"protocol", "stdio"},
+        {"version", "1.0"},
+        {"encoding", "utf-8"},
+        {"content_type", "application/json"},
+        {"line_terminator", "\\n"},
+        {"supports_binary", "false"}
+    };
+}
+
+// FifoTransformer implementation
+TransformationResult FifoTransformer::toProtocol(const Message& internalMessage) const {
+    TransformationResult result;
+
+    try {
+        json fifoJson;
+
+        // FIFO protocol format - similar to STDIO but with FIFO-specific metadata
+        fifoJson["pipe"] = "fifo_pipe";  // Pipe identifier
+        fifoJson["type"] = static_cast<int>(internalMessage.getMessageType());
+        fifoJson["id"] = internalMessage.getMessageId();
+        fifoJson["device"] = internalMessage.getDeviceId();
+        fifoJson["timestamp"] = internalMessage.getTimestamp();
+
+        // Include the full message content as payload
+        json messagePayload;
+        messagePayload["messageType"] = static_cast<int>(internalMessage.getMessageType());
+        messagePayload["messageId"] = internalMessage.getMessageId();
+        messagePayload["deviceId"] = internalMessage.getDeviceId();
+        messagePayload["timestamp"] = internalMessage.getTimestamp();
+        messagePayload["originalMessageId"] = internalMessage.getOriginalMessageId();
+
+        fifoJson["payload"] = messagePayload;
+
+        result.success = true;
+        result.transformedData = fifoJson;
+
+        // Add FIFO-specific metadata
+        result.metadata["Content-Type"] = "application/json";
+        result.metadata["X-Protocol"] = "fifo";
+        result.metadata["X-Framing"] = "json-lines";
+        result.metadata["X-Pipe-Type"] = "named-pipe";
+
+        spdlog::debug("Successfully transformed message to FIFO protocol");
+
+    } catch (const std::exception& e) {
+        result.success = false;
+        result.errorMessage = "FIFO transformation failed: " + std::string(e.what());
+        spdlog::error("FifoTransformer::toProtocol failed: {}", e.what());
+    }
+
+    return result;
+}
+
+std::unique_ptr<Message> FifoTransformer::fromProtocol(const json& protocolMessage) const {
+    try {
+        auto message = std::make_unique<Message>();
+
+        // Extract the payload which contains the original internal message
+        if (protocolMessage.contains("payload") && protocolMessage["payload"].is_object()) {
+            json internalJson = protocolMessage["payload"];
+
+            // Reconstruct message from payload
+            if (internalJson.contains("messageId")) {
+                message->setMessageId(internalJson["messageId"].get<std::string>());
+            }
+
+            if (internalJson.contains("deviceId")) {
+                message->setDeviceId(internalJson["deviceId"].get<std::string>());
+            }
+
+            if (internalJson.contains("timestamp")) {
+                message->setTimestamp(internalJson["timestamp"].get<std::string>());
+            }
+
+            if (internalJson.contains("originalMessageId")) {
+                message->setOriginalMessageId(internalJson["originalMessageId"].get<std::string>());
+            }
+
+            if (internalJson.contains("messageType")) {
+                int typeInt = internalJson["messageType"].get<int>();
+                message->setMessageType(static_cast<MessageType>(typeInt));
+            }
+        } else {
+            // If no payload, try to construct from FIFO format
+            if (protocolMessage.contains("id")) {
+                message->setMessageId(protocolMessage["id"].get<std::string>());
+            }
+
+            if (protocolMessage.contains("device")) {
+                message->setDeviceId(protocolMessage["device"].get<std::string>());
+            }
+
+            if (protocolMessage.contains("type")) {
+                int typeInt = protocolMessage["type"].get<int>();
+                message->setMessageType(static_cast<MessageType>(typeInt));
+            }
+
+            if (protocolMessage.contains("timestamp")) {
+                message->setTimestamp(protocolMessage["timestamp"].get<std::string>());
+            }
+        }
+
+        return message;
+
+    } catch (const std::exception& e) {
+        spdlog::error("FifoTransformer::fromProtocol failed: {}", e.what());
+        return nullptr;
+    }
+}
+
+std::unordered_map<std::string, std::string> FifoTransformer::getProtocolMetadata() const {
+    std::unordered_map<std::string, std::string> metadata;
+
+    metadata["protocol"] = "fifo";
+    metadata["version"] = "1.0";
+    metadata["encoding"] = "utf-8";
+    metadata["content_type"] = "application/json";
+    metadata["framing"] = "json-lines";
+    metadata["pipe_type"] = "named-pipe";
+    metadata["bidirectional"] = "true";
+    metadata["cross_platform"] = "true";
+    metadata["supports_binary"] = "false";
+    metadata["supports_compression"] = "true";
+    metadata["supports_encryption"] = "true";
+    metadata["max_message_size"] = "1048576"; // 1MB default
+
+    return metadata;
 }
 
 // Global instance
