@@ -1,14 +1,27 @@
 #pragma once
 
-#include "device_behavior.h"
+// #include "device_behavior.h"  // Temporarily disabled to avoid linking issues
 #include <atomic>
 #include <mutex>
 #include <thread>
 #include <functional>
+#include <string>
+#include <memory>
+#include <vector>
+#include <nlohmann/json.hpp>
 
 namespace hydrogen {
 namespace device {
+
+// Forward declarations
+namespace core {
+    class StateManager;
+    class ConfigManager;
+}
+
 namespace behaviors {
+
+using json = nlohmann::json;
 
 /**
  * @brief 温度控制状态枚�? */
@@ -38,7 +51,7 @@ using TemperatureStabilizedCallback = std::function<void(bool success, double fi
  * @brief 温度控制行为组件
  * 
  * 提供通用的温度控制功能，适用于相机制冷、加热器等温度控制设备�? * 支持目标温度设置、PID控制、温度监控等功能�? */
-class TemperatureControlBehavior : public DeviceBehavior {
+class TemperatureControlBehavior {
 public:
     /**
      * @brief 构造函�?     * @param behaviorName 行为名称
@@ -55,15 +68,15 @@ public:
      */
     static std::string getTypeName() { return "TemperatureControlBehavior"; }
 
-    // 重写基类方法
+    // Basic behavior methods (no longer overriding base class)
     bool initialize(std::shared_ptr<core::StateManager> stateManager,
-                   std::shared_ptr<core::ConfigManager> configManager) override;
-    bool start() override;
-    void stop() override;
-    void update() override;
-    bool handleCommand(const std::string& command, const json& parameters, json& result) override;
-    json getStatus() const override;
-    std::vector<std::string> getCapabilities() const override;
+                   std::shared_ptr<core::ConfigManager> configManager);
+    bool start();
+    void stop();
+    void update();
+    bool handleCommand(const std::string& command, const json& parameters, json& result);
+    json getStatus() const;
+    std::vector<std::string> getCapabilities() const;
 
     /**
      * @brief 设置目标温度

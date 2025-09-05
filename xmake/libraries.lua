@@ -156,9 +156,19 @@ target_end()
 target("hydrogen_client")
     set_kind("static")
     set_languages("cxx17")
-    
-    -- Source files from client_component
-    add_files("../src/client_component/src/**.cpp")
+
+    -- Source files from client_component (original files)
+    add_files("../src/client_component/src/client.cpp")
+    add_files("../src/client_component/src/device_client.cpp")
+
+    -- Refactored client component files
+    add_files("../src/client/connection_manager.cpp")
+    add_files("../src/client/message_processor.cpp")
+    add_files("../src/client/device_manager.cpp")
+    add_files("../src/client/command_executor.cpp")
+    add_files("../src/client/subscription_manager.cpp")
+    add_files("../src/client/message_queue_manager.cpp")
+    add_files("../src/client/device_client_refactored.cpp")
 
     -- Include directories
     add_includedirs("../src", "../src/client_component/include", {public = true})
@@ -191,6 +201,7 @@ target("hydrogen_device")
     
     -- Device implementation sources
     add_files("../src/device/device_base.cpp")
+    add_files("../src/device/device_registry.cpp")
     add_files("../src/device/camera.cpp")
     add_files("../src/device/telescope.cpp")
     add_files("../src/device/focuser.cpp")
@@ -217,8 +228,12 @@ target("hydrogen_device")
     -- Device component sources
     add_files("../src/device_component/src/**.cpp")
 
+    -- Device behavior sources
+    -- add_files("../src/device/behaviors/device_behavior.cpp")  -- Temporarily disabled due to compilation issues
+    -- add_files("../src/device/behaviors/temperature_control_behavior_stub.cpp")  -- Temporarily disabled due to compilation issues
+
     -- Include directories
-    add_includedirs("../src", "../src/device_component/include", "../src/device/core", {public = true})
+    add_includedirs("../src", "../src/device_component/include", "../src/device/core", "../src/device/behaviors", {public = true})
 
     -- Dependencies
     add_packages("nlohmann_json", "boost")

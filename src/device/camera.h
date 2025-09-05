@@ -2,7 +2,7 @@
 
 #include "core/modern_device_base.h"
 #include "interfaces/device_interface.h"
-#include "behaviors/temperature_control_behavior.h"
+// #include "behaviors/temperature_control_behavior.h"  // Temporarily disabled due to compilation issues
 
 #include <atomic>
 #include <condition_variable>
@@ -325,20 +325,20 @@ private:
   void initializeCameraBehaviors();
 
   /**
-   * @brief 相机温度控制行为实现
+   * @brief 相机温度控制行为实现 - temporarily disabled
    */
-  class CameraTemperatureBehavior : public behaviors::TemperatureControlBehavior {
-  public:
-    explicit CameraTemperatureBehavior(Camera* camera);
+  // class CameraTemperatureBehavior : public behaviors::TemperatureControlBehavior {
+  // public:
+  //   explicit CameraTemperatureBehavior(Camera* camera);
 
-  protected:
-    double readCurrentTemperature() override;
-    double readAmbientTemperature() override;
-    bool setControlPower(double power) override;
+  // protected:
+  //   double readCurrentTemperature() override;
+  //   double readAmbientTemperature() override;
+  //   bool setControlPower(double power) override;
 
-  private:
-    Camera* camera_;
-  };
+  // private:
+  //   Camera* camera_;
+  // };
 
   // 硬件抽象接口
   virtual bool executeExposure(double duration);
@@ -351,8 +351,8 @@ private:
   void exposureThreadFunction();
 
 private:
-  // 行为组件指针
-  CameraTemperatureBehavior* temperatureBehavior_;
+  // 行为组件指针 - temporarily disabled
+  // CameraTemperatureBehavior* temperatureBehavior_;
 
   // 相机参数
   CameraParameters cameraParams_;

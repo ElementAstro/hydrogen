@@ -10,11 +10,12 @@
 #include <gmock/gmock.h>
 #include "device/focuser.h"
 #include "common/message.h"
-#include "utils/simple_helpers.h"
+#include "../utils/simple_helpers.h"
 #include <memory>
 #include <thread>
 #include <chrono>
 #include <atomic>
+#include <nlohmann/json.hpp>
 
 using namespace hydrogen::device;
 using namespace hydrogen::common;
@@ -24,7 +25,7 @@ using json = nlohmann::json;
 class FocuserDeviceTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        focuser = std::make_unique<FocuserDevice>("test-focuser", "Test Corp", "Focuser Model");
+        focuser = std::make_unique<Focuser>("test-focuser");
         
         // Set up default focuser properties
         focuser->setProperty("MaxStep", 50000);
@@ -43,7 +44,7 @@ protected:
         }
     }
     
-    std::unique_ptr<FocuserDevice> focuser;
+    std::unique_ptr<Focuser> focuser;
 };
 
 // Test focuser device creation and basic properties

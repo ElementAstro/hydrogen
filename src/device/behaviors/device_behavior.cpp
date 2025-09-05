@@ -2,6 +2,9 @@
 #include "../core/state_manager.h"
 #include "../core/config_manager.h"
 #include <spdlog/spdlog.h>
+#include <memory>
+#include <string>
+#include <nlohmann/json.hpp>
 
 namespace hydrogen {
 namespace device {
@@ -30,7 +33,7 @@ bool DeviceBehavior::initialize(std::shared_ptr<core::StateManager> stateManager
     stateManager_ = stateManager;
     configManager_ = configManager;
     
-    // 设置基础属�?    setProperty("initialized", true);
+    // 设置基础属�?    setProperty("initialized", true);
     setProperty("running", false);
     
     initialized_ = true;
@@ -68,7 +71,8 @@ void DeviceBehavior::stop() {
 }
 
 void DeviceBehavior::update() {
-    // 基类默认实现为空，子类可以重�?}
+    // Base class default implementation is empty, subclasses can override
+}
 
 bool DeviceBehavior::handleCommand(const std::string& command, 
                                   const json& parameters, 

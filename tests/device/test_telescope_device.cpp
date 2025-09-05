@@ -2,7 +2,7 @@
 #include <gmock/gmock.h>
 #include "device/telescope.h"
 #include "common/message.h"
-#include "utils/simple_helpers.h"
+#include "../utils/simple_helpers.h"
 #include <memory>
 #include <thread>
 #include <chrono>

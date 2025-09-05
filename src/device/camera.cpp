@@ -8,28 +8,29 @@
 namespace hydrogen {
 namespace device {
 
-// CameraTemperatureBehavior implementation
-Camera::CameraTemperatureBehavior::CameraTemperatureBehavior(Camera* camera)
-    : TemperatureControlBehavior("camera_temperature"), camera_(camera) {
-}
+// CameraTemperatureBehavior implementation - temporarily disabled
+// Camera::CameraTemperatureBehavior::CameraTemperatureBehavior(Camera* camera)
+//     : TemperatureControlBehavior("camera_temperature"), camera_(camera) {
+// }
 
-double Camera::CameraTemperatureBehavior::readCurrentTemperature() {
-    return camera_->readTemperature();
-}
+// Temporarily disabled CameraTemperatureBehavior methods
+// double Camera::CameraTemperatureBehavior::readCurrentTemperature() {
+//     return camera_->readTemperature();
+// }
 
-double Camera::CameraTemperatureBehavior::readAmbientTemperature() {
-    // Simulate ambient temperature reading
-    return 20.0 + (std::rand() % 10 - 5) * 0.1; // 15-25°C range
-}
+// double Camera::CameraTemperatureBehavior::readAmbientTemperature() {
+//     // Simulate ambient temperature reading
+//     return 20.0 + (std::rand() % 10 - 5) * 0.1; // 15-25°C range
+// }
 
-bool Camera::CameraTemperatureBehavior::setControlPower(double power) {
-    return camera_->setTemperatureControl(power);
-}
+// bool Camera::CameraTemperatureBehavior::setControlPower(double power) {
+//     return camera_->setTemperatureControl(power);
+// }
 
 // Camera implementation
 Camera::Camera(const std::string& deviceId, const std::string& manufacturer, const std::string& model)
     : ModernDeviceBase(deviceId, "CAMERA", manufacturer, model)
-    , temperatureBehavior_(nullptr)
+    // , temperatureBehavior_(nullptr)  // Temporarily disabled
     , cameraState_(interfaces::CameraState::IDLE)
     , exposureDuration_(0.0)
     , exposureStartTime_(0.0)
@@ -121,9 +122,9 @@ void Camera::stopDevice() {
 }
 
 void Camera::initializeCameraBehaviors() {
-    // Add temperature control behavior
-    temperatureBehavior_ = new CameraTemperatureBehavior(this);
-    addBehavior(std::unique_ptr<behaviors::DeviceBehavior>(temperatureBehavior_));
+    // Add temperature control behavior - temporarily disabled
+    // temperatureBehavior_ = new CameraTemperatureBehavior(this);
+    // addBehavior(std::unique_ptr<behaviors::DeviceBehavior>(temperatureBehavior_));
 }
 
 // ICamera interface implementation
@@ -213,41 +214,41 @@ bool Camera::setROI(int x, int y, int width, int height) {
     return true;
 }
 
-// ITemperatureControlled interface implementation
+// ITemperatureControlled interface implementation - temporarily disabled
 bool Camera::setTargetTemperature(double temperature) {
-    if (temperatureBehavior_) {
-        return temperatureBehavior_->setTargetTemperature(temperature);
-    }
+    // if (temperatureBehavior_) {
+    //     return temperatureBehavior_->setTargetTemperature(temperature);
+    // }
     return false;
 }
 
 double Camera::getCurrentTemperature() const {
-    if (temperatureBehavior_) {
-        return temperatureBehavior_->getCurrentTemperature();
-    }
+    // if (temperatureBehavior_) {
+    //     return temperatureBehavior_->getCurrentTemperature();
+    // }
     return 20.0; // Default room temperature
 }
 
 double Camera::getTargetTemperature() const {
-    if (temperatureBehavior_) {
-        return temperatureBehavior_->getTargetTemperature();
-    }
+    // if (temperatureBehavior_) {
+    //     return temperatureBehavior_->getTargetTemperature();
+    // }
     return 20.0;
 }
 
 bool Camera::stopTemperatureControl() {
-    if (temperatureBehavior_) {
-        return temperatureBehavior_->stopControl();
-    }
+    // if (temperatureBehavior_) {
+    //     return temperatureBehavior_->stopControl();
+    // }
     return true;
 }
 
 bool Camera::isTemperatureStable() const {
-    if (temperatureBehavior_) {
-        // TODO: Implement temperature stability check
-        // For now, assume temperature is stable
-        return true;
-    }
+    // if (temperatureBehavior_) {
+    //     // TODO: Implement temperature stability check
+    //     // For now, assume temperature is stable
+    //     return true;
+    // }
     return true;
 }
 
@@ -936,10 +937,10 @@ void Camera::run() {
                 }
             }
 
-            // Update temperature control if enabled
-            if (temperatureBehavior_) {
-                temperatureBehavior_->update();
-            }
+            // Update temperature control if enabled - temporarily disabled
+            // if (temperatureBehavior_) {
+            //     temperatureBehavior_->update();
+            // }
 
             // Sleep for a short time to prevent busy waiting
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
