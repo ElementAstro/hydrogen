@@ -17,26 +17,34 @@ ProtocolHandlerRegistry& ProtocolHandlerRegistry::getInstance() {
 
 void ProtocolHandlerRegistry::registerHandler(std::unique_ptr<IProtocolHandler> handler) {
     if (!handler) {
+#ifdef HYDROGEN_HAS_SPDLOG
         spdlog::error("Cannot register null protocol handler");
+#endif
         return;
     }
-    
+
     std::lock_guard<std::mutex> lock(handlersMutex_);
     auto protocol = handler->getProtocol();
-    
+
     if (handlers_.find(protocol) != handlers_.end()) {
+#ifdef HYDROGEN_HAS_SPDLOG
         spdlog::warn("Replacing existing handler for protocol: {}", static_cast<int>(protocol));
+#endif
     }
-    
+
     handlers_[protocol] = std::move(handler);
+#ifdef HYDROGEN_HAS_SPDLOG
     spdlog::info("Registered protocol handler: {}", handlers_[protocol]->getProtocolName());
+#endif
 }
 
 void ProtocolHandlerRegistry::unregisterHandler(CommunicationProtocol protocol) {
     std::lock_guard<std::mutex> lock(handlersMutex_);
     auto it = handlers_.find(protocol);
     if (it != handlers_.end()) {
+#ifdef HYDROGEN_HAS_SPDLOG
         spdlog::info("Unregistered protocol handler: {}", it->second->getProtocolName());
+#endif
         handlers_.erase(it);
     }
 }
@@ -67,25 +75,31 @@ bool ProtocolHandlerRegistry::isProtocolRegistered(CommunicationProtocol protoco
 bool ProtocolHandlerRegistry::processMessage(const Message& message) {
     auto handler = getHandler(message.sourceProtocol);
     if (!handler) {
+#ifdef HYDROGEN_HAS_SPDLOG
         spdlog::error("No handler registered for protocol: {}", static_cast<int>(message.sourceProtocol));
+#endif
         return false;
     }
-    
+
     if (!handler->canHandle(message)) {
+#ifdef HYDROGEN_HAS_SPDLOG
         spdlog::warn("Handler cannot process message from protocol: {}", static_cast<int>(message.sourceProtocol));
+#endif
         return false;
     }
-    
+
     return handler->processIncomingMessage(message);
 }
 
 Message ProtocolHandlerRegistry::transformMessage(const Message& source, CommunicationProtocol targetProtocol) const {
     auto handler = getHandler(source.sourceProtocol);
     if (!handler) {
+#ifdef HYDROGEN_HAS_SPDLOG
         spdlog::error("No handler for source protocol: {}", static_cast<int>(source.sourceProtocol));
+#endif
         return source; // Return original message if no handler
     }
-    
+
     return handler->transformMessage(source, targetProtocol);
 }
 
@@ -210,6 +224,7 @@ bool BaseProtocolHandler::isValidPayload(const std::string& payload) const {
 }
 
 void BaseProtocolHandler::logMessage(const std::string& level, const std::string& message) const {
+#ifdef HYDROGEN_HAS_SPDLOG
     if (level == "trace") {
         spdlog::trace("[{}] {}", getProtocolName(), message);
     } else if (level == "debug") {
@@ -223,6 +238,7 @@ void BaseProtocolHandler::logMessage(const std::string& level, const std::string
     } else {
         spdlog::info("[{}] {}", getProtocolName(), message);
     }
+#endif
 }
 
 void BaseProtocolHandler::updateStatistics(const std::string& operation, bool success) {

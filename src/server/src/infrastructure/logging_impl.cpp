@@ -1,9 +1,13 @@
 ﻿#include "hydrogen/server/infrastructure/logging.h"
+#ifdef HYDROGEN_HAS_SPDLOG
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#endif
 #include <iostream>
 #include <unordered_map>
 #include <mutex>
+#include <string>
+#include <memory>
 
 namespace hydrogen {
 namespace server {
@@ -32,27 +36,71 @@ public:
 // Simplified Logger implementation
 class SimpleLogger : public ILogger {
 private:
+#ifdef HYDROGEN_HAS_SPDLOG
     std::shared_ptr<spdlog::logger> spdlogLogger_;
+#endif
     std::string name_;
 
 public:
     explicit SimpleLogger(const std::string& name) : name_(name) {
+#ifdef HYDROGEN_HAS_SPDLOG
         spdlogLogger_ = spdlog::get(name);
         if (!spdlogLogger_) {
             spdlogLogger_ = spdlog::stdout_color_mt(name);
         }
+#endif
     }
 
     void log(LogLevel level, const std::string& message) override {
+#ifdef HYDROGEN_HAS_SPDLOG
         spdlogLogger_->info(message);
+#else
+        std::cout << message << std::endl;
+#endif
     }
 
-    void trace(const std::string& message) override { spdlogLogger_->trace(message); }
-    void debug(const std::string& message) override { spdlogLogger_->debug(message); }
-    void info(const std::string& message) override { spdlogLogger_->info(message); }
-    void warn(const std::string& message) override { spdlogLogger_->warn(message); }
-    void error(const std::string& message) override { spdlogLogger_->error(message); }
-    void critical(const std::string& message) override { spdlogLogger_->critical(message); }
+    void trace(const std::string& message) override {
+#ifdef HYDROGEN_HAS_SPDLOG
+        spdlogLogger_->trace(message);
+#else
+        std::cout << "[TRACE] " << message << std::endl;
+#endif
+    }
+    void debug(const std::string& message) override {
+#ifdef HYDROGEN_HAS_SPDLOG
+        spdlogLogger_->debug(message);
+#else
+        std::cout << "[DEBUG] " << message << std::endl;
+#endif
+    }
+    void info(const std::string& message) override {
+#ifdef HYDROGEN_HAS_SPDLOG
+        spdlogLogger_->info(message);
+#else
+        std::cout << "[INFO] " << message << std::endl;
+#endif
+    }
+    void warn(const std::string& message) override {
+#ifdef HYDROGEN_HAS_SPDLOG
+        spdlogLogger_->warn(message);
+#else
+        std::cout << "[WARN] " << message << std::endl;
+#endif
+    }
+    void error(const std::string& message) override {
+#ifdef HYDROGEN_HAS_SPDLOG
+        spdlogLogger_->error(message);
+#else
+        std::cerr << "[ERROR] " << message << std::endl;
+#endif
+    }
+    void critical(const std::string& message) override {
+#ifdef HYDROGEN_HAS_SPDLOG
+        spdlogLogger_->critical(message);
+#else
+        std::cerr << "[CRITICAL] " << message << std::endl;
+#endif
+    }
 
     void logWithContext(LogLevel level, const std::string& message, 
                        const std::unordered_map<std::string, std::string>& context) override {

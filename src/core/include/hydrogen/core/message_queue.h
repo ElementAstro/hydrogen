@@ -143,9 +143,10 @@ private:
     std::unique_ptr<Message> message;
     std::chrono::steady_clock::time_point nextRetryTime;
     int retryCount;
-    
+
     QueuedMessage(std::unique_ptr<Message> msg)
-        : message(std::move(msg)), nextRetryTime(std::chrono::steady_clock::now()), retryCount(0) {}
+        : message(std::move(msg)),
+          nextRetryTime(std::chrono::steady_clock::now()), retryCount(0) {}
   };
 
   /**
@@ -182,7 +183,8 @@ private:
    * @param retryCount The current retry count for the message.
    * @return The time point when the next retry should be attempted.
    */
-  std::chrono::steady_clock::time_point calculateNextRetryTime(int retryCount) const;
+  std::chrono::steady_clock::time_point
+  calculateNextRetryTime(int retryCount) const;
 
   // Configuration
   MessageSendCallback sendCallback_;
@@ -194,17 +196,18 @@ private:
   mutable std::mutex queueMutex_;
   std::priority_queue<std::unique_ptr<QueuedMessage>,
                       std::vector<std::unique_ptr<QueuedMessage>>,
-                      MessageComparator> messageQueue_;
-  
+                      MessageComparator>
+      messageQueue_;
+
   // Retry management
   mutable std::mutex retryMutex_;
   std::map<std::string, std::unique_ptr<QueuedMessage>> retryQueue_;
-  
+
   // Thread management
   std::atomic<bool> running_;
   std::thread processingThread_;
   std::condition_variable queueCondition_;
-  
+
   // Statistics
   std::atomic<size_t> totalMessagesSent_;
   std::atomic<size_t> totalMessagesAcknowledged_;

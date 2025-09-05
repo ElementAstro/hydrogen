@@ -5,24 +5,28 @@ The Core component provides the fundamental shared functionality for the AstroCo
 ## Features
 
 ### Message System
+
 - **Message Types**: Support for various message types including commands, responses, events, errors, discovery, registration, and authentication
 - **QoS Support**: Quality of Service levels (AT_MOST_ONCE, AT_LEAST_ONCE, EXACTLY_ONCE)
 - **Priority Handling**: Message priority levels (LOW, NORMAL, HIGH, CRITICAL)
 - **Expiration**: Message expiration support with automatic cleanup
 
 ### Message Queue Management
+
 - **Priority Queue**: Messages are processed based on priority and timestamp
 - **Retry Logic**: Automatic retry with exponential backoff for failed messages
 - **Acknowledgments**: Support for message acknowledgments and tracking
 - **Statistics**: Built-in statistics tracking for sent, acknowledged, and failed messages
 
 ### Utilities
+
 - **UUID Generation**: Generate universally unique identifiers
 - **Timestamp Handling**: ISO 8601 timestamp generation and parsing
 - **String Utilities**: Common string manipulation functions (trim, case conversion, splitting)
 - **Boolean Parsing**: Flexible boolean value parsing
 
 ### Error Recovery
+
 - **Error Handling Strategies**: Multiple strategies (IGNORE, RETRY, NOTIFY, RESTART_DEVICE, FAILOVER, CUSTOM)
 - **Device-Specific Handlers**: Register error handlers for specific devices
 - **Global Handlers**: Fallback error handling for unhandled errors
@@ -81,7 +85,7 @@ queue.stop();
 astrocomm::core::ErrorRecoveryManager errorManager;
 
 // Register an error handler
-errorManager.registerErrorHandler("CONNECTION_FAILED", 
+errorManager.registerErrorHandler("CONNECTION_FAILED",
     astrocomm::core::ErrorHandlingStrategy::RETRY);
 
 // Handle an error
@@ -92,6 +96,7 @@ bool handled = errorManager.handleError(errorMsg);
 ## Public Interface
 
 ### Headers
+
 - `astrocomm/core.h` - Main header including all core functionality
 - `astrocomm/core/message.h` - Message system classes and types
 - `astrocomm/core/message_queue.h` - Message queue management
@@ -99,9 +104,11 @@ bool handled = errorManager.handleError(errorMsg);
 - `astrocomm/core/error_recovery.h` - Error handling and recovery
 
 ### Namespaces
+
 All core functionality is contained within the `astrocomm::core` namespace.
 
 ### Dependencies
+
 - **nlohmann/json**: JSON serialization and deserialization
 - **Standard C++17**: Threading, chrono, containers
 - **Optional Boost**: Regex support (if USE_BOOST_REGEX is defined)

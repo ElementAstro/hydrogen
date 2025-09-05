@@ -1,5 +1,7 @@
 #include "comprehensive_test_framework.h"
+#ifdef HYDROGEN_HAS_SPDLOG
 #include <spdlog/spdlog.h>
+#endif
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -108,17 +110,21 @@ void ComprehensiveTestFixture::cleanupTempResources() {
         try {
             std::filesystem::remove(file);
         } catch (const std::exception& e) {
+#ifdef HYDROGEN_HAS_SPDLOG
             spdlog::warn("Failed to remove temp file {}: {}", file, e.what());
+#endif
         }
     }
     tempFiles_.clear();
-    
+
     // Clean up temporary directories
     for (const auto& dir : tempDirectories_) {
         try {
             std::filesystem::remove_all(dir);
         } catch (const std::exception& e) {
+#ifdef HYDROGEN_HAS_SPDLOG
             spdlog::warn("Failed to remove temp directory {}: {}", dir, e.what());
+#endif
         }
     }
     tempDirectories_.clear();
@@ -331,15 +337,21 @@ void ComprehensiveTestFixture::skipIfNetworkUnavailable() const {
 }
 
 void ComprehensiveTestFixture::logTestInfo(const std::string& message) {
+#ifdef HYDROGEN_HAS_SPDLOG
     spdlog::info("[TEST] {}", message);
+#endif
 }
 
 void ComprehensiveTestFixture::logTestWarning(const std::string& message) {
+#ifdef HYDROGEN_HAS_SPDLOG
     spdlog::warn("[TEST] {}", message);
+#endif
 }
 
 void ComprehensiveTestFixture::logTestError(const std::string& message) {
+#ifdef HYDROGEN_HAS_SPDLOG
     spdlog::error("[TEST] {}", message);
+#endif
 }
 
 void ComprehensiveTestFixture::saveTestReport(const std::string& filename) {
@@ -397,8 +409,10 @@ void ComprehensiveTestFixture::loadTestConfiguration() {
 
 void ComprehensiveTestFixture::setupLogging() {
     // Configure spdlog for testing
+#ifdef HYDROGEN_HAS_SPDLOG
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
+#endif
 }
 
 // PerformanceTester implementation
@@ -478,12 +492,14 @@ void PerformanceTester::comparePerformance(const std::vector<std::pair<std::stri
               });
 
     // Print comparison
+#ifdef HYDROGEN_HAS_SPDLOG
     spdlog::info("Performance Comparison Results:");
     for (size_t i = 0; i < results.size(); ++i) {
         const auto& result = results[i];
         spdlog::info("  {}. {}: {:.2f} ops/sec (avg: {}μs)",
                      i + 1, result.name, result.operationsPerSecond, result.averageTime.count());
     }
+#endif
 }
 
 size_t PerformanceTester::getCurrentMemoryUsage() {
@@ -639,7 +655,9 @@ void TestDataManager::cleanupTestData() {
             }
         }
     } catch (const std::exception& e) {
+#ifdef HYDROGEN_HAS_SPDLOG
         spdlog::warn("Failed to cleanup test data: {}", e.what());
+#endif
     }
 }
 
@@ -650,7 +668,9 @@ void TestDataManager::archiveTestResults(const std::string& testSuite) {
     std::filesystem::create_directories(archivePath);
 
     // Archive logic would go here
+#ifdef HYDROGEN_HAS_SPDLOG
     spdlog::info("Test results archived for suite: {}", testSuite);
+#endif
 }
 
 void TestDataManager::initializeDataDirectory() {

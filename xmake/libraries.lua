@@ -168,7 +168,7 @@ target("hydrogen_client")
     add_files("../src/client/command_executor.cpp")
     add_files("../src/client/subscription_manager.cpp")
     add_files("../src/client/message_queue_manager.cpp")
-    add_files("../src/client/device_client_refactored.cpp")
+    add_files("../src/client/device_client.cpp")
 
     -- Include directories
     add_includedirs("../src", "../src/client_component/include", {public = true})

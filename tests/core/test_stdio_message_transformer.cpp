@@ -5,10 +5,12 @@
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include <memory>
+#include <iomanip>
+#include <sstream>
 
 using namespace testing;
 using json = nlohmann::json;
-using HydrogenMessage = hydrogen::core::Message;
+using namespace hydrogen::core;
 
 /**
  * @brief Test fixture for StdioMessageTransformer tests
@@ -30,19 +32,27 @@ protected:
         testMessage_.reset();
     }
 
-    std::unique_ptr<HydrogenMessage> createTestMessage() {
-        auto message = std::make_unique<HydrogenMessage>();
+    std::unique_ptr<CommandMessage> createTestMessage() {
+        auto message = std::make_unique<CommandMessage>();
         message->setMessageId("test_msg_001");
         message->setDeviceId("test_device");
-        message->setMessageType(hydrogen::core::MessageType::COMMAND);
-        message->setTimestamp(std::chrono::system_clock::now());
+        message->setMessageType(MessageType::COMMAND);
+
+        // Create timestamp string
+        auto now = std::chrono::system_clock::now();
+        auto time_t = std::chrono::system_clock::to_time_t(now);
+        std::stringstream ss;
+        ss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%SZ");
+        message->setTimestamp(ss.str());
+
         message->setOriginalMessageId("original_msg_001");
 
-        // Set some test payload
-        json payload;
-        payload["command"] = "ping";
-        payload["parameters"] = {{"timeout", 5000}, {"retries", 3}};
-        message->setPayload(payload.dump());
+        // Set command-specific data
+        message->setCommand("ping");
+        json parameters;
+        parameters["timeout"] = 5000;
+        parameters["retries"] = 3;
+        message->setParameters(parameters);
 
         return message;
     }
@@ -70,7 +80,7 @@ protected:
 
     std::unique_ptr<StdioTransformer> stdioTransformer_;
     std::unique_ptr<MessageTransformer> messageTransformer_;
-    std::unique_ptr<Message> testMessage_;
+    std::unique_ptr<CommandMessage> testMessage_;
 };
 
 /**

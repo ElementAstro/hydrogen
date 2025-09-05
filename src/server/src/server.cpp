@@ -5,7 +5,9 @@
 #include "hydrogen/server/services/communication_service.h"
 #include "hydrogen/server/services/health_service.h"
 #include "hydrogen/server/protocols/http/http_server.h"
+#ifdef HYDROGEN_HAS_SPDLOG
 #include <spdlog/spdlog.h>
+#endif
 #include <memory>
 
 namespace hydrogen {

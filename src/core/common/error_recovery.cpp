@@ -15,7 +15,7 @@ ErrorContext ErrorContext::fromErrorMessage(const ErrorMessage &errorMsg) {
   context.errorCode = errorMsg.getErrorCode();
   context.errorMessage = errorMsg.getErrorMessage();
   context.errorTime = std::chrono::system_clock::now();
-  
+
   // Extract additional details from error message
   auto details = errorMsg.getDetails();
   if (details.contains("command")) {
@@ -30,42 +30,39 @@ ErrorContext ErrorContext::fromErrorMessage(const ErrorMessage &errorMsg) {
   if (details.contains("maxRetries")) {
     context.maxRetries = details["maxRetries"];
   }
-  
+
   return context;
 }
 
 ErrorRecoveryManager::ErrorRecoveryManager() = default;
 
-ErrorRecoveryManager::~ErrorRecoveryManager() {
-  stop();
-}
+ErrorRecoveryManager::~ErrorRecoveryManager() { stop(); }
 
-void ErrorRecoveryManager::registerErrorHandler(const std::string &errorCode,
-                                               ErrorHandlingStrategy strategy,
-                                               ErrorHandlerFunc customHandler) {
+void ErrorRecoveryManager::registerErrorHandler(
+    const std::string &errorCode, ErrorHandlingStrategy strategy,
+    ErrorHandlerFunc customHandler) {
   std::lock_guard<std::shared_mutex> lock(handlersMutex_);
-  
+
   ErrorHandlerInfo info;
   info.strategy = strategy;
   info.customHandler = customHandler;
   info.maxRetries = defaultMaxRetries_;
   info.retryDelayMs = defaultRetryDelayMs_;
-  
+
   globalHandlers_[errorCode] = info;
 }
 
-void ErrorRecoveryManager::registerDeviceErrorHandler(const std::string &deviceId,
-                                                     const std::string &errorCode,
-                                                     ErrorHandlingStrategy strategy,
-                                                     ErrorHandlerFunc customHandler) {
+void ErrorRecoveryManager::registerDeviceErrorHandler(
+    const std::string &deviceId, const std::string &errorCode,
+    ErrorHandlingStrategy strategy, ErrorHandlerFunc customHandler) {
   std::lock_guard<std::shared_mutex> lock(handlersMutex_);
-  
+
   ErrorHandlerInfo info;
   info.strategy = strategy;
   info.customHandler = customHandler;
   info.maxRetries = defaultMaxRetries_;
   info.retryDelayMs = defaultRetryDelayMs_;
-  
+
   deviceHandlers_[deviceId][errorCode] = info;
 }
 
@@ -76,11 +73,11 @@ bool ErrorRecoveryManager::handleError(const ErrorMessage &errorMsg) {
 
 bool ErrorRecoveryManager::handleError(const ErrorContext &context) {
   updateStats(context.errorCode, false);
-  
+
   // Look for device-specific handler first
   {
     std::shared_lock<std::shared_mutex> lock(handlersMutex_);
-    
+
     auto deviceIt = deviceHandlers_.find(context.deviceId);
     if (deviceIt != deviceHandlers_.end()) {
       auto errorIt = deviceIt->second.find(context.errorCode);
@@ -90,7 +87,7 @@ bool ErrorRecoveryManager::handleError(const ErrorContext &context) {
         return handled;
       }
     }
-    
+
     // Look for global handler
     auto globalIt = globalHandlers_.find(context.errorCode);
     if (globalIt != globalHandlers_.end()) {
@@ -99,14 +96,14 @@ bool ErrorRecoveryManager::handleError(const ErrorContext &context) {
       return handled;
     }
   }
-  
+
   // Use global error handler as fallback
   if (globalErrorHandler_) {
     bool handled = globalErrorHandler_(context);
     updateStats(context.errorCode, handled);
     return handled;
   }
-  
+
   // No handler found
   return false;
 }
@@ -141,7 +138,7 @@ void ErrorRecoveryManager::start() {
   if (running_.load()) {
     return;
   }
-  
+
   running_.store(true);
   // Could start a background thread for periodic cleanup or monitoring
 }
@@ -150,46 +147,46 @@ void ErrorRecoveryManager::stop() {
   if (!running_.load()) {
     return;
   }
-  
+
   running_.store(false);
-  
+
   if (recoveryThread_.joinable()) {
     recoveryThread_.join();
   }
 }
 
-bool ErrorRecoveryManager::executeErrorHandler(const ErrorContext &context, 
-                                              const ErrorHandlerInfo &handlerInfo) {
+bool ErrorRecoveryManager::executeErrorHandler(
+    const ErrorContext &context, const ErrorHandlerInfo &handlerInfo) {
   switch (handlerInfo.strategy) {
-    case ErrorHandlingStrategy::IGNORE:
-      return true;
-      
-    case ErrorHandlingStrategy::RETRY:
-      if (autoRetryEnabled_ && context.retryCount < handlerInfo.maxRetries) {
-        return retryOperation(context);
-      }
-      return false;
-      
-    case ErrorHandlingStrategy::NOTIFY:
-      // Just log or notify, don't actually handle
-      return false;
-      
-    case ErrorHandlingStrategy::RESTART_DEVICE:
-      // Would need device management integration
-      return false;
-      
-    case ErrorHandlingStrategy::FAILOVER:
-      // Would need device management integration
-      return false;
-      
-    case ErrorHandlingStrategy::CUSTOM:
-      if (handlerInfo.customHandler) {
-        return handlerInfo.customHandler(context);
-      }
-      return false;
-      
-    default:
-      return false;
+  case ErrorHandlingStrategy::IGNORE:
+    return true;
+
+  case ErrorHandlingStrategy::RETRY:
+    if (autoRetryEnabled_ && context.retryCount < handlerInfo.maxRetries) {
+      return retryOperation(context);
+    }
+    return false;
+
+  case ErrorHandlingStrategy::NOTIFY:
+    // Just log or notify, don't actually handle
+    return false;
+
+  case ErrorHandlingStrategy::RESTART_DEVICE:
+    // Would need device management integration
+    return false;
+
+  case ErrorHandlingStrategy::FAILOVER:
+    // Would need device management integration
+    return false;
+
+  case ErrorHandlingStrategy::CUSTOM:
+    if (handlerInfo.customHandler) {
+      return handlerInfo.customHandler(context);
+    }
+    return false;
+
+  default:
+    return false;
   }
 }
 
@@ -204,12 +201,13 @@ bool ErrorRecoveryManager::retryOperation(const ErrorContext &context) {
   return true;
 }
 
-void ErrorRecoveryManager::updateStats(const std::string &errorCode, bool handled) {
+void ErrorRecoveryManager::updateStats(const std::string &errorCode,
+                                       bool handled) {
   std::lock_guard<std::shared_mutex> lock(statsMutex_);
-  
+
   stats_.totalErrors++;
   stats_.errorCodeCounts[errorCode]++;
-  
+
   if (handled) {
     stats_.handledErrors++;
   } else {

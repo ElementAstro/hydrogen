@@ -52,9 +52,14 @@ public:
 
     // IServer implementation
     bool start() override;
-    void stop() override;
+    bool stop() override;
+    bool restart() override;
     ServerStatus getStatus() const override;
-    std::string getServerInfo() const override;
+    void setConfig(const core::ServerConfig& config) override;
+    core::ServerConfig getConfig() const override;
+    bool isConfigValid() const override;
+    std::vector<core::ConnectionInfo> getActiveConnections() const override;
+    size_t getConnectionCount() const override;
 
     // Stdio-specific methods
     void setServerConfig(const ServerConfig& config);

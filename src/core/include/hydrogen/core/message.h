@@ -1,8 +1,8 @@
 #pragma once
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
-#include <memory>
 
 namespace hydrogen {
 namespace core {
@@ -14,7 +14,7 @@ enum class MessageType {
   COMMAND,
   RESPONSE,
   EVENT,
-  ERR,  // Renamed from ERROR to avoid Windows macro conflict
+  ERR, // Renamed from ERROR to avoid Windows macro conflict
   DISCOVERY_REQUEST,
   DISCOVERY_RESPONSE,
   REGISTRATION,
@@ -51,25 +51,20 @@ public:
 
   // QoS level support
   enum class QoSLevel {
-    AT_MOST_ONCE,   // At most once delivery, may be lost (default)
-    AT_LEAST_ONCE,  // At least once delivery, may be duplicated
-    EXACTLY_ONCE    // Exactly once delivery, no loss no duplication
+    AT_MOST_ONCE,  // At most once delivery, may be lost (default)
+    AT_LEAST_ONCE, // At least once delivery, may be duplicated
+    EXACTLY_ONCE   // Exactly once delivery, no loss no duplication
   };
 
   void setQoSLevel(QoSLevel level);
   QoSLevel getQoSLevel() const;
 
   // Message priority
-  enum class Priority {
-    LOW,
-    NORMAL,
-    HIGH,
-    CRITICAL
-  };
-  
+  enum class Priority { LOW, NORMAL, HIGH, CRITICAL };
+
   void setPriority(Priority priority);
   Priority getPriority() const;
-  
+
   // Message expiration time
   void setExpireAfter(int seconds);
   int getExpireAfter() const;

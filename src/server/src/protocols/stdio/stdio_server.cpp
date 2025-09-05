@@ -69,9 +69,9 @@ bool StdioServer::start() {
     }
 }
 
-void StdioServer::stop() {
+bool StdioServer::stop() {
     if (status_.load() == ServerStatus::STOPPED) {
-        return;
+        return true;
     }
 
     status_.store(ServerStatus::STOPPING);
@@ -100,33 +100,28 @@ void StdioServer::stop() {
     
     status_.store(ServerStatus::STOPPED);
     logInfo("StdioServer stopped");
+    return true;
 }
 
 ServerStatus StdioServer::getStatus() const {
     return status_.load();
 }
 
-std::string StdioServer::getServerInfo() const {
-    std::ostringstream info;
-    info << "StdioServer: " << config_.serverName << "\n";
-    info << "Status: ";
-    
-    switch (status_.load()) {
-        case ServerStatus::STOPPED: info << "STOPPED"; break;
-        case ServerStatus::STARTING: info << "STARTING"; break;
-        case ServerStatus::RUNNING: info << "RUNNING"; break;
-        case ServerStatus::STOPPING: info << "STOPPING"; break;
-        case ServerStatus::ERROR: info << "ERROR"; break;
+bool StdioServer::restart() {
+    if (!stop()) {
+        return false;
     }
-    
-    info << "\n";
-    
-    auto stats = getStatistics();
-    info << "Connected Clients: " << stats.currentActiveClients << "\n";
-    info << "Total Messages: " << stats.totalMessagesProcessed << "\n";
-    info << "Uptime: " << stats.uptime.count() << "ms\n";
-    
-    return info.str();
+    return start();
+}
+
+void StdioServer::setConfig(const ServerConfig& config) {
+    config_ = config;
+    protocolHandler_->updateConfig(config_.protocolConfig);
+    logInfo("Server configuration updated");
+}
+
+ServerConfig StdioServer::getConfig() const {
+    return config_;
 }
 
 void StdioServer::setServerConfig(const ServerConfig& config) {

@@ -83,39 +83,28 @@ void Message::setOriginalMessageId(const std::string &id) {
 
 std::string Message::getOriginalMessageId() const { return originalMessageId; }
 
-void Message::setQoSLevel(QoSLevel level) {
-  qosLevel = level;
-}
+void Message::setQoSLevel(QoSLevel level) { qosLevel = level; }
 
-Message::QoSLevel Message::getQoSLevel() const {
-  return qosLevel;
-}
+Message::QoSLevel Message::getQoSLevel() const { return qosLevel; }
 
-void Message::setPriority(Priority priority) {
-  this->priority = priority;
-}
+void Message::setPriority(Priority priority) { this->priority = priority; }
 
-Message::Priority Message::getPriority() const {
-  return priority;
-}
+Message::Priority Message::getPriority() const { return priority; }
 
-void Message::setExpireAfter(int seconds) {
-  expireAfterSeconds = seconds;
-}
+void Message::setExpireAfter(int seconds) { expireAfterSeconds = seconds; }
 
-int Message::getExpireAfter() const {
-  return expireAfterSeconds;
-}
+int Message::getExpireAfter() const { return expireAfterSeconds; }
 
 bool Message::isExpired() const {
   if (expireAfterSeconds <= 0) {
     return false; // Never expires
   }
-  
+
   auto now = std::chrono::system_clock::now();
   auto messageTime = string_utils::parseIsoTimestamp(timestamp);
-  auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - messageTime);
-  
+  auto elapsed =
+      std::chrono::duration_cast<std::chrono::seconds>(now - messageTime);
+
   return elapsed.count() >= expireAfterSeconds;
 }
 
@@ -131,16 +120,16 @@ json Message::toJson() const {
   if (!originalMessageId.empty()) {
     j["originalMessageId"] = originalMessageId;
   }
-  
+
   // Add QoS related properties
   if (qosLevel != QoSLevel::AT_MOST_ONCE) {
     j["qos"] = static_cast<int>(qosLevel);
   }
-  
+
   if (priority != Priority::NORMAL) {
     j["priority"] = static_cast<int>(priority);
   }
-  
+
   if (expireAfterSeconds > 0) {
     j["expireAfter"] = expireAfterSeconds;
   }
@@ -160,28 +149,27 @@ void Message::fromJson(const json &j) {
   if (j.contains("originalMessageId")) {
     originalMessageId = j["originalMessageId"];
   }
-  
+
   if (j.contains("qos")) {
     qosLevel = static_cast<QoSLevel>(j["qos"]);
   }
-  
+
   if (j.contains("priority")) {
     priority = static_cast<Priority>(j["priority"]);
   }
-  
+
   if (j.contains("expireAfter")) {
     expireAfterSeconds = j["expireAfter"];
   }
 }
 
-std::string Message::toString() const {
-  return toJson().dump();
-}
+std::string Message::toString() const { return toJson().dump(); }
 
 // CommandMessage implementation
 CommandMessage::CommandMessage() : Message(MessageType::COMMAND) {}
 
-CommandMessage::CommandMessage(const std::string &cmd) : Message(MessageType::COMMAND), command(cmd) {}
+CommandMessage::CommandMessage(const std::string &cmd)
+    : Message(MessageType::COMMAND), command(cmd) {}
 
 void CommandMessage::setCommand(const std::string &cmd) { command = cmd; }
 
@@ -221,7 +209,9 @@ void CommandMessage::fromJson(const json &j) {
 // ResponseMessage implementation
 ResponseMessage::ResponseMessage() : Message(MessageType::RESPONSE) {}
 
-void ResponseMessage::setStatus(const std::string &status) { this->status = status; }
+void ResponseMessage::setStatus(const std::string &status) {
+  this->status = status;
+}
 
 std::string ResponseMessage::getStatus() const { return status; }
 
@@ -233,7 +223,9 @@ void ResponseMessage::setProperties(const json &props) { properties = props; }
 
 json ResponseMessage::getProperties() const { return properties; }
 
-void ResponseMessage::setDetails(const json &details) { this->details = details; }
+void ResponseMessage::setDetails(const json &details) {
+  this->details = details;
+}
 
 json ResponseMessage::getDetails() const { return details; }
 
@@ -324,14 +316,17 @@ void EventMessage::fromJson(const json &j) {
 // ErrorMessage implementation
 ErrorMessage::ErrorMessage() : Message(MessageType::ERR) {}
 
-ErrorMessage::ErrorMessage(const std::string &errorCode, const std::string &errorMsg)
+ErrorMessage::ErrorMessage(const std::string &errorCode,
+                           const std::string &errorMsg)
     : Message(MessageType::ERR), errorCode(errorCode), errorMessage(errorMsg) {}
 
 void ErrorMessage::setErrorCode(const std::string &code) { errorCode = code; }
 
 std::string ErrorMessage::getErrorCode() const { return errorCode; }
 
-void ErrorMessage::setErrorMessage(const std::string &msg) { errorMessage = msg; }
+void ErrorMessage::setErrorMessage(const std::string &msg) {
+  errorMessage = msg;
+}
 
 std::string ErrorMessage::getErrorMessage() const { return errorMessage; }
 
@@ -359,9 +354,11 @@ void ErrorMessage::fromJson(const json &j) {
 }
 
 // DiscoveryRequestMessage implementation
-DiscoveryRequestMessage::DiscoveryRequestMessage() : Message(MessageType::DISCOVERY_REQUEST) {}
+DiscoveryRequestMessage::DiscoveryRequestMessage()
+    : Message(MessageType::DISCOVERY_REQUEST) {}
 
-void DiscoveryRequestMessage::setDeviceTypes(const std::vector<std::string> &types) {
+void DiscoveryRequestMessage::setDeviceTypes(
+    const std::vector<std::string> &types) {
   deviceTypes = types;
 }
 
@@ -369,13 +366,9 @@ std::vector<std::string> DiscoveryRequestMessage::getDeviceTypes() const {
   return deviceTypes;
 }
 
-void DiscoveryRequestMessage::setFilter(const json &f) {
-  filter = f;
-}
+void DiscoveryRequestMessage::setFilter(const json &f) { filter = f; }
 
-json DiscoveryRequestMessage::getFilter() const {
-  return filter;
-}
+json DiscoveryRequestMessage::getFilter() const { return filter; }
 
 json DiscoveryRequestMessage::toJson() const {
   json j = Message::toJson();
@@ -395,7 +388,8 @@ void DiscoveryRequestMessage::fromJson(const json &j) {
 }
 
 // DiscoveryResponseMessage implementation
-DiscoveryResponseMessage::DiscoveryResponseMessage() : Message(MessageType::DISCOVERY_RESPONSE) {}
+DiscoveryResponseMessage::DiscoveryResponseMessage()
+    : Message(MessageType::DISCOVERY_RESPONSE) {}
 
 void DiscoveryResponseMessage::setDevices(const json &devs) { devices = devs; }
 
@@ -413,7 +407,8 @@ void DiscoveryResponseMessage::fromJson(const json &j) {
 }
 
 // RegistrationMessage implementation
-RegistrationMessage::RegistrationMessage() : Message(MessageType::REGISTRATION) {}
+RegistrationMessage::RegistrationMessage()
+    : Message(MessageType::REGISTRATION) {}
 
 void RegistrationMessage::setDeviceInfo(const json &info) { deviceInfo = info; }
 
@@ -431,15 +426,20 @@ void RegistrationMessage::fromJson(const json &j) {
 }
 
 // AuthenticationMessage implementation
-AuthenticationMessage::AuthenticationMessage() : Message(MessageType::AUTHENTICATION) {}
+AuthenticationMessage::AuthenticationMessage()
+    : Message(MessageType::AUTHENTICATION) {}
 
 void AuthenticationMessage::setMethod(const std::string &m) { method = m; }
 
 std::string AuthenticationMessage::getMethod() const { return method; }
 
-void AuthenticationMessage::setCredentials(const std::string &creds) { credentials = creds; }
+void AuthenticationMessage::setCredentials(const std::string &creds) {
+  credentials = creds;
+}
 
-std::string AuthenticationMessage::getCredentials() const { return credentials; }
+std::string AuthenticationMessage::getCredentials() const {
+  return credentials;
+}
 
 json AuthenticationMessage::toJson() const {
   json j = Message::toJson();
@@ -461,32 +461,32 @@ std::unique_ptr<Message> createMessageFromJson(const json &j) {
   std::unique_ptr<Message> message;
 
   switch (type) {
-    case MessageType::COMMAND:
-      message = std::make_unique<CommandMessage>();
-      break;
-    case MessageType::RESPONSE:
-      message = std::make_unique<ResponseMessage>();
-      break;
-    case MessageType::EVENT:
-      message = std::make_unique<EventMessage>();
-      break;
-    case MessageType::ERR:
-      message = std::make_unique<ErrorMessage>();
-      break;
-    case MessageType::DISCOVERY_REQUEST:
-      message = std::make_unique<DiscoveryRequestMessage>();
-      break;
-    case MessageType::DISCOVERY_RESPONSE:
-      message = std::make_unique<DiscoveryResponseMessage>();
-      break;
-    case MessageType::REGISTRATION:
-      message = std::make_unique<RegistrationMessage>();
-      break;
-    case MessageType::AUTHENTICATION:
-      message = std::make_unique<AuthenticationMessage>();
-      break;
-    default:
-      throw std::invalid_argument("Unknown message type");
+  case MessageType::COMMAND:
+    message = std::make_unique<CommandMessage>();
+    break;
+  case MessageType::RESPONSE:
+    message = std::make_unique<ResponseMessage>();
+    break;
+  case MessageType::EVENT:
+    message = std::make_unique<EventMessage>();
+    break;
+  case MessageType::ERR:
+    message = std::make_unique<ErrorMessage>();
+    break;
+  case MessageType::DISCOVERY_REQUEST:
+    message = std::make_unique<DiscoveryRequestMessage>();
+    break;
+  case MessageType::DISCOVERY_RESPONSE:
+    message = std::make_unique<DiscoveryResponseMessage>();
+    break;
+  case MessageType::REGISTRATION:
+    message = std::make_unique<RegistrationMessage>();
+    break;
+  case MessageType::AUTHENTICATION:
+    message = std::make_unique<AuthenticationMessage>();
+    break;
+  default:
+    throw std::invalid_argument("Unknown message type");
   }
 
   message->fromJson(j);

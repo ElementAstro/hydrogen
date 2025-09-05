@@ -45,12 +45,12 @@ protected:
     std::vector<std::string> errors_;
     
     void setupCommunicator() {
-        communicator_ = createStdioCommunicator(config_);
-        
-        communicator_->setMessageHandler([this](const std::string& message, CommunicationProtocol protocol) {
+        communicator_ = ProtocolCommunicatorFactory::createStdioCommunicator(config_);
+
+        communicator_->setMessageHandler([this](const std::string& message) {
             receivedMessages_.push_back(message);
         });
-        
+
         communicator_->setErrorHandler([this](const std::string& error) {
             errors_.push_back(error);
         });
@@ -109,7 +109,7 @@ TEST_F(StdioCommunicatorTest, MessageSending) {
     EXPECT_TRUE(communicator_->sendMessage(jsonMessage));
     
     // Test empty message
-    EXPECT_TRUE(communicator_->sendMessage(""));
+    EXPECT_TRUE(communicator_->sendMessage(std::string("")));
 }
 
 /**
@@ -119,12 +119,12 @@ TEST_F(StdioCommunicatorTest, MessageSendingWhenInactive) {
     setupCommunicator();
     
     // Should fail when not started
-    EXPECT_FALSE(communicator_->sendMessage("test"));
-    
+    EXPECT_FALSE(communicator_->sendMessage(std::string("test")));
+
     // Start and stop, then try to send
     ASSERT_TRUE(communicator_->start());
     communicator_->stop();
-    EXPECT_FALSE(communicator_->sendMessage("test"));
+    EXPECT_FALSE(communicator_->sendMessage(std::string("test")));
 }
 
 /**

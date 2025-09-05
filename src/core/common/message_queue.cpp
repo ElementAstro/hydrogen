@@ -8,21 +8,20 @@ namespace core {
 
 // Helper function to create a message from JSON
 // This is a simplified implementation for build compatibility
-std::unique_ptr<Message> createMessageFromJson(const std::string& json) {
-    // For now, return a simple message implementation
-    // In a real implementation, this would parse the JSON and create the appropriate message type
-    (void)json; // Suppress unused parameter warning
-    return nullptr; // Simplified implementation
+std::unique_ptr<Message> createMessageFromJson(const std::string &json) {
+  // For now, return a simple message implementation
+  // In a real implementation, this would parse the JSON and create the
+  // appropriate message type
+  (void)json;     // Suppress unused parameter warning
+  return nullptr; // Simplified implementation
 }
 
 MessageQueueManager::MessageQueueManager(MessageSendCallback sendCallback)
-    : sendCallback_(sendCallback), maxRetries_(3), 
-      baseRetryInterval_(1000), running_(false),
-      totalMessagesSent_(0), totalMessagesAcknowledged_(0), totalMessagesFailed_(0) {}
+    : sendCallback_(sendCallback), maxRetries_(3), baseRetryInterval_(1000),
+      running_(false), totalMessagesSent_(0), totalMessagesAcknowledged_(0),
+      totalMessagesFailed_(0) {}
 
-MessageQueueManager::~MessageQueueManager() { 
-  stop(); 
-}
+MessageQueueManager::~MessageQueueManager() { stop(); }
 
 void MessageQueueManager::start() {
   if (running_.load()) {
@@ -52,7 +51,7 @@ void MessageQueueManager::stop() {
       messageQueue_.pop();
     }
   }
-  
+
   {
     std::lock_guard<std::mutex> lock(retryMutex_);
     retryQueue_.clear();
@@ -65,16 +64,17 @@ void MessageQueueManager::enqueue(std::unique_ptr<Message> message) {
   }
 
   auto queuedMsg = std::make_unique<QueuedMessage>(std::move(message));
-  
+
   {
     std::lock_guard<std::mutex> lock(queueMutex_);
     messageQueue_.push(std::move(queuedMsg));
   }
-  
+
   queueCondition_.notify_one();
 }
 
-void MessageQueueManager::acknowledge(const std::string &messageId, bool success) {
+void MessageQueueManager::acknowledge(const std::string &messageId,
+                                      bool success) {
   {
     std::lock_guard<std::mutex> lock(retryMutex_);
     auto it = retryQueue_.find(messageId);
@@ -82,11 +82,11 @@ void MessageQueueManager::acknowledge(const std::string &messageId, bool success
       retryQueue_.erase(it);
     }
   }
-  
+
   if (ackCallback_) {
     ackCallback_(messageId, success);
   }
-  
+
   if (success) {
     totalMessagesAcknowledged_.fetch_add(1);
   } else {
@@ -123,11 +123,11 @@ bool MessageQueueManager::MessageComparator::operator()(
   // Since priority queue is max-heap, we reverse the comparison
   auto priorityA = a->message->getPriority();
   auto priorityB = b->message->getPriority();
-  
+
   if (priorityA != priorityB) {
     return priorityA < priorityB; // Higher priority (larger enum value) first
   }
-  
+
   // If priorities are equal, process older messages first
   return a->nextRetryTime > b->nextRetryTime;
 }
@@ -135,22 +135,22 @@ bool MessageQueueManager::MessageComparator::operator()(
 void MessageQueueManager::processQueue() {
   while (running_.load()) {
     std::unique_lock<std::mutex> lock(queueMutex_);
-    
+
     // Wait for messages or stop signal
-    queueCondition_.wait(lock, [this] {
-      return !messageQueue_.empty() || !running_.load();
-    });
-    
+    queueCondition_.wait(
+        lock, [this] { return !messageQueue_.empty() || !running_.load(); });
+
     if (!running_.load()) {
       break;
     }
-    
+
     // Process messages
     while (!messageQueue_.empty() && running_.load()) {
-      auto queuedMsg = std::move(const_cast<std::unique_ptr<QueuedMessage>&>(messageQueue_.top()));
+      auto queuedMsg = std::move(
+          const_cast<std::unique_ptr<QueuedMessage> &>(messageQueue_.top()));
       messageQueue_.pop();
       lock.unlock();
-      
+
       // Check if message has expired
       if (queuedMsg->message->isExpired()) {
         if (ackCallback_) {
@@ -160,7 +160,7 @@ void MessageQueueManager::processQueue() {
         lock.lock();
         continue;
       }
-      
+
       // Check if it's time to send/retry this message
       auto now = std::chrono::steady_clock::now();
       if (now >= queuedMsg->nextRetryTime) {
@@ -173,26 +173,27 @@ void MessageQueueManager::processQueue() {
         lock.lock();
         messageQueue_.push(std::move(queuedMsg));
         lock.unlock();
-        
+
         // Sleep until next message is ready
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
-      
+
       lock.lock();
     }
   }
 }
 
-bool MessageQueueManager::sendMessage(const std::unique_ptr<QueuedMessage> &queuedMsg) {
+bool MessageQueueManager::sendMessage(
+    const std::unique_ptr<QueuedMessage> &queuedMsg) {
   if (!sendCallback_) {
     return false;
   }
-  
+
   bool sent = sendCallback_(*queuedMsg->message);
-  
+
   if (sent) {
     totalMessagesSent_.fetch_add(1);
-    
+
     // For messages requiring acknowledgment, add to retry queue
     auto qosLevel = queuedMsg->message->getQoSLevel();
     if (qosLevel == Message::QoSLevel::AT_LEAST_ONCE ||
@@ -212,13 +213,14 @@ bool MessageQueueManager::sendMessage(const std::unique_ptr<QueuedMessage> &queu
       }
     }
   }
-  
+
   return sent;
 }
 
-void MessageQueueManager::handleFailedMessage(std::unique_ptr<QueuedMessage> queuedMsg) {
+void MessageQueueManager::handleFailedMessage(
+    std::unique_ptr<QueuedMessage> queuedMsg) {
   queuedMsg->retryCount++;
-  
+
   if (queuedMsg->retryCount >= maxRetries_) {
     // Max retries exceeded
     if (ackCallback_) {
@@ -227,19 +229,20 @@ void MessageQueueManager::handleFailedMessage(std::unique_ptr<QueuedMessage> que
     totalMessagesFailed_.fetch_add(1);
     return;
   }
-  
+
   // Schedule retry
   queuedMsg->nextRetryTime = calculateNextRetryTime(queuedMsg->retryCount);
-  
+
   {
     std::lock_guard<std::mutex> lock(queueMutex_);
     messageQueue_.push(std::move(queuedMsg));
   }
-  
+
   queueCondition_.notify_one();
 }
 
-std::chrono::steady_clock::time_point MessageQueueManager::calculateNextRetryTime(int retryCount) const {
+std::chrono::steady_clock::time_point
+MessageQueueManager::calculateNextRetryTime(int retryCount) const {
   // Exponential backoff: baseInterval * (2 ^ retryCount)
   auto backoffMs = baseRetryInterval_ * (1 << retryCount);
   return std::chrono::steady_clock::now() + backoffMs;
