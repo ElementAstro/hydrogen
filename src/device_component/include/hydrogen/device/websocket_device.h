@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hydrogen/core/device_interface.h>
+#include "hydrogen/core/device/device_interface.h"
 #ifdef HYDROGEN_HAS_WEBSOCKETS
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/connect.hpp>

@@ -1,5 +1,5 @@
 #include "hydrogen/server/protocols/stdio/stdio_protocol_handler.h"
-#include <hydrogen/core/utils.h>
+#include <hydrogen/core/infrastructure/utils.h>
 #include <spdlog/spdlog.h>
 #include <chrono>
 #include <algorithm>
@@ -178,14 +178,14 @@ Message StdioProtocolHandler::transformMessage(const Message& source,
 
 bool StdioProtocolHandler::handleClientConnect(const ConnectionInfo& connection) {
     std::lock_guard<std::mutex> lock(connectionsMutex_);
-    
+
     auto stdioConnection = std::make_unique<StdioConnectionInfo>();
     stdioConnection->clientId = connection.clientId;
-    stdioConnection->connectedAt = std::chrono::system_clock::now();
-    stdioConnection->lastActivity = stdioConnection->connectedAt;
+    stdioConnection->connectedAt = connection.connectedAt;
+    stdioConnection->lastActivity = connection.lastActivity;
     stdioConnection->isActive = true;
     stdioConnection->isAuthenticated = !config_.enableAuthentication; // Auto-authenticate if auth is disabled
-    stdioConnection->metadata = connection.metadata;
+    // Note: server's ConnectionInfo doesn't have metadata field
 
     connections_[connection.clientId] = std::move(stdioConnection);
 

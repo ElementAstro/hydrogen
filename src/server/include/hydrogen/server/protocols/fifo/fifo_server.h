@@ -87,7 +87,33 @@ struct FifoServerStatistics {
     
     FifoServerStatistics() : startTime(std::chrono::system_clock::now()),
                             lastActivity(std::chrono::system_clock::now()) {}
-    
+
+    // Copy constructor
+    FifoServerStatistics(const FifoServerStatistics& other)
+        : totalClientsConnected(other.totalClientsConnected.load()),
+          currentActiveClients(other.currentActiveClients.load()),
+          totalMessagesProcessed(other.totalMessagesProcessed.load()),
+          totalBytesTransferred(other.totalBytesTransferred.load()),
+          totalErrors(other.totalErrors.load()),
+          totalCommandsExecuted(other.totalCommandsExecuted.load()),
+          startTime(other.startTime),
+          lastActivity(other.lastActivity) {}
+
+    // Copy assignment operator
+    FifoServerStatistics& operator=(const FifoServerStatistics& other) {
+        if (this != &other) {
+            totalClientsConnected.store(other.totalClientsConnected.load());
+            currentActiveClients.store(other.currentActiveClients.load());
+            totalMessagesProcessed.store(other.totalMessagesProcessed.load());
+            totalBytesTransferred.store(other.totalBytesTransferred.load());
+            totalErrors.store(other.totalErrors.load());
+            totalCommandsExecuted.store(other.totalCommandsExecuted.load());
+            startTime = other.startTime;
+            lastActivity = other.lastActivity;
+        }
+        return *this;
+    }
+
     double getMessagesPerSecond() const;
     double getBytesPerSecond() const;
     std::chrono::milliseconds getUptime() const;

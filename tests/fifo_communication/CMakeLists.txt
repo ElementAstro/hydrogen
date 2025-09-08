@@ -17,7 +17,8 @@ include_directories(
 set(FIFO_TEST_LIBRARIES
     hydrogen_core
     hydrogen_server
-    ${GTEST_LIBRARIES}
+    GTest::gtest
+    GTest::gtest_main
     nlohmann_json::nlohmann_json
     pthread
 )

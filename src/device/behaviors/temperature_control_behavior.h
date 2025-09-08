@@ -260,7 +260,8 @@ protected:
     double pidIntegral_;
     double pidLastError_;
     
-    // 稳定性检�?    std::atomic<double> stabilityTolerance_;
+    // Stability checking
+    std::atomic<double> stabilityTolerance_;
     std::atomic<int> stabilityDuration_;
     std::chrono::steady_clock::time_point stabilityStartTime_;
     

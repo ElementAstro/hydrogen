@@ -1,4 +1,5 @@
-#include "../../include/hydrogen/server/protocols/stdio/stdio_server.h"
+#include "hydrogen/server/protocols/stdio/stdio_server.h"
+#include "hydrogen/server/core/server_interface.h"
 #include <spdlog/spdlog.h>
 #include <chrono>
 #include <algorithm>
@@ -9,6 +10,23 @@ namespace hydrogen {
 namespace server {
 namespace protocols {
 namespace stdio {
+
+namespace core = hydrogen::server::core;
+
+// Helper function to convert core::StdioConfig to StdioProtocolConfig
+StdioProtocolConfig convertToProtocolConfig(const hydrogen::core::StdioConfig& coreConfig) {
+    StdioProtocolConfig protocolConfig;
+    protocolConfig.enableLineBuffering = coreConfig.enableLineBuffering;
+    protocolConfig.enableBinaryMode = coreConfig.enableBinaryMode;
+    protocolConfig.lineTerminator = coreConfig.lineTerminator;
+    protocolConfig.enableEcho = coreConfig.enableEcho;
+    protocolConfig.enableFlush = coreConfig.enableFlush;
+    protocolConfig.encoding = coreConfig.encoding;
+    protocolConfig.bufferSize = coreConfig.bufferSize;
+    protocolConfig.connectionTimeout = static_cast<int>(coreConfig.readTimeout.count() / 1000); // Convert ms to seconds
+    // Set other fields to defaults since core config doesn't have all fields
+    return protocolConfig;
+}
 
 StdioServer::StdioServer(const ServerConfig& config) : config_(config) {
     protocolHandler_ = std::make_unique<StdioProtocolHandler>(config_.protocolConfig);
@@ -39,42 +57,42 @@ StdioServer::~StdioServer() {
 }
 
 bool StdioServer::start() {
-    if (status_.load() == ServerStatus::RUNNING) {
+    if (status_.load() == core::ServerStatus::RUNNING) {
         logInfo("Server is already running");
         return true;
     }
 
     try {
-        status_.store(ServerStatus::STARTING);
+        status_.store(core::ServerStatus::STARTING);
         running_.store(true);
         startTime_ = std::chrono::system_clock::now();
-        
+
         // Start background threads
         acceptorThread_ = std::thread(&StdioServer::acceptorLoop, this);
-        
+
         if (config_.enableAutoCleanup) {
             cleanupThread_ = std::thread(&StdioServer::cleanupLoop, this);
         }
-        
-        status_.store(ServerStatus::RUNNING);
+
+        status_.store(core::ServerStatus::RUNNING);
         statistics_.serverStartTime = startTime_;
         
         logInfo("StdioServer started successfully");
         return true;
         
     } catch (const std::exception& e) {
-        status_.store(ServerStatus::ERROR);
+        status_.store(static_cast<core::ServerStatus>(4)); // ERROR = 4
         handleError("Failed to start server: " + std::string(e.what()));
         return false;
     }
 }
 
 bool StdioServer::stop() {
-    if (status_.load() == ServerStatus::STOPPED) {
+    if (status_.load() == core::ServerStatus::STOPPED) {
         return true;
     }
 
-    status_.store(ServerStatus::STOPPING);
+    status_.store(core::ServerStatus::STOPPING);
     running_.store(false);
     
     // Wake up cleanup thread
@@ -98,12 +116,12 @@ bool StdioServer::stop() {
         clients_.clear();
     }
     
-    status_.store(ServerStatus::STOPPED);
+    status_.store(core::ServerStatus::STOPPED);
     logInfo("StdioServer stopped");
     return true;
 }
 
-ServerStatus StdioServer::getStatus() const {
+core::ServerStatus StdioServer::getStatus() const {
     return status_.load();
 }
 
@@ -114,15 +132,29 @@ bool StdioServer::restart() {
     return start();
 }
 
-void StdioServer::setConfig(const ServerConfig& config) {
-    config_ = config;
-    protocolHandler_->updateConfig(config_.protocolConfig);
+void StdioServer::setConfig(const core::ServerConfig& config) {
+    // Convert core::ServerConfig to local ServerConfig
+    ServerConfig localConfig;
+    localConfig.serverName = config.name;
+    localConfig.maxConcurrentClients = config.maxConnections;
+    // Set other fields to defaults since core::ServerConfig doesn't have all fields
+    config_ = localConfig;
+    if (protocolHandler_) {
+        protocolHandler_->updateConfig(config_.protocolConfig);
+    }
     logInfo("Server configuration updated");
 }
 
-ServerConfig StdioServer::getConfig() const {
-    return config_;
+core::ServerConfig StdioServer::getConfig() const {
+    // Convert local ServerConfig to core::ServerConfig
+    core::ServerConfig coreConfig;
+    coreConfig.name = config_.serverName;
+    coreConfig.maxConnections = config_.maxConcurrentClients;
+    coreConfig.port = 0; // STDIO doesn't use ports
+    return coreConfig;
 }
+
+
 
 void StdioServer::setServerConfig(const ServerConfig& config) {
     config_ = config;
@@ -132,6 +164,57 @@ void StdioServer::setServerConfig(const ServerConfig& config) {
 
 StdioServer::ServerConfig StdioServer::getServerConfig() const {
     return config_;
+}
+
+// IServerInterface implementation
+core::CommunicationProtocol StdioServer::getProtocol() const {
+    return core::CommunicationProtocol::STDIO;
+}
+
+std::string StdioServer::getProtocolName() const {
+    return "STDIO";
+}
+
+void StdioServer::setConnectionCallback(ConnectionCallback callback) {
+    // Convert the IServerInterface callback to our internal callback format
+    setClientConnectedCallback([callback](const std::string& clientId) {
+        ConnectionInfo info;
+        info.clientId = clientId;
+        info.protocol = core::CommunicationProtocol::STDIO;
+        info.connectedAt = std::chrono::system_clock::now();
+        info.remoteAddress = "localhost";
+        info.remotePort = 0;
+        callback(info, true);
+    });
+
+    setClientDisconnectedCallback([callback](const std::string& clientId) {
+        ConnectionInfo info;
+        info.clientId = clientId;
+        info.protocol = core::CommunicationProtocol::STDIO;
+        info.connectedAt = std::chrono::system_clock::now();
+        info.remoteAddress = "localhost";
+        info.remotePort = 0;
+        callback(info, false);
+    });
+}
+
+void StdioServer::setMessageCallback(MessageCallback callback) {
+    setMessageReceivedCallback([callback](const std::string& clientId, const Message& message) {
+        // Convert server message to core message format
+        callback(message);
+    });
+}
+
+void StdioServer::setErrorCallback(IServerInterface::ErrorCallback callback) {
+    // Store the IServerInterface callback and use it in our internal error callback
+    interfaceErrorCallback_ = callback;
+
+    // Set our internal error callback to call the interface callback
+    errorCallback_ = [this, callback](const std::string& error, const std::string& clientId) {
+        if (callback) {
+            callback(error);
+        }
+    };
 }
 
 bool StdioServer::acceptClient(const std::string& clientId, const std::string& command) {
@@ -157,8 +240,8 @@ bool StdioServer::acceptClient(const std::string& clientId, const std::string& c
     connectionInfo.clientId = clientId;
     connectionInfo.protocol = CommunicationProtocol::STDIO;
     connectionInfo.connectedAt = std::chrono::system_clock::now();
-    connectionInfo.isActive = true;
-    connectionInfo.metadata["command"] = command;
+    connectionInfo.remoteAddress = "localhost";
+    connectionInfo.remotePort = 0;
     
     bool success = protocolHandler_->handleClientConnect(connectionInfo);
     if (success) {
@@ -254,7 +337,7 @@ void StdioServer::setMessageReceivedCallback(MessageReceivedCallback callback) {
     messageReceivedCallback_ = callback;
 }
 
-void StdioServer::setErrorCallback(ErrorCallback callback) {
+void StdioServer::setStdioErrorCallback(ErrorCallback callback) {
     errorCallback_ = callback;
 }
 
@@ -262,7 +345,7 @@ StdioServer::ServerStatistics StdioServer::getStatistics() const {
     std::lock_guard<std::mutex> lock(statsMutex_);
     ServerStatistics stats = statistics_;
     
-    if (status_.load() == ServerStatus::RUNNING) {
+    if (status_.load() == core::ServerStatus::RUNNING) {
         auto now = std::chrono::system_clock::now();
         stats.uptime = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime_);
     }
@@ -279,8 +362,25 @@ void StdioServer::resetStatistics() {
     statistics_.serverStartTime = startTime_;
 }
 
+std::string StdioServer::getServerInfo() const {
+    std::ostringstream info;
+    info << "Server: " << config_.serverName << "\n";
+    info << "Protocol: STDIO\n";
+    info << "Status: " << (status_.load() == core::ServerStatus::RUNNING ? "RUNNING" : "STOPPED") << "\n";
+    info << "Max Clients: " << config_.maxConcurrentClients << "\n";
+    info << "Active Clients: " << getConnectionCount() << "\n";
+
+    if (status_.load() == core::ServerStatus::RUNNING) {
+        auto now = std::chrono::system_clock::now();
+        auto uptime = std::chrono::duration_cast<std::chrono::seconds>(now - startTime_);
+        info << "Uptime: " << uptime.count() << " seconds\n";
+    }
+
+    return info.str();
+}
+
 bool StdioServer::isHealthy() const {
-    return status_.load() == ServerStatus::RUNNING && 
+    return status_.load() == core::ServerStatus::RUNNING &&
            protocolHandler_ != nullptr;
 }
 
@@ -443,23 +543,23 @@ std::unique_ptr<StdioServer> StdioServerFactory::createWithConfig(const StdioSer
 std::unique_ptr<StdioServer> StdioServerFactory::createFromConfigFile(const std::string& configFile) {
     // Load configuration from file
     auto& configManager = getGlobalStdioConfigManager();
-    auto protocolConfig = configManager.loadConfigFromFile(configFile);
+    auto coreConfig = configManager.loadConfigFromFile(configFile);
 
     StdioServer::ServerConfig serverConfig;
-    serverConfig.protocolConfig = protocolConfig;
+    serverConfig.protocolConfig = convertToProtocolConfig(coreConfig);
 
     return std::make_unique<StdioServer>(serverConfig);
 }
 
 StdioServer::ServerConfig StdioServerFactory::createDefaultConfig() {
     StdioServer::ServerConfig config;
-    config.protocolConfig = getGlobalStdioConfigManager().createConfig();
+    config.protocolConfig = convertToProtocolConfig(getGlobalStdioConfigManager().createConfig());
     return config;
 }
 
 StdioServer::ServerConfig StdioServerFactory::createHighPerformanceConfig() {
     StdioServer::ServerConfig config;
-    config.protocolConfig = getGlobalStdioConfigManager().createConfig(StdioConfigManager::ConfigPreset::HIGH_PERFORMANCE);
+    config.protocolConfig = convertToProtocolConfig(getGlobalStdioConfigManager().createConfig(StdioConfigManager::ConfigPreset::HIGH_PERFORMANCE));
     config.maxConcurrentClients = 1000;
     config.enableAutoCleanup = true;
     config.cleanupInterval = std::chrono::milliseconds(30000);
@@ -468,7 +568,7 @@ StdioServer::ServerConfig StdioServerFactory::createHighPerformanceConfig() {
 
 StdioServer::ServerConfig StdioServerFactory::createSecureConfig() {
     StdioServer::ServerConfig config;
-    config.protocolConfig = getGlobalStdioConfigManager().createConfig(StdioConfigManager::ConfigPreset::SECURE);
+    config.protocolConfig = convertToProtocolConfig(getGlobalStdioConfigManager().createConfig(StdioConfigManager::ConfigPreset::SECURE));
     config.enableCommandFiltering = true;
     config.enableClientIsolation = true;
     return config;
@@ -476,7 +576,7 @@ StdioServer::ServerConfig StdioServerFactory::createSecureConfig() {
 
 StdioServer::ServerConfig StdioServerFactory::createDebugConfig() {
     StdioServer::ServerConfig config;
-    config.protocolConfig = getGlobalStdioConfigManager().createConfig(StdioConfigManager::ConfigPreset::DEBUG);
+    config.protocolConfig = convertToProtocolConfig(getGlobalStdioConfigManager().createConfig(StdioConfigManager::ConfigPreset::DEBUG));
     config.enableAutoCleanup = false; // Keep clients for debugging
     return config;
 }

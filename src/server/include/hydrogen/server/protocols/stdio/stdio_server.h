@@ -2,7 +2,7 @@
 
 #include "stdio_protocol_handler.h"
 #include "../../core/server_interface.h"
-#include <hydrogen/core/stdio_config_manager.h>
+#include <hydrogen/core/configuration/stdio_config_manager.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -60,6 +60,20 @@ public:
     bool isConfigValid() const override;
     std::vector<core::ConnectionInfo> getActiveConnections() const override;
     size_t getConnectionCount() const override;
+    bool disconnectClient(const std::string& clientId) override;
+
+    // Protocol identification
+    core::CommunicationProtocol getProtocol() const override;
+    std::string getProtocolName() const override;
+
+    // Health monitoring
+    bool isHealthy() const override;
+    std::string getHealthStatus() const override;
+
+    // Event callbacks (IServerInterface)
+    void setConnectionCallback(ConnectionCallback callback) override;
+    void setMessageCallback(MessageCallback callback) override;
+    void setErrorCallback(core::IServerInterface::ErrorCallback callback) override;
 
     // Stdio-specific methods
     void setServerConfig(const ServerConfig& config);
@@ -67,7 +81,6 @@ public:
 
     // Client management
     bool acceptClient(const std::string& clientId, const std::string& command = "");
-    bool disconnectClient(const std::string& clientId);
     std::vector<std::string> getConnectedClients() const;
     bool isClientConnected(const std::string& clientId) const;
 
@@ -84,7 +97,7 @@ public:
     void setClientConnectedCallback(ClientConnectedCallback callback);
     void setClientDisconnectedCallback(ClientDisconnectedCallback callback);
     void setMessageReceivedCallback(MessageReceivedCallback callback);
-    void setErrorCallback(ErrorCallback callback);
+    void setStdioErrorCallback(ErrorCallback callback);
 
     // Statistics and monitoring
     struct ServerStatistics {
@@ -99,9 +112,8 @@ public:
     ServerStatistics getStatistics() const;
     void resetStatistics();
 
-    // Health monitoring
-    bool isHealthy() const;
-    std::string getHealthStatus() const;
+    // Server information
+    std::string getServerInfo() const;
 
 private:
     ServerConfig config_;
@@ -131,6 +143,9 @@ private:
     ClientDisconnectedCallback clientDisconnectedCallback_;
     MessageReceivedCallback messageReceivedCallback_;
     ErrorCallback errorCallback_;
+
+    // IServerInterface callbacks
+    core::IServerInterface::ErrorCallback interfaceErrorCallback_;
     
     // Helper methods
     void acceptorLoop();

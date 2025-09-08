@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include <hydrogen/core/fifo_communicator.h>
-#include <hydrogen/core/fifo_config_manager.h>
-#include <hydrogen/core/fifo_logger.h>
-#include <hydrogen/server/protocols/fifo/fifo_server.h>
+#include "hydrogen/core/communication/protocols/fifo_communicator.h"
+#include "hydrogen/core/configuration/fifo_config_manager.h"
+#include "hydrogen/core/logging/fifo_logger.h"
+#include "hydrogen/server/protocols/fifo/fifo_server.h"
 #include <nlohmann/json.hpp>
 #include <thread>
 #include <chrono>
@@ -11,9 +11,14 @@
 #include <random>
 #include <algorithm>
 
-using namespace hydrogen::core;
 using namespace hydrogen::server::protocols::fifo;
 using json = nlohmann::json;
+// Use server Message type for FIFO server communication
+using Message = hydrogen::server::core::Message;
+// Use core types selectively to avoid conflicts
+using hydrogen::core::FifoCommunicator;
+using hydrogen::core::FifoConfigManager;
+using hydrogen::core::FifoLogger;
 
 class FifoPerformanceTest : public ::testing::Test {
 protected:
@@ -272,7 +277,7 @@ TEST_F(FifoPerformanceTest, ServerMultiClientPerformance) {
         clientsConnected.fetch_add(1);
     });
     
-    server->setMessageReceivedCallback([&](const std::string& clientId, const Message& message) {
+    server->setMessageReceivedCallback([&](const std::string& clientId, const hydrogen::server::core::Message& message) {
         messagesReceived.fetch_add(1);
     });
     
@@ -291,7 +296,7 @@ TEST_F(FifoPerformanceTest, ServerMultiClientPerformance) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         
         // Send messages to all clients
-        Message testMessage;
+        hydrogen::server::core::Message testMessage;
         testMessage.senderId = "server";
         testMessage.topic = "performance_test";
         testMessage.payload = "Performance test message";

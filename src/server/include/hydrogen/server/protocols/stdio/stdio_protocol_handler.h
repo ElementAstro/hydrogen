@@ -2,8 +2,8 @@
 
 #include "../../core/protocol_handler.h"
 #include "../../core/server_interface.h"
-#include <hydrogen/core/message.h>
-#include <hydrogen/core/message_transformer.h>
+#include <hydrogen/core/messaging/message.h>
+#include <hydrogen/core/messaging/message_transformer.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -38,6 +38,8 @@ struct StdioProtocolConfig {
     int connectionTimeout = 30; // seconds
     bool enableHeartbeat = true;
     int heartbeatInterval = 10; // seconds
+    bool enableMessageValidation = true;
+    bool enableMessageLogging = true;
 };
 
 /**

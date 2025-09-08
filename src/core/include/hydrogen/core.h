@@ -12,19 +12,19 @@
  */
 
 // Core utilities
-#include "core/utils.h"
+#include "core/infrastructure/utils.h"
 
 // Message system
-#include "core/message.h"
-#include "core/message_queue.h"
+#include "core/messaging/message.h"
+#include "core/messaging/message_queue.h"
 
 // Error handling
-#include "core/error_recovery.h"
+#include "core/infrastructure/error_recovery.h"
 
 // Device interfaces
-#include "core/device_health.h"
-#include "core/device_interface.h"
-#include "core/device_lifecycle.h"
+#include "core/device/device_health.h"
+#include "core/device/device_interface.h"
+#include "core/device/device_lifecycle.h"
 
 /**
  * @namespace hydrogen::core

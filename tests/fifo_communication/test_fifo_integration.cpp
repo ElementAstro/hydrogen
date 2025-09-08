@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include <hydrogen/server/protocols/fifo/fifo_server.h>
-#include <hydrogen/core/fifo_communicator.h>
-#include <hydrogen/core/fifo_config_manager.h>
-#include <hydrogen/core/fifo_logger.h>
+#include "hydrogen/core/communication/protocols/fifo_communicator.h"
+#include "hydrogen/core/configuration/fifo_config_manager.h"
+#include "hydrogen/core/logging/fifo_logger.h"
 #include <nlohmann/json.hpp>
 #include <thread>
 #include <chrono>
@@ -11,8 +11,13 @@
 #include <filesystem>
 
 using namespace hydrogen::server::protocols::fifo;
-using namespace hydrogen::core;
 using json = nlohmann::json;
+// Use server Message type for FIFO server communication
+using Message = hydrogen::server::core::Message;
+// Use core types selectively to avoid conflicts
+using hydrogen::core::FifoCommunicator;
+using hydrogen::core::FifoConfigManager;
+using hydrogen::core::FifoLogger;
 
 class FifoIntegrationTest : public ::testing::Test {
 protected:
@@ -89,7 +94,7 @@ TEST_F(FifoIntegrationTest, BasicServerClientCommunication) {
         clientConnected.store(true);
     });
     
-    server->setMessageReceivedCallback([&](const std::string& clientId, const Message& message) {
+    server->setMessageReceivedCallback([&](const std::string& clientId, const hydrogen::server::core::Message& message) {
         receivedMessage = message.payload;
         messageReceived.store(true);
     });
@@ -113,7 +118,7 @@ TEST_F(FifoIntegrationTest, BasicServerClientCommunication) {
     EXPECT_EQ(connectedClients[0], "client1");
     
     // Send message to client
-    Message testMessage;
+    hydrogen::server::core::Message testMessage;
     testMessage.senderId = "server";
     testMessage.recipientId = "client1";
     testMessage.topic = "test";
@@ -154,7 +159,7 @@ TEST_F(FifoIntegrationTest, MultipleClients) {
     EXPECT_EQ(connectedClients.size(), 3);
     
     // Test broadcast message
-    Message broadcastMessage;
+    hydrogen::server::core::Message broadcastMessage;
     broadcastMessage.senderId = "server";
     broadcastMessage.topic = "broadcast";
     broadcastMessage.payload = "Hello Everyone!";
@@ -341,7 +346,7 @@ TEST_F(FifoIntegrationTest, ErrorHandling) {
     EXPECT_TRUE(server->start());
     
     // Try to send message to non-existent client (should trigger error)
-    Message testMessage;
+    hydrogen::server::core::Message testMessage;
     testMessage.senderId = "server";
     testMessage.recipientId = "nonexistent";
     testMessage.payload = "test";

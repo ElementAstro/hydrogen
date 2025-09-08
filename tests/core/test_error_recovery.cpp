@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <hydrogen/core/error_recovery.h>
-#include <hydrogen/core/message.h>
+#include <hydrogen/core/infrastructure/error_recovery.h>
+#include <hydrogen/core/messaging/message.h>
 #include "../utils/simple_helpers.h"
 #include <thread>
 #include <chrono>

@@ -85,61 +85,12 @@ target_link_libraries(test_filter_wheel_device
         test_utils
 )
 
-# Guider device tests
-add_executable(test_guider_device
-    test_guider_device.cpp
-)
-
-target_link_libraries(test_guider_device
-    PRIVATE
-        GTest::gtest
-        GTest::gtest_main
-        hydrogen_device
-        hydrogen_common
-        test_utils
-)
-
-# Rotator device tests
-add_executable(test_rotator_device
-    test_rotator_device.cpp
-)
-
-target_link_libraries(test_rotator_device
-    PRIVATE
-        GTest::gtest
-        GTest::gtest_main
-        hydrogen_device
-        hydrogen_common
-        test_utils
-)
-
-# Switch device tests
-add_executable(test_switch_device
-    test_switch_device.cpp
-)
-
-target_link_libraries(test_switch_device
-    PRIVATE
-        GTest::gtest
-        GTest::gtest_main
-        hydrogen_device
-        hydrogen_common
-        test_utils
-)
-
-# Dome device tests
-add_executable(test_dome_device
-    test_dome_device.cpp
-)
-
-target_link_libraries(test_dome_device
-    PRIVATE
-        GTest::gtest
-        GTest::gtest_main
-        hydrogen_device
-        hydrogen_common
-        test_utils
-)
+# Note: Some device test files are not yet implemented
+# Uncomment and add test files as they are created:
+# - test_guider_device.cpp
+# - test_rotator_device.cpp
+# - test_switch_device.cpp
+# - test_dome_device.cpp
 
 # Device registry tests
 add_executable(test_device_registry
@@ -162,10 +113,6 @@ set(DEVICE_TEST_TARGETS
     test_telescope_device
     test_focuser_device
     test_filter_wheel_device
-    test_guider_device
-    test_rotator_device
-    test_switch_device
-    test_dome_device
     test_device_registry
 )
 
@@ -193,80 +140,8 @@ add_custom_target(device_tests
     COMMENT "Building all device tests"
 )
 
-# Optional: Add device interface tests
-add_executable(test_device_interfaces
-    test_device_interfaces.cpp
-)
-
-target_link_libraries(test_device_interfaces
-    PRIVATE
-        GTest::gtest
-        GTest::gtest_main
-        hydrogen_device
-        hydrogen_common
-        test_utils
-)
-
-target_compile_features(test_device_interfaces PRIVATE cxx_std_17)
-
-gtest_discover_tests(test_device_interfaces
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    PROPERTIES
-        LABELS "device"
-        TIMEOUT 60
-)
-
-# Add device interfaces test to the main target
-add_dependencies(device_tests test_device_interfaces)
-
-# Optional: Add device behavior tests
-add_executable(test_device_behaviors
-    test_device_behaviors.cpp
-)
-
-target_link_libraries(test_device_behaviors
-    PRIVATE
-        GTest::gtest
-        GTest::gtest_main
-        hydrogen_device
-        hydrogen_common
-        test_utils
-)
-
-target_compile_features(test_device_behaviors PRIVATE cxx_std_17)
-
-gtest_discover_tests(test_device_behaviors
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    PROPERTIES
-        LABELS "device"
-        TIMEOUT 60
-)
-
-# Add device behaviors test to the main target
-add_dependencies(device_tests test_device_behaviors)
-
-# Optional: Add device communication tests
-add_executable(test_device_communication
-    test_device_communication.cpp
-)
-
-target_link_libraries(test_device_communication
-    PRIVATE
-        GTest::gtest
-        GTest::gtest_main
-        hydrogen_device
-        hydrogen_common
-        test_utils
-)
-
-target_compile_features(test_device_communication PRIVATE cxx_std_17)
-
-gtest_discover_tests(test_device_communication
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    PROPERTIES
-        LABELS "device"
-        TIMEOUT 60
-)
-
-# Add device communication test to the main target
-add_dependencies(device_tests test_device_communication)
+# Note: Additional device test files not yet implemented
+# Uncomment and add test files as they are created:
+# - test_device_interfaces.cpp
+# - test_device_behaviors.cpp
+# - test_device_communication.cpp

@@ -1,7 +1,9 @@
 #pragma once
 
-#include <hydrogen/core/protocol_communicators.h>
-#include <hydrogen/core/device_communicator.h>
+#include "hydrogen/core/device/device_communicator.h"
+#include "hydrogen/core/communication/protocols/fifo_communicator.h"
+#include "hydrogen/core/communication/infrastructure/communication_protocol.h"
+#include "hydrogen/core/messaging/message.h"
 #include <nlohmann/json.hpp>
 #include <functional>
 #include <memory>
@@ -16,9 +18,10 @@ namespace device {
 namespace core {
 
 using json = nlohmann::json;
+using hydrogen::core::IDeviceCommunicator;
+using hydrogen::core::DeviceCommunicatorFactory;
 using hydrogen::core::CommunicationProtocol;
-using hydrogen::core::CommunicationMessage;
-using hydrogen::core::MultiProtocolDeviceCommunicator;
+using hydrogen::core::Message;
 
 /**
  * @brief Enhanced communication state enumeration
@@ -129,7 +132,7 @@ public:
 
 private:
     std::string deviceId_;
-    std::unique_ptr<MultiProtocolDeviceCommunicator> communicator_;
+    std::unique_ptr<IDeviceCommunicator> communicator_;
     
     // Protocol configurations
     mutable std::mutex configMutex_;
@@ -168,7 +171,7 @@ private:
     void initializeCommunicator();
     void setupProtocolHandlers();
     void updateConnectionState(CommunicationProtocol protocol, ConnectionState state, const std::string& error = "");
-    void handleMessage(const CommunicationMessage& message, CommunicationProtocol protocol);
+    void handleMessage(const Message& message, CommunicationProtocol protocol);
     void handleConnectionChange(CommunicationProtocol protocol, bool connected);
     void reconnectLoop();
     CommunicationProtocol selectBestProtocol() const;

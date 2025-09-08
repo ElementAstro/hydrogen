@@ -268,7 +268,7 @@ bool FifoServer::sendMessageToClient(const std::string& clientId, const Message&
         return false;
     }
     
-    if (protocolHandler_->sendMessage(message, clientId)) {
+    if (protocolHandler_->sendMessage(clientId, message)) {
         updateStatistics(true, message.payload.size());
         updateLastActivity();
         return true;
@@ -307,7 +307,7 @@ bool FifoServer::sendResponse(const std::string& clientId, const std::string& re
     responseMessage.payload = response;
     responseMessage.sourceProtocol = CommunicationProtocol::FIFO;
     responseMessage.targetProtocol = CommunicationProtocol::FIFO;
-    responseMessage.timestamp = getCurrentTimestamp();
+    responseMessage.timestamp = std::chrono::system_clock::now();
     
     return sendMessageToClient(clientId, responseMessage);
 }

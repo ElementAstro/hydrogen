@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <hydrogen/core/message_transformer.h>
-#include <hydrogen/core/message.h>
+#include <hydrogen/core/messaging/message_transformer.h>
+#include <hydrogen/core/messaging/message.h>
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include <memory>

@@ -20,6 +20,45 @@ namespace server {
 namespace protocols {
 namespace fifo {
 
+// Helper function to convert time_point to ISO string
+std::string timePointToIsoString(const std::chrono::system_clock::time_point& timePoint) {
+    auto time_t = std::chrono::system_clock::to_time_t(timePoint);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        timePoint.time_since_epoch()) % 1000;
+
+    std::ostringstream ss;
+    std::tm tm_buf;
+    gmtime_s(&tm_buf, &time_t);
+    ss << std::put_time(&tm_buf, "%Y-%m-%dT%H:%M:%S");
+    ss << '.' << std::setfill('0') << std::setw(3) << ms.count() << 'Z';
+
+    return ss.str();
+}
+
+// Helper function to convert ISO string to time_point
+std::chrono::system_clock::time_point isoStringToTimePoint(const std::string& isoString) {
+    std::tm tm = {};
+    std::stringstream ss(isoString.substr(0, 19));
+    ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
+
+    if (ss.fail()) {
+        return std::chrono::system_clock::now(); // fallback to current time
+    }
+
+    auto timepoint = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+
+    // Handle milliseconds if present
+    if (isoString.length() > 19 && isoString[19] == '.') {
+        std::string ms_str = isoString.substr(20, 3);
+        if (!ms_str.empty() && std::all_of(ms_str.begin(), ms_str.end(), ::isdigit)) {
+            int milliseconds = std::stoi(ms_str);
+            timepoint += std::chrono::milliseconds(milliseconds);
+        }
+    }
+
+    return timepoint;
+}
+
 // FifoProtocolConfig implementation
 json FifoProtocolConfig::toJson() const {
     json j;
@@ -198,31 +237,31 @@ bool FifoProtocolHandler::handleMessage(const Message& message, const std::strin
     return true;
 }
 
-bool FifoProtocolHandler::sendMessage(const Message& message, const std::string& clientId) {
+bool FifoProtocolHandler::sendMessage(const std::string& clientId, const Message& message) {
     if (!running_.load()) {
         return false;
     }
     
-    if (!isClientConnected(clientId)) {
+    if (!this->isClientConnected(clientId)) {
         spdlog::warn("Attempted to send message to unknown client: {}", clientId);
         return false;
     }
-    
-    if (config_.enableMessageValidation && !validateMessage(message)) {
-        std::string error = getValidationError(message);
+
+    if (config_.enableMessageValidation && !this->validateMessage(message)) {
+        std::string error = this->getValidationError(message);
         spdlog::error("Outgoing message validation failed for client {}: {}", clientId, error);
         return false;
     }
-    
+
     // Queue message for sending
-    queueOutgoingMessage(clientId, message);
-    
+    this->queueOutgoingMessage(clientId, message);
+
     // Update statistics
-    updateStatistics(true, message.payload.size());
-    updateClientActivity(clientId);
-    
+    this->updateStatistics(true, message.payload.size());
+    this->updateClientActivity(clientId);
+
     if (config_.enableMessageLogging) {
-        logMessage("SENT", message, clientId);
+        this->logMessage("SENT", message, clientId);
     }
     
     return true;
@@ -243,7 +282,7 @@ bool FifoProtocolHandler::broadcastMessage(const Message& message) {
     bool success = true;
     for (const auto& [clientId, clientInfo] : clients_) {
         if (clientInfo->active.load()) {
-            if (!sendMessage(message, clientId)) {
+            if (!sendMessage(clientId, message)) {
                 success = false;
                 spdlog::warn("Failed to broadcast message to client: {}", clientId);
             }
@@ -559,7 +598,7 @@ json FifoProtocolHandler::serializeMessage(const Message& message) const {
     messageJson["payload"] = message.payload;
     messageJson["sourceProtocol"] = static_cast<int>(message.sourceProtocol);
     messageJson["targetProtocol"] = static_cast<int>(message.targetProtocol);
-    messageJson["timestamp"] = message.timestamp;
+    messageJson["timestamp"] = timePointToIsoString(message.timestamp);
     return messageJson;
 }
 
@@ -592,7 +631,7 @@ std::unique_ptr<Message> FifoProtocolHandler::deserializeMessage(const json& mes
         }
 
         if (messageJson.contains("timestamp")) {
-            message->timestamp = messageJson["timestamp"].get<std::string>();
+            message->timestamp = isoStringToTimePoint(messageJson["timestamp"].get<std::string>());
         }
 
         return message;
@@ -748,10 +787,308 @@ std::unique_ptr<FifoProtocolHandler> FifoProtocolHandlerFactory::createForWindow
     return create(windowsConfig);
 }
 
+
+
+
+
+
+
 std::unique_ptr<FifoProtocolHandler> FifoProtocolHandlerFactory::createForUnix(const FifoProtocolConfig& config) {
     FifoProtocolConfig unixConfig = config;
     unixConfig.basePipePath = "/tmp/hydrogen_fifo";
     return create(unixConfig);
+}
+
+// Missing method implementations
+
+std::vector<std::string> FifoProtocolHandler::getSupportedMessageTypes() const {
+    return {"COMMAND", "RESPONSE", "EVENT", "ERROR", "DISCOVERY_REQUEST", "DISCOVERY_RESPONSE"};
+}
+
+bool FifoProtocolHandler::canHandle(const Message& message) const {
+    // Check if this handler can process the message
+    return message.sourceProtocol == CommunicationProtocol::FIFO ||
+           message.targetProtocol == CommunicationProtocol::FIFO;
+}
+
+bool FifoProtocolHandler::processIncomingMessage(const Message& message) {
+    if (!running_.load()) {
+        return false;
+    }
+
+    // Find the client ID from the message or use a default
+    std::string clientId = message.senderId.empty() ? "default" : message.senderId;
+
+    return handleMessage(message, clientId);
+}
+
+bool FifoProtocolHandler::processOutgoingMessage(Message& message) {
+    if (!running_.load()) {
+        return false;
+    }
+
+    // Find the client ID from the message or use a default
+    std::string clientId = message.recipientId.empty() ? "default" : message.recipientId;
+
+    queueOutgoingMessage(clientId, message);
+    return true;
+}
+
+Message FifoProtocolHandler::transformMessage(const Message& source, CommunicationProtocol targetProtocol) const {
+    Message transformed = source;
+    transformed.targetProtocol = targetProtocol;
+    return transformed;
+}
+
+bool FifoProtocolHandler::handleClientConnect(const ConnectionInfo& connection) {
+    return acceptClient(connection.clientId);
+}
+
+bool FifoProtocolHandler::handleClientDisconnect(const std::string& clientId) {
+    return disconnectClient(clientId);
+}
+
+void FifoProtocolHandler::setProtocolConfig(const std::unordered_map<std::string, std::string>& config) {
+    for (const auto& [key, value] : config) {
+        if (key == "basePipePath") {
+            config_.basePipePath = value;
+        } else if (key == "maxConcurrentClients") {
+            config_.maxConcurrentClients = std::stoi(value);
+        } else if (key == "enableClientAuthentication") {
+            config_.enableClientAuthentication = (value == "true");
+        } else if (key == "enableMessageValidation") {
+            config_.enableMessageValidation = (value == "true");
+        } else if (key == "maxMessageSize") {
+            config_.maxMessageSize = std::stoull(value);
+        }
+        // Add more configuration options as needed
+    }
+}
+
+std::unordered_map<std::string, std::string> FifoProtocolHandler::getProtocolConfig() const {
+    std::unordered_map<std::string, std::string> config;
+    config["basePipePath"] = config_.basePipePath;
+    config["maxConcurrentClients"] = std::to_string(config_.maxConcurrentClients);
+    config["enableClientAuthentication"] = config_.enableClientAuthentication ? "true" : "false";
+    config["enableMessageValidation"] = config_.enableMessageValidation ? "true" : "false";
+    config["maxMessageSize"] = std::to_string(config_.maxMessageSize);
+    return config;
+}
+
+// Private method implementations
+void FifoProtocolHandler::cleanupThreadFunction() {
+    spdlog::debug("Cleanup thread started");
+
+    while (running_.load()) {
+        cleanupInactiveClients();
+        std::this_thread::sleep_for(config_.cleanupInterval);
+    }
+
+    spdlog::debug("Cleanup thread stopped");
+}
+
+void FifoProtocolHandler::keepAliveThreadFunction() {
+    spdlog::debug("Keep-alive thread started");
+
+    while (running_.load()) {
+        sendKeepAliveMessages();
+        std::this_thread::sleep_for(config_.keepAliveInterval);
+    }
+
+    spdlog::debug("Keep-alive thread stopped");
+}
+
+void FifoProtocolHandler::workerThreadFunction() {
+    spdlog::debug("Worker thread started");
+
+    while (running_.load()) {
+        // Process incoming messages
+        {
+            std::unique_lock<std::mutex> lock(incomingMutex_);
+            incomingCondition_.wait_for(lock, std::chrono::milliseconds(100),
+                [this] { return !incomingMessages_.empty() || !running_.load(); });
+
+            while (!incomingMessages_.empty() && running_.load()) {
+                auto [clientId, message] = incomingMessages_.front();
+                incomingMessages_.pop();
+                lock.unlock();
+
+                processIncomingMessage(clientId, message.payload);
+
+                lock.lock();
+            }
+        }
+
+        // Process outgoing messages
+        {
+            std::unique_lock<std::mutex> lock(outgoingMutex_);
+            outgoingCondition_.wait_for(lock, std::chrono::milliseconds(100),
+                [this] { return !outgoingMessages_.empty() || !running_.load(); });
+
+            while (!outgoingMessages_.empty() && running_.load()) {
+                auto [clientId, message] = outgoingMessages_.front();
+                outgoingMessages_.pop();
+                lock.unlock();
+
+                processOutgoingMessage(clientId, message);
+
+                lock.lock();
+            }
+        }
+    }
+
+    spdlog::debug("Worker thread stopped");
+}
+
+void FifoProtocolHandler::queueIncomingMessage(const std::string& clientId, const Message& message) {
+    std::lock_guard<std::mutex> lock(incomingMutex_);
+    if (incomingMessages_.size() < config_.maxQueueSize) {
+        incomingMessages_.emplace(clientId, message);
+        incomingCondition_.notify_one();
+    } else {
+        spdlog::warn("Incoming message queue full, dropping message from client: {}", clientId);
+        incrementErrorCount();
+    }
+}
+
+void FifoProtocolHandler::queueOutgoingMessage(const std::string& clientId, const Message& message) {
+    std::lock_guard<std::mutex> lock(outgoingMutex_);
+    if (outgoingMessages_.size() < config_.maxQueueSize) {
+        outgoingMessages_.emplace(clientId, message);
+        outgoingCondition_.notify_one();
+    } else {
+        spdlog::warn("Outgoing message queue full, dropping message to client: {}", clientId);
+        incrementErrorCount();
+    }
+}
+
+void FifoProtocolHandler::updateClientActivity(const std::string& clientId) {
+    std::lock_guard<std::mutex> lock(clientsMutex_);
+    auto it = clients_.find(clientId);
+    if (it != clients_.end()) {
+        it->second->lastActivity = std::chrono::system_clock::now();
+    }
+}
+
+void FifoProtocolHandler::updateStatistics(bool sent, size_t bytes) {
+    std::lock_guard<std::mutex> lock(statisticsMutex_);
+    statistics_.totalMessagesProcessed.fetch_add(1);
+    statistics_.totalBytesTransferred.fetch_add(bytes);
+}
+
+void FifoProtocolHandler::incrementErrorCount() {
+    std::lock_guard<std::mutex> lock(statisticsMutex_);
+    statistics_.totalErrors.fetch_add(1);
+}
+
+void FifoProtocolHandler::stopThreads() {
+    running_.store(false);
+
+    // Notify all waiting threads
+    incomingCondition_.notify_all();
+    outgoingCondition_.notify_all();
+
+    // Join worker threads
+    for (auto& thread : workerThreads_) {
+        if (thread && thread->joinable()) {
+            thread->join();
+        }
+    }
+    workerThreads_.clear();
+
+    // Join management threads
+    if (cleanupThread_ && cleanupThread_->joinable()) {
+        cleanupThread_->join();
+        cleanupThread_.reset();
+    }
+
+    if (keepAliveThread_ && keepAliveThread_->joinable()) {
+        keepAliveThread_->join();
+        keepAliveThread_.reset();
+    }
+}
+
+void FifoProtocolHandler::clearQueues() {
+    {
+        std::lock_guard<std::mutex> lock(incomingMutex_);
+        while (!incomingMessages_.empty()) {
+            incomingMessages_.pop();
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(outgoingMutex_);
+        while (!outgoingMessages_.empty()) {
+            outgoingMessages_.pop();
+        }
+    }
+}
+
+void FifoProtocolHandler::disconnectAllClients() {
+    std::lock_guard<std::mutex> lock(clientsMutex_);
+    for (auto& [clientId, clientInfo] : clients_) {
+        if (clientInfo->active.load()) {
+            clientInfo->active.store(false);
+            if (clientInfo->communicator) {
+                clientInfo->communicator->disconnect();
+            }
+        }
+    }
+    clients_.clear();
+}
+
+void FifoProtocolHandler::cleanupInactiveClients() {
+    std::lock_guard<std::mutex> lock(clientsMutex_);
+    auto now = std::chrono::system_clock::now();
+
+    auto it = clients_.begin();
+    while (it != clients_.end()) {
+        const auto& [clientId, clientInfo] = *it;
+
+        // Check if client has been inactive for too long
+        auto timeSinceLastActivity = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - clientInfo->lastActivity);
+
+        if (timeSinceLastActivity > config_.clientTimeout) {
+            spdlog::info("Cleaning up inactive client: {}", clientId);
+
+            if (clientInfo->active.load()) {
+                clientInfo->active.store(false);
+                if (clientInfo->communicator) {
+                    clientInfo->communicator->disconnect();
+                }
+            }
+
+            it = clients_.erase(it);
+            statistics_.currentActiveClients.fetch_sub(1);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void FifoProtocolHandler::sendKeepAliveMessages() {
+    std::lock_guard<std::mutex> lock(clientsMutex_);
+
+    for (const auto& [clientId, clientInfo] : clients_) {
+        if (clientInfo->active.load() && clientInfo->communicator) {
+            // Create a simple keep-alive message
+            json keepAliveMsg;
+            keepAliveMsg["type"] = "keep_alive";
+            keepAliveMsg["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+
+            std::string keepAliveStr = keepAliveMsg.dump();
+
+            if (!clientInfo->communicator->sendMessage(keepAliveStr)) {
+                spdlog::warn("Failed to send keep-alive message to client: {}", clientId);
+                // Mark client as potentially problematic
+                onClientError(clientId, "Keep-alive failed");
+            } else {
+                spdlog::debug("Sent keep-alive message to client: {}", clientId);
+            }
+        }
+    }
 }
 
 } // namespace fifo

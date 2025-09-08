@@ -46,11 +46,33 @@ include_directories(
 #     PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 # )
 
-# Add to the integration_tests target - placeholder for now
+# Multi-protocol integration tests
+add_executable(test_multi_protocol_integration
+    test_multi_protocol_integration.cpp
+)
+
+target_link_libraries(test_multi_protocol_integration
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        GTest::gmock
+        hydrogen_core
+        hydrogen_common
+        nlohmann_json::nlohmann_json
+)
+
+# Register test with CTest
+gtest_discover_tests(test_multi_protocol_integration
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+# Add to the integration_tests target
 add_custom_target(integration_tests
-    COMMENT "Integration tests disabled - architectural issues need resolution"
+    DEPENDS test_multi_protocol_integration
+    COMMENT "Running integration tests"
 )
 
 message(STATUS "Hydrogen: Integration tests configured")
-message(STATUS "  - Target: test_client_integration")
+message(STATUS "  - Target: test_multi_protocol_integration")
 message(STATUS "  - Framework: Google Test")

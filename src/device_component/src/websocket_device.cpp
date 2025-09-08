@@ -1,8 +1,8 @@
 #include "hydrogen/device/websocket_device.h"
 
 #ifdef HYDROGEN_HAS_WEBSOCKETS
-#include <hydrogen/core/utils.h>
-#include <hydrogen/core/message.h>
+#include <hydrogen/core/infrastructure/utils.h>
+#include <hydrogen/core/messaging/message.h>
 #include <boost/asio/connect.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -154,7 +154,7 @@ void WebSocketDevice::disconnect() {
         if (ws_ && ws_->is_open()) {
             ws_->close(websocket::close_code::normal);
         }
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
         // Ignore close errors
     }
 
@@ -185,7 +185,7 @@ bool WebSocketDevice::registerDevice() {
         
         std::string message = regMsg.toJson().dump();
         return sendMessage(message);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
         return false;
     }
 }

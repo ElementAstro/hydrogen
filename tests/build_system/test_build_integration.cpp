@@ -268,3 +268,8 @@ TEST_F(BuildSystemIntegrationTest, TestCoverageStructure) {
     // Check that test coverage summary exists
     EXPECT_TRUE(fileExists(projectRoot_ / "tests" / "TEST_COVERAGE_SUMMARY.md"));
 }
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}

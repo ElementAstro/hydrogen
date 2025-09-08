@@ -1,5 +1,5 @@
 #include <hydrogen/device/telescope.h>
-#include <hydrogen/core/utils.h>
+#include <hydrogen/core/infrastructure/utils.h>
 #include <chrono>
 #include <cmath>
 
@@ -358,7 +358,8 @@ double Telescope::getCurrentLST() const {
     // Simplified LST calculation
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
-    auto tm = *std::gmtime(&time_t);
+    std::tm tm;
+    gmtime_s(&tm, &time_t);
     
     double ut = tm.tm_hour + tm.tm_min / 60.0 + tm.tm_sec / 3600.0;
     double lst = ut + observerLongitude_ / 15.0; // Simplified, ignores equation of time

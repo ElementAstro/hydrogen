@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
   if (argc > 2) {
     try {
       port = static_cast<uint16_t>(std::stoi(argv[2]));
-    } catch (const std::exception &e) {
+    } catch (const std::exception &) {
       std::cerr << "Invalid port number: " << argv[2] << std::endl;
       return 1;
     }

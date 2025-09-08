@@ -1,129 +1,121 @@
 # Hydrogen Applications
 # This directory contains example applications and device implementations
 
-# Add include directories for device headers
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/.cmake-cache/crow-v1.2.1.2/include)
-
-# Find required libraries
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(FMT QUIET fmt)
+# Only build applications if examples are enabled
+if(NOT HYDROGEN_BUILD_EXAMPLES)
+    message(STATUS "Hydrogen: Skipping applications (examples disabled)")
+    return()
 endif()
+
+message(STATUS "Hydrogen: Building example applications...")
+
+# Include Hydrogen build system utilities
+include(${CMAKE_SOURCE_DIR}/cmake/HydrogenUtils.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/HydrogenCompiler.cmake)
+
+# =============================================================================
+# Application Helper Function
+# =============================================================================
+
+# Helper function to create application targets with consistent configuration
+function(hydrogen_add_application app_name source_file)
+    set(options)
+    set(oneValueArgs)
+    set(multiValueArgs DEPENDENCIES EXTRA_LIBRARIES)
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    # Create the executable
+    add_executable(${app_name} ${source_file})
+
+    # Apply modern CMake configuration
+    hydrogen_apply_modern_cmake(${app_name} NAMESPACE Hydrogen EXPORT_NAME ${app_name})
+
+    # Set standard target properties
+    hydrogen_configure_target_standard(${app_name})
+
+    # Link dependencies
+    if(ARG_DEPENDENCIES)
+        target_link_libraries(${app_name} PRIVATE ${ARG_DEPENDENCIES})
+    endif()
+
+    # Link extra libraries
+    if(ARG_EXTRA_LIBRARIES)
+        target_link_libraries(${app_name} PRIVATE ${ARG_EXTRA_LIBRARIES})
+    endif()
+
+    # Link system dependencies
+    hydrogen_link_system_dependencies(${app_name})
+
+    # Apply feature definitions
+    if(COMMAND hydrogen_apply_feature_definitions)
+        hydrogen_apply_feature_definitions(${app_name})
+    endif()
+
+    message(STATUS "Hydrogen: Created application target: ${app_name}")
+endfunction()
+
+# =============================================================================
+# Application Targets
+# =============================================================================
 
 # Server application
-add_executable(astro_server simple_server.cpp)
-target_link_libraries(astro_server PRIVATE Hydrogen::Core ${FMT_LIBRARIES})
-if(WIN32)
-    target_link_libraries(astro_server PRIVATE ws2_32)
-endif()
-
-# Set target properties
-set_target_properties(astro_server PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+hydrogen_add_application(astro_server simple_server.cpp
+    DEPENDENCIES Hydrogen::Core
 )
 
 # Client application
-add_executable(astro_client client_app.cpp)
-target_link_libraries(astro_client PRIVATE Hydrogen::Client Hydrogen::Core ${FMT_LIBRARIES})
-if(WIN32)
-    target_link_libraries(astro_client PRIVATE ws2_32)
-endif()
-
-set_target_properties(astro_client PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+hydrogen_add_application(astro_client client_app.cpp
+    DEPENDENCIES Hydrogen::Client Hydrogen::Core
 )
 
 # Device applications
-add_executable(astro_telescope telescope_device.cpp)
-target_link_libraries(astro_telescope PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
-if(WIN32)
-    target_link_libraries(astro_telescope PRIVATE ws2_32)
-endif()
-
-set_target_properties(astro_telescope PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+hydrogen_add_application(astro_telescope telescope_device.cpp
+    DEPENDENCIES Hydrogen::Device Hydrogen::Core
 )
 
-add_executable(astro_camera camera_device.cpp)
-target_link_libraries(astro_camera PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
-if(WIN32)
-    target_link_libraries(astro_camera PRIVATE ws2_32)
-endif()
-
-set_target_properties(astro_camera PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+hydrogen_add_application(astro_camera camera_device.cpp
+    DEPENDENCIES Hydrogen::Device Hydrogen::Core
 )
 
-add_executable(astro_focuser focuser_device.cpp)
-target_link_libraries(astro_focuser PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
-if(WIN32)
-    target_link_libraries(astro_focuser PRIVATE ws2_32)
-endif()
-
-set_target_properties(astro_focuser PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+hydrogen_add_application(astro_focuser focuser_device.cpp
+    DEPENDENCIES Hydrogen::Device Hydrogen::Core
 )
 
-add_executable(astro_guider guider_device.cpp)
-target_link_libraries(astro_guider PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
-if(WIN32)
-    target_link_libraries(astro_guider PRIVATE ws2_32)
-endif()
-
-set_target_properties(astro_guider PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+hydrogen_add_application(astro_guider guider_device.cpp
+    DEPENDENCIES Hydrogen::Device Hydrogen::Core
 )
 
-add_executable(astro_rotator rotator_device.cpp)
-target_link_libraries(astro_rotator PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
-if(WIN32)
-    target_link_libraries(astro_rotator PRIVATE ws2_32)
-endif()
-
-set_target_properties(astro_rotator PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+hydrogen_add_application(astro_rotator rotator_device.cpp
+    DEPENDENCIES Hydrogen::Device Hydrogen::Core
 )
 
-add_executable(astro_solver solver_device.cpp)
-target_link_libraries(astro_solver PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
-if(WIN32)
-    target_link_libraries(astro_solver PRIVATE ws2_32)
-endif()
-
-set_target_properties(astro_solver PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+hydrogen_add_application(astro_solver solver_device.cpp
+    DEPENDENCIES Hydrogen::Device Hydrogen::Core
 )
 
-add_executable(astro_switch switch_device.cpp)
-target_link_libraries(astro_switch PRIVATE Hydrogen::Device Hydrogen::Core ${FMT_LIBRARIES})
-if(WIN32)
-    target_link_libraries(astro_switch PRIVATE ws2_32)
-endif()
-
-set_target_properties(astro_switch PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
+hydrogen_add_application(astro_switch switch_device.cpp
+    DEPENDENCIES Hydrogen::Device Hydrogen::Core
 )
+
+# =============================================================================
+# Installation Rules
+# =============================================================================
 
 # Installation rules for applications
+include(GNUInstallDirs)
+
 install(TARGETS
     astro_server
     astro_client
     astro_telescope
     astro_camera
-    astro_focuser 
-    astro_guider 
-    astro_rotator 
-    astro_solver 
+    astro_focuser
+    astro_guider
+    astro_rotator
+    astro_solver
     astro_switch
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    COMPONENT Applications
 )
+
+message(STATUS "Hydrogen: Application build configuration complete")

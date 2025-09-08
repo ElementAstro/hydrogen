@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hydrogen/core/communication_protocol.h"
+#include "hydrogen/core/communication/infrastructure/communication_protocol.h"
 #include <memory>
 #include <string>
 #include <vector>

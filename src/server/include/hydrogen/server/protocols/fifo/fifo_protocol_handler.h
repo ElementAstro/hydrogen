@@ -1,8 +1,9 @@
 #pragma once
 
 #include "hydrogen/server/core/protocol_handler.h"
-#include "hydrogen/core/fifo_config_manager.h"
-#include "hydrogen/core/fifo_communicator.h"
+#include "hydrogen/core/configuration/fifo_config_manager.h"
+#include "hydrogen/core/communication/protocols/fifo_communicator.h"
+#include "hydrogen/core/messaging/message.h"
 #include <nlohmann/json.hpp>
 #include <memory>
 #include <unordered_map>
@@ -21,6 +22,10 @@ namespace fifo {
 
 using json = nlohmann::json;
 using namespace hydrogen::core;
+using hydrogen::server::core::IProtocolHandler;
+using hydrogen::server::core::CommunicationProtocol;
+using hydrogen::server::core::Message;
+using hydrogen::server::core::ConnectionInfo;
 
 /**
  * @brief FIFO client connection information
@@ -92,7 +97,29 @@ struct FifoProtocolStats {
     std::chrono::system_clock::time_point startTime;
     
     FifoProtocolStats() : startTime(std::chrono::system_clock::now()) {}
-    
+
+    // Copy constructor
+    FifoProtocolStats(const FifoProtocolStats& other)
+        : totalClientsConnected(other.totalClientsConnected.load()),
+          currentActiveClients(other.currentActiveClients.load()),
+          totalMessagesProcessed(other.totalMessagesProcessed.load()),
+          totalBytesTransferred(other.totalBytesTransferred.load()),
+          totalErrors(other.totalErrors.load()),
+          startTime(other.startTime) {}
+
+    // Copy assignment operator
+    FifoProtocolStats& operator=(const FifoProtocolStats& other) {
+        if (this != &other) {
+            totalClientsConnected.store(other.totalClientsConnected.load());
+            currentActiveClients.store(other.currentActiveClients.load());
+            totalMessagesProcessed.store(other.totalMessagesProcessed.load());
+            totalBytesTransferred.store(other.totalBytesTransferred.load());
+            totalErrors.store(other.totalErrors.load());
+            startTime = other.startTime;
+        }
+        return *this;
+    }
+
     double getMessagesPerSecond() const;
     double getBytesPerSecond() const;
     json toJson() const;
@@ -107,15 +134,24 @@ public:
     ~FifoProtocolHandler() override;
     
     // IProtocolHandler implementation
-    bool initialize() override;
-    void shutdown() override;
-    bool handleMessage(const Message& message, const std::string& clientId) override;
-    bool sendMessage(const Message& message, const std::string& clientId) override;
-    bool broadcastMessage(const Message& message) override;
-    std::vector<std::string> getConnectedClients() const override;
-    bool isClientConnected(const std::string& clientId) const override;
-    bool disconnectClient(const std::string& clientId) override;
     CommunicationProtocol getProtocol() const override { return CommunicationProtocol::FIFO; }
+    std::string getProtocolName() const override { return "FIFO"; }
+    std::vector<std::string> getSupportedMessageTypes() const override;
+
+    bool canHandle(const Message& message) const override;
+    bool processIncomingMessage(const Message& message) override;
+    bool processOutgoingMessage(Message& message) override;
+
+    bool validateMessage(const Message& message) const override;
+    std::string getValidationError(const Message& message) const override;
+
+    Message transformMessage(const Message& source, CommunicationProtocol targetProtocol) const override;
+
+    bool handleClientConnect(const ConnectionInfo& connection) override;
+    bool handleClientDisconnect(const std::string& clientId) override;
+
+    void setProtocolConfig(const std::unordered_map<std::string, std::string>& config) override;
+    std::unordered_map<std::string, std::string> getProtocolConfig() const override;
     
     // FIFO-specific methods
     bool acceptClient(const std::string& clientId, const std::string& command = "");
@@ -131,20 +167,26 @@ public:
     bool isHealthy() const;
     std::string getHealthStatus() const;
     
-    // Message validation and processing
-    bool validateMessage(const Message& message) const;
-    std::string getValidationError(const Message& message) const;
+    // Message validation and processing (implemented in IProtocolHandler interface)
     bool validateMessageSize(const Message& message) const;
     
     // Client management
     void cleanupInactiveClients();
     void sendKeepAliveMessages();
     std::vector<std::string> getInactiveClients() const;
+    bool disconnectClient(const std::string& clientId);
+    bool isClientConnected(const std::string& clientId) const;
+    std::vector<std::string> getConnectedClients() const;
+    bool sendMessage(const std::string& clientId, const Message& message);
     
     // Advanced features
     bool enableMultiplexing();
     bool enableCompression();
     bool enableEncryption();
+
+    // Lifecycle management
+    bool initialize();
+    void shutdown();
     
 protected:
     // Message processing
@@ -169,7 +211,11 @@ protected:
     virtual void logMessage(const std::string& direction, const Message& message, const std::string& clientId) const;
     virtual void logError(const std::string& error) const;
     virtual void logDebug(const std::string& message) const;
-    
+
+    // Message handling helpers
+    bool handleMessage(const Message& message, const std::string& clientId);
+    bool broadcastMessage(const Message& message);
+
 private:
     FifoProtocolConfig config_;
     mutable std::mutex clientsMutex_;

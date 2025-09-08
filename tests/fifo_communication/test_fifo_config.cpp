@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <hydrogen/core/fifo_config_manager.h>
+#include "hydrogen/core/configuration/fifo_config_manager.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <filesystem>

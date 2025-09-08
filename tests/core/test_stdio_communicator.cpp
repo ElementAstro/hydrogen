@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <hydrogen/core/protocol_communicators.h>
-#include <hydrogen/core/stdio_config_manager.h>
-#include <hydrogen/core/stdio_logger.h>
+#include <hydrogen/core/communication/infrastructure/protocol_communicators.h>
+#include <hydrogen/core/configuration/stdio_config_manager.h>
+#include <hydrogen/core/logging/stdio_logger.h>
 #include <thread>
 #include <chrono>
 #include <sstream>

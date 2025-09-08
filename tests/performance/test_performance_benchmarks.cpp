@@ -31,6 +31,11 @@ TEST_F(PerformanceBenchmarksTest, ProtocolConversionTest) {
     EXPECT_TRUE(true);
 }
 
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+
 TEST_F(PerformanceBenchmarksTest, ThroughputTest) {
     // Placeholder for throughput performance testing
     EXPECT_TRUE(true);

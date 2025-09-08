@@ -4,7 +4,6 @@ cmake_minimum_required(VERSION 3.15)
 
 # Find required packages
 find_package(GTest REQUIRED)
-find_package(GMock REQUIRED)
 
 # Include directories
 include_directories(
@@ -12,7 +11,6 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src/server/include
     ${CMAKE_SOURCE_DIR}/src/device/include
     ${GTEST_INCLUDE_DIRS}
-    ${GMOCK_INCLUDE_DIRS}
 )
 
 # Common test libraries
@@ -20,8 +18,9 @@ set(STDIO_TEST_LIBRARIES
     hydrogen_core
     hydrogen_server
     hydrogen_device
-    ${GTEST_LIBRARIES}
-    ${GMOCK_LIBRARIES}
+    GTest::gtest
+    GTest::gtest_main
+    GTest::gmock
     pthread
 )
 

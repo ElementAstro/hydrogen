@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include <hydrogen/core/fifo_communicator.h>
-#include <hydrogen/core/fifo_config_manager.h>
+#include "hydrogen/core/communication/protocols/fifo_communicator.h"
+#include "hydrogen/core/configuration/fifo_config_manager.h"
 #include <nlohmann/json.hpp>
 #include <thread>
 #include <chrono>
@@ -403,3 +403,5 @@ TEST_F(FifoCommunicatorTest, BasicPerformanceTest) {
     auto stats = communicator->getStatistics();
     // Note: Actual sent count may be 0 if no real connection is established
 }
+
+

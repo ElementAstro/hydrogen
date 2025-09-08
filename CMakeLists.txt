@@ -11,6 +11,8 @@ project(Hydrogen
     LANGUAGES CXX
 )
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # =============================================================================
 # Build System Initialization
 # =============================================================================
@@ -65,9 +67,7 @@ hydrogen_manage_versions()
 # Legacy cpp-base64 Support (Temporary)
 # =============================================================================
 
-# Only include cpp-base64 if compression or specific features require it
-option(HYDROGEN_ENABLE_BASE64 "Enable base64 encoding support (legacy)" OFF)
-
+# Only include cpp-base64 if base64 feature is enabled
 if(HYDROGEN_ENABLE_BASE64)
     # Handle cpp-base64 dependency (this is a legacy dependency that should be replaced)
     # For now, we maintain backward compatibility
@@ -218,18 +218,22 @@ include(GNUInstallDirs)
 # Export and Installation Setup
 # =============================================================================
 
-# Simplified export system - disable complex exports for now
-# hydrogen_export_target(hydrogen_common EXPORT_NAME Common COMPONENT Development)
-# hydrogen_export_target(hydrogen_core EXPORT_NAME Core COMPONENT Development)
-# hydrogen_export_target(hydrogen_server EXPORT_NAME Server COMPONENT Development)
-# hydrogen_export_target(hydrogen_client EXPORT_NAME Client COMPONENT Development)
-# hydrogen_export_target(hydrogen_device EXPORT_NAME Device COMPONENT Development)
+# =============================================================================
+# Export System
+# =============================================================================
+
+# Export individual component targets
+hydrogen_export_target(hydrogen_common EXPORT_NAME Common COMPONENT Development)
+hydrogen_export_target(hydrogen_core EXPORT_NAME Core COMPONENT Development)
+hydrogen_export_target(hydrogen_server EXPORT_NAME Server COMPONENT Development)
+hydrogen_export_target(hydrogen_client EXPORT_NAME Client COMPONENT Development)
+hydrogen_export_target(hydrogen_device EXPORT_NAME Device COMPONENT Development)
 
 # Export the convenience library as well (INTERFACE library)
-# hydrogen_export_target(Hydrogen EXPORT_NAME Hydrogen COMPONENT Development INTERFACE_TARGET)
+hydrogen_export_target(Hydrogen EXPORT_NAME Hydrogen COMPONENT Development INTERFACE_TARGET)
 
 # Setup comprehensive package exports (MUST be after all target exports)
-# hydrogen_setup_exports()
+hydrogen_setup_exports()
 
 # =============================================================================
 # Build Summary
@@ -246,5 +250,7 @@ message(STATUS "Tests: ${HYDROGEN_BUILD_TESTS}")
 message(STATUS "Python bindings: ${HYDROGEN_ENABLE_PYTHON_BINDINGS}")
 message(STATUS "SSL support: ${HYDROGEN_HAS_SSL}")
 message(STATUS "Compression: ${HYDROGEN_HAS_COMPRESSION}")
+message(STATUS "Base64 support: ${HYDROGEN_HAS_BASE64}")
+message(STATUS "Logging: ${HYDROGEN_HAS_LOGGING}")
 message(STATUS "==============================")
 message(STATUS "")
