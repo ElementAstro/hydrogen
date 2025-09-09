@@ -12,7 +12,9 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#ifdef HYDROGEN_ENABLE_SPDLOG
 #include <spdlog/spdlog.h>
+#endif
 
 namespace hydrogen {
 namespace core {

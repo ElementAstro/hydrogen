@@ -14,7 +14,11 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#ifdef HYDROGEN_ENABLE_SPDLOG
 #include <spdlog/spdlog.h>
+#else
+#include <hydrogen/core/logging/mock_spdlog.h>
+#endif
 
 #include "hydrogen/core/device/device_communicator.h"
 #include "hydrogen/core/performance/connection_pool.h"

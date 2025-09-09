@@ -1,12 +1,16 @@
-#include <hydrogen/client.h>
-#include "common/logger.h"
-#include <chrono>
 #include <iomanip>
 #include <iostream>
-#include <string>
-#include <thread>
+#include <memory>
+#include <atomic>
+#include <csignal>
+#include <spdlog/spdlog.h>
 
-using namespace hydrogen::client;
+// Include the new unified connection architecture
+#include "hydrogen/core/connection/unified_connection_architecture.h"
+#include "hydrogen/core/device/enhanced_device_connection_manager.h"
+
+using namespace hydrogen::core::connection;
+using namespace hydrogen::core::device;
 
 // 命令行界面颜色
 namespace Color {
@@ -21,383 +25,277 @@ const std::string WHITE = "\033[37m";
 const std::string BOLD = "\033[1m";
 } // namespace Color
 
-// 全局客户端实例
-std::unique_ptr<DeviceClient> client;
+/**
+ * @brief Enhanced Hydrogen Device Client Application
+ */
+class EnhancedHydrogenClient {
+public:
+    EnhancedHydrogenClient(const std::string& serverHost, uint16_t serverPort)
+        : serverHost_(serverHost), serverPort_(serverPort), running_(false) {
+        
+        // Configure connection settings
+        connectionConfig_.protocol = ProtocolType::WEBSOCKET;
+        connectionConfig_.host = serverHost;
+        connectionConfig_.port = serverPort;
+        connectionConfig_.enableAutoReconnect = true;
+        connectionConfig_.maxRetries = 3;
+        connectionConfig_.retryInterval = std::chrono::seconds(5);
+        connectionConfig_.enableHeartbeat = true;
+        connectionConfig_.heartbeatInterval = std::chrono::seconds(30);
+        
+        // Create connection manager
+        connectionManager_ = std::make_unique<UnifiedConnectionManager>();
+        
+        // Set up connection callbacks
+        connectionManager_->setStateCallback(
+            [this](ConnectionState state, const std::string& error) {
+                handleConnectionStateChange(state, error);
+            });
+        
+        connectionManager_->setMessageCallback(
+            [this](const std::string& message) {
+                handleIncomingMessage(message);
+            });
+        
+        connectionManager_->setErrorCallback(
+            [this](const std::string& error, int code) {
+                handleConnectionError(error, code);
+            });
+    }
+    
+    ~EnhancedHydrogenClient() {
+        disconnect();
+    }
+    
+    bool connect() {
+        std::cout << "Connecting to Hydrogen server at " << serverHost_ << ":" << serverPort_ << "..." << std::endl;
+        
+        if (!connectionManager_->connect(connectionConfig_)) {
+            std::cerr << "✗ Failed to connect to server" << std::endl;
+            return false;
+        }
+        
+        running_.store(true);
+        std::cout << "✓ Connected to server successfully" << std::endl;
+        return true;
+    }
+    
+    void disconnect() {
+        if (!running_.load()) {
+            return;
+        }
+        
+        running_.store(false);
+        
+        if (connectionManager_) {
+            connectionManager_->disconnect();
+        }
+        
+        std::cout << "✓ Disconnected from server" << std::endl;
+    }
+    
+    bool isConnected() const {
+        return running_.load() && connectionManager_ && connectionManager_->isConnected();
+    }
+    
+    void runInteractiveMode() {
+        if (!isConnected()) {
+            std::cerr << "Not connected to server" << std::endl;
+            return;
+        }
+        
+        std::cout << "\nEntering interactive mode..." << std::endl;
+        std::cout << "Type 'help' for available commands, 'quit' to exit" << std::endl;
+        std::cout << "> ";
+        
+        std::string input;
+        while (running_.load() && std::getline(std::cin, input)) {
+            if (input == "quit" || input == "exit") {
+                break;
+            }
+            
+            if (input == "help") {
+                printHelp();
+            } else if (input == "status") {
+                printConnectionStatus();
+            } else if (input == "devices") {
+                listDevices();
+            } else if (!input.empty()) {
+                sendCommand(input);
+            }
+            
+            std::cout << "> ";
+        }
+    }
+
+private:
+    void handleConnectionStateChange(ConnectionState state, const std::string& error) {
+        switch (state) {
+            case ConnectionState::CONNECTING:
+                std::cout << "Connecting to server..." << std::endl;
+                break;
+            case ConnectionState::CONNECTED:
+                std::cout << "✓ Connected to server" << std::endl;
+                break;
+            case ConnectionState::DISCONNECTED:
+                std::cout << "Disconnected from server" << std::endl;
+                running_.store(false);
+                break;
+            case ConnectionState::RECONNECTING:
+                std::cout << "Reconnecting to server..." << std::endl;
+                break;
+            case ConnectionState::ERROR:
+                std::cerr << "Connection error: " << error << std::endl;
+                break;
+            default:
+                break;
+        }
+    }
+    
+    void handleIncomingMessage(const std::string& message) {
+        std::cout << Color::GREEN << "Received: " << message << Color::RESET << std::endl;
+    }
+    
+    void handleConnectionError(const std::string& error, int code) {
+        std::cerr << Color::RED << "Connection error: " << error << " (Code: " << code << ")" << Color::RESET << std::endl;
+    }
+    
+    void sendCommand(const std::string& command) {
+        if (!isConnected()) {
+            std::cerr << Color::RED << "Not connected to server" << Color::RESET << std::endl;
+            return;
+        }
+        
+        if (connectionManager_->sendMessage(command)) {
+            std::cout << Color::BLUE << "Sent: " << command << Color::RESET << std::endl;
+        } else {
+            std::cerr << Color::RED << "Failed to send command" << Color::RESET << std::endl;
+        }
+    }
+    
+    void printHelp() {
+        std::cout << Color::BOLD << Color::CYAN << "\nAvailable commands:" << Color::RESET << std::endl;
+        std::cout << "==================" << std::endl;
+        std::cout << Color::YELLOW << "help" << Color::RESET << "     - Show this help message" << std::endl;
+        std::cout << Color::YELLOW << "status" << Color::RESET << "   - Show connection status" << std::endl;
+        std::cout << Color::YELLOW << "devices" << Color::RESET << "  - List connected devices" << std::endl;
+        std::cout << Color::YELLOW << "quit" << Color::RESET << "     - Exit the client" << std::endl;
+        std::cout << "\n" << Color::BOLD << "Device commands:" << Color::RESET << std::endl;
+        std::cout << Color::MAGENTA << "TELESCOPE_SLEW <ra> <dec>" << Color::RESET << "  - Slew telescope to coordinates" << std::endl;
+        std::cout << Color::MAGENTA << "TELESCOPE_PARK" << Color::RESET << "             - Park telescope" << std::endl;
+        std::cout << Color::MAGENTA << "TELESCOPE_UNPARK" << Color::RESET << "           - Unpark telescope" << std::endl;
+        std::cout << Color::MAGENTA << "CAMERA_EXPOSE <duration>" << Color::RESET << "   - Start camera exposure" << std::endl;
+        std::cout << Color::MAGENTA << "FOCUSER_MOVE <position>" << Color::RESET << "    - Move focuser to position" << std::endl;
+        std::cout << std::endl;
+    }
+    
+    void printConnectionStatus() {
+        if (!connectionManager_) {
+            std::cout << Color::RED << "Connection manager not initialized" << Color::RESET << std::endl;
+            return;
+        }
+        
+        auto stats = connectionManager_->getStatistics();
+        
+        std::cout << Color::BOLD << Color::CYAN << "\nConnection Status:" << Color::RESET << std::endl;
+        std::cout << "==================" << std::endl;
+        std::cout << "Server: " << Color::WHITE << serverHost_ << ":" << serverPort_ << Color::RESET << std::endl;
+        std::cout << "Connected: " << (isConnected() ? Color::GREEN + "Yes" : Color::RED + "No") << Color::RESET << std::endl;
+        std::cout << "Healthy: " << (connectionManager_->isHealthy() ? Color::GREEN + "Yes" : Color::RED + "No") << Color::RESET << std::endl;
+        std::cout << "Latency: " << Color::YELLOW << connectionManager_->getLatency().count() << "ms" << Color::RESET << std::endl;
+        std::cout << "Messages sent: " << Color::BLUE << stats.messagesSent.load() << Color::RESET << std::endl;
+        std::cout << "Messages received: " << Color::BLUE << stats.messagesReceived.load() << Color::RESET << std::endl;
+        std::cout << "Errors: " << Color::RED << stats.errorCount.load() << Color::RESET << std::endl;
+        std::cout << std::endl;
+    }
+    
+    void listDevices() {
+        std::cout << Color::CYAN << "\nRequesting device list..." << Color::RESET << std::endl;
+        sendCommand("LIST_DEVICES");
+    }
+    
+    // Configuration and state
+    std::string serverHost_;
+    uint16_t serverPort_;
+    std::atomic<bool> running_;
+    ConnectionConfig connectionConfig_;
+    
+    // Connection management
+    std::unique_ptr<UnifiedConnectionManager> connectionManager_;
+};
+
+// Global client instance
+std::unique_ptr<EnhancedHydrogenClient> g_client;
+
+void signalHandler(int signal) {
+    std::cout << "\nReceived signal " << signal << ", shutting down client gracefully..." << std::endl;
+    
+    if (g_client) {
+        g_client->disconnect();
+    }
+    
+    exit(0);
+}
 
 void printBanner() {
-  std::cout << Color::BOLD << Color::CYAN;
-  std::cout << "\n";
-  std::cout << "  +======================================================+\n";
-  std::cout << "  |                                                      |\n";
-  std::cout << "  |          Astronomy Device Control Client             |\n";
-  std::cout << "  |                                                      |\n";
-  std::cout << "  +======================================================+\n\n";
-  std::cout << Color::RESET;
+    std::cout << Color::BOLD << Color::CYAN;
+    std::cout << "\n";
+    std::cout << "  +======================================================+\n";
+    std::cout << "  |                                                      |\n";
+    std::cout << "  |       Enhanced Hydrogen Device Control Client       |\n";
+    std::cout << "  |                                                      |\n";
+    std::cout << "  +======================================================+\n\n";
+    std::cout << Color::RESET;
 }
 
-void printMenu() {
-  std::cout << Color::BOLD << Color::BLUE
-            << "\n=== MAIN MENU ===" << Color::RESET << "\n";
-  std::cout << " 1. List connected devices\n";
-  std::cout << " 2. Telescope control\n";
-  std::cout << " 3. Camera control\n";
-  std::cout << " 4. Focuser control\n";
-  std::cout << " 5. Refresh devices\n";
-  std::cout << " 0. Exit\n";
-  std::cout << Color::YELLOW << "\nEnter your choice: " << Color::RESET;
-}
-
-void printTelescopeMenu() {
-  std::cout << Color::BOLD << Color::BLUE
-            << "\n=== TELESCOPE CONTROL ===" << Color::RESET << "\n";
-  std::cout << " 1. Get position (RA/DEC)\n";
-  std::cout << " 2. GOTO position\n";
-  std::cout << " 3. Toggle tracking\n";
-  std::cout << " 4. Set slew rate\n";
-  std::cout << " 5. Park/Unpark\n";
-  std::cout << " 6. Abort movement\n";
-  std::cout << " 0. Back to main menu\n";
-  std::cout << Color::YELLOW << "\nEnter your choice: " << Color::RESET;
-}
-
-void handleTelescopeControl() {
-  // Get available telescopes
-  json devices = client->getDevices();
-  std::vector<std::string> telescopeIds;
-
-  for (const auto &device : devices) {
-    if (device["deviceType"] == "TELESCOPE") {
-      telescopeIds.push_back(device["deviceId"]);
+int main(int argc, char* argv[]) {
+    // Parse command line arguments
+    std::string serverHost = "localhost";
+    uint16_t serverPort = 8000;
+    
+    if (argc >= 2) {
+        serverHost = argv[1];
     }
-  }
-
-  if (telescopeIds.empty()) {
-    std::cout << Color::RED << "No telescopes available!" << Color::RESET
-              << std::endl;
-    return;
-  }
-
-  // Select telescope if multiple are available
-  std::string selectedId = telescopeIds[0];
-  if (telescopeIds.size() > 1) {
-    std::cout << Color::BLUE << "Available telescopes:" << Color::RESET
-              << std::endl;
-    for (size_t i = 0; i < telescopeIds.size(); i++) {
-      std::cout << " " << (i + 1) << ". " << telescopeIds[i] << std::endl;
+    if (argc >= 3) {
+        serverPort = static_cast<uint16_t>(std::stoi(argv[2]));
     }
-
-    int choice = 0;
-    std::cout << Color::YELLOW << "Select telescope (1-" << telescopeIds.size()
-              << "): " << Color::RESET;
-    std::cin >> choice;
-    std::cin.ignore();
-
-    if (choice < 1 || choice > static_cast<int>(telescopeIds.size())) {
-      std::cout << Color::RED << "Invalid selection!" << Color::RESET
-                << std::endl;
-      return;
-    }
-
-    selectedId = telescopeIds[choice - 1];
-  }
-
-  std::cout << Color::GREEN << "Using telescope: " << selectedId << Color::RESET
-            << std::endl;
-
-  // Telescope control loop
-  int choice = -1;
-  while (choice != 0) {
-    printTelescopeMenu();
-    std::cin >> choice;
-    std::cin.ignore();
-
+    
+    // Set up signal handlers for graceful shutdown
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+    
+    // Configure logging
+    spdlog::set_level(spdlog::level::info);
+    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
+    
+    // Print banner
+    printBanner();
+    
+    std::cout << "Starting Enhanced Hydrogen Device Client..." << std::endl;
+    std::cout << "Server: " << serverHost << ":" << serverPort << std::endl;
+    std::cout << std::endl;
+    
     try {
-      switch (choice) {
-      case 1: { // Get position
-        json result = client->getDeviceProperties(
-            selectedId, {"ra", "dec", "altitude", "azimuth"});
-
-        std::cout << Color::GREEN << "Current Position:" << Color::RESET
-                  << std::endl;
-        std::cout << "  RA: " << std::fixed << std::setprecision(4)
-                  << result["properties"]["ra"]["value"] << " hours"
-                  << std::endl;
-        std::cout << "  DEC: " << std::fixed << std::setprecision(4)
-                  << result["properties"]["dec"]["value"] << " degrees"
-                  << std::endl;
-        std::cout << "  ALT: " << std::fixed << std::setprecision(4)
-                  << result["properties"]["altitude"]["value"] << " degrees"
-                  << std::endl;
-        std::cout << "  AZ: " << std::fixed << std::setprecision(4)
-                  << result["properties"]["azimuth"]["value"] << " degrees"
-                  << std::endl;
-        break;
-      }
-      case 2: { // GOTO
-        double ra, dec;
-        std::cout << "Enter RA (hours, 0-24): ";
-        std::cin >> ra;
-        std::cout << "Enter DEC (degrees, -90 to +90): ";
-        std::cin >> dec;
-        std::cin.ignore();
-
-        if (ra < 0 || ra >= 24 || dec < -90 || dec > 90) {
-          std::cout << Color::RED << "Invalid coordinates!" << Color::RESET
-                    << std::endl;
-          break;
+        // Create and connect client
+        g_client = std::make_unique<EnhancedHydrogenClient>(serverHost, serverPort);
+        
+        if (!g_client->connect()) {
+            std::cerr << "Failed to connect to server" << std::endl;
+            return 1;
         }
-
-        json params = {{"ra", ra}, {"dec", dec}};
-
-        json result = client->executeCommand(selectedId, "GOTO", params);
-
-        if (result["payload"]["status"] == "IN_PROGRESS") {
-          std::cout << Color::GREEN
-                    << "GOTO started. Estimated completion time: "
-                    << result["payload"]["details"]["estimatedCompletionTime"]
-                    << Color::RESET << std::endl;
-        } else {
-          std::cout << Color::RED << "GOTO command failed: " << result.dump(2)
-                    << Color::RESET << std::endl;
-        }
-        break;
-      }
-      case 3: { // Toggle tracking
-        json result = client->getDeviceProperties(selectedId, {"tracking"});
-        bool currentTracking = result["properties"]["tracking"]["value"];
-
-        json trackingParams = {{"enabled", !currentTracking}};
-
-        client->executeCommand(selectedId, "SET_TRACKING", trackingParams);
-
-        std::cout << Color::GREEN << "Tracking "
-                  << (!currentTracking ? "enabled" : "disabled") << Color::RESET
-                  << std::endl;
-        break;
-      }
-      case 4: { // Set slew rate
-        int rate;
-        std::cout << "Enter slew rate (1-10): ";
-        std::cin >> rate;
-        std::cin.ignore();
-
-        if (rate < 1 || rate > 10) {
-          std::cout << Color::RED << "Invalid slew rate!" << Color::RESET
-                    << std::endl;
-          break;
-        }
-
-        json props = {{"slew_rate", rate}};
-
-        client->setDeviceProperties(selectedId, props);
-
-        std::cout << Color::GREEN << "Slew rate set to " << rate << Color::RESET
-                  << std::endl;
-        break;
-      }
-      case 5: { // Park/Unpark
-        json result = client->getDeviceProperties(selectedId, {"parked"});
-        bool isParked = result["properties"]["parked"]["value"];
-
-        json params = {{"action", isParked ? "unpark" : "park"}};
-
-        client->executeCommand(selectedId, "PARK", params);
-
-        std::cout << Color::GREEN << "Telescope "
-                  << (isParked ? "unparking" : "parking") << "..."
-                  << Color::RESET << std::endl;
-        break;
-      }
-      case 6: { // Abort
-        client->executeCommand(selectedId, "ABORT");
-        std::cout << Color::GREEN << "Abort command sent" << Color::RESET
-                  << std::endl;
-        break;
-      }
-      case 0:
-        // Return to main menu
-        break;
-      default:
-        std::cout << Color::RED << "Invalid option!" << Color::RESET
-                  << std::endl;
-      }
-    } catch (const std::exception &e) {
-      std::cout << Color::RED << "Error: " << e.what() << Color::RESET
-                << std::endl;
+        
+        std::cout << "✓ Client connected successfully" << std::endl;
+        std::cout << "✓ Health monitoring: Active" << std::endl;
+        std::cout << "✓ Auto-reconnection: Enabled" << std::endl;
+        std::cout << std::endl;
+        
+        // Run interactive mode
+        g_client->runInteractiveMode();
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Client error: " << e.what() << std::endl;
+        return 1;
     }
-
-    if (choice != 0) {
-      std::cout << "\nPress Enter to continue...";
-      std::cin.get();
-    }
-  }
-}
-
-// Event and property update callbacks
-void onTelescopePropertyChanged(const std::string &property,
-                                const json &value) {
-  std::cout << Color::CYAN << "\n[Property] " << property << " = " << value.dump()
-            << Color::RESET << std::endl;
-}
-
-void onTelescopeEvent(const std::string &event,
-                      const json &details) {
-  std::cout << Color::MAGENTA << "\n[Event] " << event
-            << ", details: " << details.dump() << Color::RESET << std::endl;
-}
-
-int main(int argc, char *argv[]) {
-  // 初始化日志
-  initLogger("client.log", LogLevel::INFO);
-
-  // 显示欢迎信息
-  printBanner();
-
-  // 解析命令行参数
-  std::string host = "localhost";
-  uint16_t port = 8000;
-
-  if (argc > 1)
-    host = argv[1];
-  if (argc > 2) {
-    try {
-      port = static_cast<uint16_t>(std::stoi(argv[2]));
-    } catch (const std::exception &e) {
-      std::cerr << "Invalid port number: " << argv[2] << std::endl;
-      return 1;
-    }
-  }
-
-  std::cout << "Connecting to server at " << host << ":" << port << "..."
-            << std::endl;
-
-  try {
-    // 创建客户端并连接
-    client = std::make_unique<DeviceClient>();
-
-    if (!client->connect(host, port)) {
-      std::cout << Color::RED << "Failed to connect to server!" << Color::RESET
-                << std::endl;
-      return 1;
-    }
-
-    std::cout << Color::GREEN << "Connected to server!" << Color::RESET
-              << std::endl;
-
-    // 启动后台消息处理
-    // Message processing starts automatically when client connects
-
-    // 发现设备
-    json devices = client->discoverDevices();
-    std::cout << Color::GREEN << "Discovered " << devices.size() << " devices"
-              << Color::RESET << std::endl;
-
-    // 设置属性和事件订阅
-    for (const auto &device : devices) {
-      if (device["deviceType"] == "TELESCOPE") {
-        std::string deviceId = device["deviceId"];
-
-        // 订阅位置属性变更
-        client->subscribeToProperty(deviceId, "ra", onTelescopePropertyChanged);
-        client->subscribeToProperty(deviceId, "dec",
-                                    onTelescopePropertyChanged);
-
-        // 订阅重要事件
-        client->subscribeToEvent(deviceId, "COMMAND_COMPLETED",
-                                 onTelescopeEvent);
-        client->subscribeToEvent(deviceId, "PARKED", onTelescopeEvent);
-        client->subscribeToEvent(deviceId, "UNPARKED", onTelescopeEvent);
-      }
-    }
-
-    // 主菜单循环
-    int choice = -1;
-    while (choice != 0) {
-      printMenu();
-      std::cin >> choice;
-      std::cin.ignore();
-
-      switch (choice) {
-      case 1: { // List devices
-        json devices = client->getDevices();
-
-        std::cout << Color::GREEN << "\nConnected Devices:" << Color::RESET
-                  << std::endl;
-        for (const auto &device : devices) {
-          std::cout << Color::BOLD << "  " << device["deviceId"] << Color::RESET
-                    << std::endl;
-          std::cout << "    Type: " << device["deviceType"] << std::endl;
-          std::cout << "    Model: " << device["manufacturer"] << " "
-                    << device["model"] << std::endl;
-
-          if (device.contains("properties") &&
-              device["properties"].is_array()) {
-            std::cout << "    Properties: ";
-            for (size_t i = 0; i < device["properties"].size(); i++) {
-              std::cout << device["properties"][i];
-              if (i < device["properties"].size() - 1) {
-                std::cout << ", ";
-              }
-            }
-            std::cout << std::endl;
-          }
-
-          if (device.contains("capabilities") &&
-              device["capabilities"].is_array()) {
-            std::cout << "    Capabilities: ";
-            for (size_t i = 0; i < device["capabilities"].size(); i++) {
-              std::cout << device["capabilities"][i];
-              if (i < device["capabilities"].size() - 1) {
-                std::cout << ", ";
-              }
-            }
-            std::cout << std::endl;
-          }
-
-          std::cout << std::endl;
-        }
-        break;
-      }
-      case 2: // Telescope control
-        handleTelescopeControl();
-        break;
-      case 3: // Camera control
-        std::cout << "Camera control not implemented yet" << std::endl;
-        break;
-      case 4: // Focuser control
-        std::cout << "Focuser control not implemented yet" << std::endl;
-        break;
-      case 5: { // Refresh devices
-        json devices = client->discoverDevices();
-        std::cout << Color::GREEN << "Discovered " << devices.size()
-                  << " devices" << Color::RESET << std::endl;
-        break;
-      }
-      case 0:
-        std::cout << "Exiting..." << std::endl;
-        break;
-      default:
-        std::cout << Color::RED << "Invalid option!" << Color::RESET
-                  << std::endl;
-      }
-
-      if (choice != 0 && choice != 2) {
-        std::cout << "\nPress Enter to continue...";
-        std::cin.get();
-      }
-    }
-
-    // 停止后台消息处理
-    // Message processing stops automatically when client disconnects
-
-    // 断开连接
-    client->disconnect();
-  } catch (const std::exception &e) {
-    logCritical("Error: " + std::string(e.what()), "Main");
-    std::cout << Color::RED << "Error: " << e.what() << Color::RESET
-              << std::endl;
-    return 1;
-  }
-
-  return 0;
+    
+    return 0;
 }

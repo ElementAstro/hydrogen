@@ -13,7 +13,9 @@
 #include <queue>
 
 #include <nlohmann/json.hpp>
+#ifdef HYDROGEN_ENABLE_SPDLOG
 #include <spdlog/spdlog.h>
+#endif
 
 #include "hydrogen/core/performance/memory_pool.h"
 

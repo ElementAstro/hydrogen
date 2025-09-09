@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Find required dependencies
+find_dependency(nlohmann_json REQUIRED)
+find_dependency(Threads REQUIRED)
+
+# Conditionally find Boost if needed
+if(@USE_BOOST_REGEX@)
+    find_dependency(Boost REQUIRED COMPONENTS regex)
+endif()
+
+# Include the targets file
+include("${CMAKE_CURRENT_LIST_DIR}/HydrogenCoreTargets.cmake")
+
+check_required_components(HydrogenCore)

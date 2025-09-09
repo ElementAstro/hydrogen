@@ -13,7 +13,9 @@
 #include <vector>
 
 #ifdef HYDROGEN_HAS_SPDLOG
+#ifdef HYDROGEN_ENABLE_SPDLOG
 #include <spdlog/spdlog.h>
+#endif
 #include <spdlog/logger.h>
 #include <spdlog/common.h>
 #include <spdlog/sinks/stdout_color_sinks.h>

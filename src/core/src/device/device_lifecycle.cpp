@@ -9,10 +9,19 @@ namespace core {
 
 // StateTransition implementation
 json StateTransition::toJson() const {
+  // Convert timestamp to ISO string
+  auto time_t = std::chrono::system_clock::to_time_t(timestamp);
+  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      timestamp.time_since_epoch()) % 1000;
+
+  std::ostringstream ss;
+  ss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%S");
+  ss << '.' << std::setfill('0') << std::setw(3) << ms.count() << 'Z';
+
   return json{{"fromState", lifecycleStateToString(fromState)},
               {"toState", lifecycleStateToString(toState)},
               {"trigger", trigger},
-              {"timestamp", getIsoTimestamp()},
+              {"timestamp", ss.str()},
               {"reason", reason}};
 }
 
@@ -34,12 +43,21 @@ StateTransition StateTransition::fromJson(const json &j) {
 
 // LifecycleEvent implementation
 json LifecycleEvent::toJson() const {
+  // Convert timestamp to ISO string
+  auto time_t = std::chrono::system_clock::to_time_t(timestamp);
+  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      timestamp.time_since_epoch()) % 1000;
+
+  std::ostringstream ss;
+  ss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%S");
+  ss << '.' << std::setfill('0') << std::setw(3) << ms.count() << 'Z';
+
   return json{{"deviceId", deviceId},
               {"previousState", lifecycleStateToString(previousState)},
               {"newState", lifecycleStateToString(newState)},
               {"trigger", trigger},
               {"reason", reason},
-              {"timestamp", getIsoTimestamp()},
+              {"timestamp", ss.str()},
               {"metadata", metadata}};
 }
 
@@ -79,16 +97,31 @@ void DeviceLifecycleManager::registerDevice(const std::string &deviceId,
   info.currentState = initialState;
   info.registrationTime = std::chrono::system_clock::now();
 
-  // Add initial state to history
-  StateTransition initialTransition;
-  initialTransition.fromState = DeviceLifecycleState::UNINITIALIZED;
-  initialTransition.toState = initialState;
-  initialTransition.trigger = "REGISTRATION";
-  initialTransition.timestamp = info.registrationTime;
-  initialTransition.reason = "Device registered";
+  // Add initial state to history only if it's not UNINITIALIZED
+  if (initialState != DeviceLifecycleState::UNINITIALIZED) {
+    StateTransition initialTransition;
+    initialTransition.fromState = DeviceLifecycleState::UNINITIALIZED;
+    initialTransition.toState = initialState;
+    initialTransition.trigger = "REGISTRATION";
+    initialTransition.timestamp = info.registrationTime;
+    initialTransition.reason = "Device registered";
 
-  info.history.push_back(initialTransition);
+    info.history.push_back(initialTransition);
+  }
+
   deviceStates_[deviceId] = info;
+
+  // Create and notify lifecycle event for registration
+  // Always fire a callback for registration, even if initial state is UNINITIALIZED
+  LifecycleEvent event;
+  event.deviceId = deviceId;
+  event.previousState = DeviceLifecycleState::UNINITIALIZED;
+  event.newState = initialState;
+  event.trigger = "REGISTRATION";
+  event.reason = "Device registered";
+  event.timestamp = info.registrationTime;
+
+  notifyStateChange(event);
 }
 
 void DeviceLifecycleManager::unregisterDevice(const std::string &deviceId) {
@@ -468,7 +501,8 @@ void DeviceLifecycleManager::initializeValidTransitions() {
 
   validTransitions_[DeviceLifecycleState::MAINTENANCE] = {
       DeviceLifecycleState::CONNECTED, DeviceLifecycleState::STOPPED,
-      DeviceLifecycleState::ERROR, DeviceLifecycleState::SHUTDOWN};
+      DeviceLifecycleState::RUNNING, DeviceLifecycleState::ERROR,
+      DeviceLifecycleState::SHUTDOWN};
 
   validTransitions_[DeviceLifecycleState::UPDATING] = {
       DeviceLifecycleState::RUNNING, DeviceLifecycleState::ERROR,

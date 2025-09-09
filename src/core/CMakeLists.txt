@@ -98,11 +98,8 @@ target_link_libraries(hydrogen_core
         Threads::Threads
 )
 
-# Optional spdlog dependency (if available)
-if(TARGET spdlog::spdlog)
-    target_link_libraries(hydrogen_core PUBLIC spdlog::spdlog)
-    target_compile_definitions(hydrogen_core PUBLIC HYDROGEN_HAS_SPDLOG)
-endif()
+# Optional spdlog dependency is inherited from hydrogen_common
+# No need to link it again here to avoid duplicate symbols
 
 # Conditional Boost dependencies
 if(HYDROGEN_HAS_BOOST_REGEX)
@@ -188,8 +185,4 @@ message(STATUS "Hydrogen: Core component configured")
 message(STATUS "  - Target: hydrogen_core (Hydrogen::Core)")
 message(STATUS "  - Type: Static library")
 message(STATUS "  - Dependencies: nlohmann_json, Threads")
-if(TARGET spdlog::spdlog)
-    message(STATUS "  - Optional: spdlog (found)")
-else()
-    message(STATUS "  - Optional: spdlog (not found)")
-endif()
+message(STATUS "  - Optional: spdlog (inherited from Common)")

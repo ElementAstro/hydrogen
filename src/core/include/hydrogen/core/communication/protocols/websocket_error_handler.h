@@ -10,7 +10,9 @@
 #include <boost/system/error_code.hpp>
 #endif
 #ifdef HYDROGEN_HAS_SPDLOG
+#ifdef HYDROGEN_ENABLE_SPDLOG
 #include <spdlog/spdlog.h>
+#endif
 #endif
 
 namespace hydrogen {

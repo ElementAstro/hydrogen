@@ -284,19 +284,21 @@ TEST_F(DeviceLifecycleTest, StateHistoryManagement) {
 TEST_F(DeviceLifecycleTest, HistoryTrimming) {
     manager_->setMaxHistoryEntries(3);
     manager_->registerDevice(testDeviceId_, DeviceLifecycleState::UNINITIALIZED);
-    
-    // Perform more transitions than max history
-    for (int i = 0; i < 5; ++i) {
-        DeviceLifecycleState nextState = (i % 2 == 0) ? DeviceLifecycleState::INITIALIZING : DeviceLifecycleState::INITIALIZED;
-        manager_->transitionTo(testDeviceId_, nextState, "T" + std::to_string(i), "Transition " + std::to_string(i));
-    }
-    
+
+    // Perform more transitions than max history using valid state transitions
+    manager_->transitionTo(testDeviceId_, DeviceLifecycleState::INITIALIZING, "T0", "Transition 0");
+    manager_->transitionTo(testDeviceId_, DeviceLifecycleState::INITIALIZED, "T1", "Transition 1");
+    manager_->transitionTo(testDeviceId_, DeviceLifecycleState::CONNECTING, "T2", "Transition 2");
+    manager_->transitionTo(testDeviceId_, DeviceLifecycleState::CONNECTED, "T3", "Transition 3");
+    manager_->transitionTo(testDeviceId_, DeviceLifecycleState::RUNNING, "T4", "Transition 4");
+
     // History should be trimmed to max entries
     auto history = manager_->getStateHistory(testDeviceId_);
     EXPECT_EQ(history.size(), 3);
-    
-    // Should contain the most recent entries
+
+    // Should contain the most recent entries (T2, T3, T4)
     EXPECT_EQ(history[0].trigger, "T2");
+    EXPECT_EQ(history[1].trigger, "T3");
     EXPECT_EQ(history[2].trigger, "T4");
 }
 

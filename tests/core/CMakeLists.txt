@@ -73,11 +73,8 @@ gtest_discover_tests(core_message_basic_tests)
 gtest_discover_tests(core_stdio_mock_tests)
 gtest_discover_tests(core_device_lifecycle_tests)
 
-# Set test properties for device lifecycle tests
-set_tests_properties(core_device_lifecycle_tests PROPERTIES
-    TIMEOUT 120
-    LABELS "unit;device;lifecycle;core"
-)
+# Set test properties for device lifecycle tests (after gtest_discover_tests)
+# Note: Properties will be set after test discovery
 
 # Create a target for all core tests
 add_custom_target(core_tests
@@ -89,9 +86,9 @@ add_custom_target(core_tests
     COMMENT "Building all core tests"
 )
 
-# Create a specific target for device tests
-add_custom_target(device_tests
+# Create a specific target for core device tests
+add_custom_target(core_device_tests
     DEPENDS
         core_device_lifecycle_tests
-    COMMENT "Building device-specific tests"
+    COMMENT "Building core device-specific tests"
 )

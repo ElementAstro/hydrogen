@@ -13,7 +13,11 @@
 #include <unordered_set>
 
 #include <nlohmann/json.hpp>
+#ifdef HYDROGEN_ENABLE_SPDLOG
 #include <spdlog/spdlog.h>
+#else
+#include <hydrogen/core/logging/mock_spdlog.h>
+#endif
 
 namespace hydrogen {
 namespace core {

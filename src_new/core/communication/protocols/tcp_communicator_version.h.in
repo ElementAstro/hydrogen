@@ -1,0 +1,66 @@
+#pragma once
+
+/**
+ * @file tcp_communicator_version.h
+ * @brief Version information for the Hydrogen TCP Communicator
+ */
+
+#define TCP_COMMUNICATOR_VERSION_MAJOR @TCP_COMMUNICATOR_VERSION_MAJOR@
+#define TCP_COMMUNICATOR_VERSION_MINOR @TCP_COMMUNICATOR_VERSION_MINOR@
+#define TCP_COMMUNICATOR_VERSION_PATCH @TCP_COMMUNICATOR_VERSION_PATCH@
+#define TCP_COMMUNICATOR_VERSION "@TCP_COMMUNICATOR_VERSION@"
+
+#define TCP_COMMUNICATOR_VERSION_INT \
+    (TCP_COMMUNICATOR_VERSION_MAJOR * 10000 + \
+     TCP_COMMUNICATOR_VERSION_MINOR * 100 + \
+     TCP_COMMUNICATOR_VERSION_PATCH)
+
+namespace hydrogen {
+namespace core {
+namespace communication {
+namespace protocols {
+
+/**
+ * @brief Get the TCP Communicator version string
+ * @return Version string in format "major.minor.patch"
+ */
+inline const char* getTcpCommunicatorVersion() {
+    return TCP_COMMUNICATOR_VERSION;
+}
+
+/**
+ * @brief Get the TCP Communicator version as integer
+ * @return Version as integer (major*10000 + minor*100 + patch)
+ */
+inline int getTcpCommunicatorVersionInt() {
+    return TCP_COMMUNICATOR_VERSION_INT;
+}
+
+/**
+ * @brief Get the TCP Communicator major version
+ * @return Major version number
+ */
+inline int getTcpCommunicatorVersionMajor() {
+    return TCP_COMMUNICATOR_VERSION_MAJOR;
+}
+
+/**
+ * @brief Get the TCP Communicator minor version
+ * @return Minor version number
+ */
+inline int getTcpCommunicatorVersionMinor() {
+    return TCP_COMMUNICATOR_VERSION_MINOR;
+}
+
+/**
+ * @brief Get the TCP Communicator patch version
+ * @return Patch version number
+ */
+inline int getTcpCommunicatorVersionPatch() {
+    return TCP_COMMUNICATOR_VERSION_PATCH;
+}
+
+} // namespace protocols
+} // namespace communication
+} // namespace core
+} // namespace hydrogen

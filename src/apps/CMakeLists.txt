@@ -58,9 +58,13 @@ endfunction()
 # Application Targets
 # =============================================================================
 
+# Find fmt library for logging support
+find_package(fmt QUIET)
+
 # Server application
 hydrogen_add_application(astro_server simple_server.cpp
     DEPENDENCIES Hydrogen::Core
+    EXTRA_LIBRARIES $<$<TARGET_EXISTS:fmt::fmt>:fmt::fmt>
 )
 
 # Client application
